@@ -403,9 +403,12 @@ function useAuth() {
       setOrg(org, data.role as OrgRole)
       useStore.getState().loadOrgData(org.id).catch(() => {})
       // Load role permissions non-blocking
-      supabase.from('jarvis_organizations').select('role_permissions').eq('id', data.id).single()
-        .then(({ data: p }) => { if (p?.role_permissions) useAuthStore.getState().setRolePermissions(p.role_permissions) })
-        .catch(() => {})
+      ;(async () => {
+        try {
+          const { data: p } = await supabase.from('jarvis_organizations').select('role_permissions').eq('id', data.id).single()
+          if (p?.role_permissions) useAuthStore.getState().setRolePermissions(p.role_permissions)
+        } catch { /* ignore */ }
+      })()
     } catch (err) {
       clearTimeout(timer)
       const name = (err as Error).name

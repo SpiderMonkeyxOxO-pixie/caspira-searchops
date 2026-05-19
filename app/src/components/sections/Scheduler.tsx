@@ -158,7 +158,7 @@ export function Scheduler() {
             </div>
 
             <div className="flex gap-2 pt-1">
-              <Button variant="ai" onClick={handleSave}><Plus size={12} /> Save Schedule</Button>
+              <Button variant="primary" onClick={handleSave}>Save Schedule</Button>
               <Button variant="ghost" onClick={() => { setShowForm(false); setErrors({}) }}>Cancel</Button>
             </div>
           </div>

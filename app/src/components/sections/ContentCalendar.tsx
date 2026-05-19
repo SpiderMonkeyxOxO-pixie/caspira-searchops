@@ -174,7 +174,7 @@ export function ContentCalendar() {
             </div>
           </div>
           <div className="flex gap-2 mt-3">
-            <Button variant="ai" onClick={addItem} disabled={!newTitle.trim()}><Plus size={13} /> Save</Button>
+            <Button variant="primary" onClick={addItem} disabled={!newTitle.trim()}>Save</Button>
             <Button variant="ghost" onClick={() => setShowAdd(false)}><X size={13} /> Cancel</Button>
           </div>
         </Card>

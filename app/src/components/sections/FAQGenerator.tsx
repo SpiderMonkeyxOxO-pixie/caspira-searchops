@@ -99,8 +99,8 @@ Return JSON array only:
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ai" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <HelpCircle size={13} />}
+          <Button variant="primary" onClick={() => generate.mutate()} disabled={generate.isPending}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Generating FAQs…' : `Generate ${count} FAQs`}
           </Button>
           {!isAIReady() && <span className="text-[11px] text-muted">Add an AI key in Onboarding to generate FAQs.</span>}

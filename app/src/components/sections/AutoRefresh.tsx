@@ -205,13 +205,13 @@ Return JSON:
                             ))}
                           </div>
                           <Button
-                            variant="ai"
+                            variant="primary"
                             onClick={() => refresh.mutate({ page, section: sec })}
                             disabled={refresh.isPending && refreshing === page.id || !isAIReady()}
                           >
                             {refresh.isPending && refreshing === page.id
                               ? <><Loader2 size={13} className="animate-spin" /> Refreshing…</>
-                              : <><Repeat2 size={13} /> Refresh: {sec}</>
+                              : <>Refresh: {sec}</>
                             }
                           </Button>
                         </div>

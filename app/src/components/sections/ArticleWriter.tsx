@@ -177,8 +177,8 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
             </select>
           </div>
 
-          <Button variant="ai" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <PenLine size={13} />}
+          <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Writing article…' : `Generate ${wordCount}-Word Article`}
           </Button>
           {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding to generate articles.</div>}
@@ -308,8 +308,8 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
                       )}>{s === 'publish' ? 'Publish Now' : 'Save as Draft'}</button>
                   ))}
                 </div>
-                <Button variant="ai" onClick={publishToWP} disabled={!selectedSite || isPublishing}>
-                  {isPublishing ? <Loader2 size={13} className="animate-spin" /> : <Rss size={13} />}
+                <Button variant="primary" onClick={publishToWP} disabled={!selectedSite || isPublishing}>
+                  {isPublishing ? <Loader2 size={13} className="animate-spin" /> : null}
                   {isPublishing ? 'Publishing…' : 'Send to WordPress'}
                 </Button>
                 {publishResult?.success === false && (

@@ -191,8 +191,8 @@ export function WordPressSites() {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Button variant="ai" onClick={addSite}>
-            <Plus size={13} /> Add Site
+          <Button variant="primary" onClick={addSite}>
+            Add Site
           </Button>
           {formErr && <span className="text-xs text-danger">{formErr}</span>}
         </div>

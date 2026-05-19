@@ -113,8 +113,8 @@ Identify 6-8 opportunities. Prioritise:
               className="bg-surface border border-border rounded-lg px-3 py-1.5 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-44" />
           </div>
           <div className="mt-4">
-            <Button variant="ai" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
-              {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : <Link2 size={13} />}
+            <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
+              {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
               {analyze.isPending ? 'Analysing…' : 'Find Link Opportunities'}
             </Button>
           </div>

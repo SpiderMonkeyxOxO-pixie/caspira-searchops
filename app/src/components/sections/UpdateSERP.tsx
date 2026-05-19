@@ -117,9 +117,8 @@ export function UpdateSERP() {
               <option value="gb">🇬🇧 UK</option>
               <option value="ph">🇵🇭 Philippines</option>
             </select>
-            <Button variant="ai" onClick={refresh}
+            <Button variant="primary" onClick={refresh}
               disabled={refreshing || !serperReady || !keywords.trim() || !targetDomain.trim()}>
-              <Zap size={13} className={refreshing ? 'animate-pulse' : ''} />
               {refreshing ? `${progress?.done}/${progress?.total} checked…` : 'Check Positions'}
             </Button>
           </div>

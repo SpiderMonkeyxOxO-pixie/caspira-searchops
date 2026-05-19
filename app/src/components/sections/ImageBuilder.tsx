@@ -237,8 +237,8 @@ export function ImageBuilder() {
 
           {/* Download */}
           <div className="flex gap-2 pt-1">
-            <Button variant="ai" className="flex-1 justify-center" onClick={downloadPNG}>
-              <Download size={13} /> PNG
+            <Button variant="primary" className="flex-1 justify-center" onClick={downloadPNG}>
+              PNG
             </Button>
             <Button variant="primary" onClick={downloadSVG}>
               <Download size={13} /> SVG

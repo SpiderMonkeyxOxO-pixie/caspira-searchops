@@ -78,8 +78,8 @@ Generate 6 realistic casino/gambling gaps (bonus pages, review content, game gui
             </div>
           ))}
         </div>
-        <Button variant="ai" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
-          {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : <Crosshair size={13} />}
+        <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
+          {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
           {analyze.isPending ? 'Finding gaps…' : 'Find Content Gaps'}
         </Button>
         {!isAIReady() && <span className="ml-3 text-[11px] text-muted">Add an AI key in Onboarding.</span>}

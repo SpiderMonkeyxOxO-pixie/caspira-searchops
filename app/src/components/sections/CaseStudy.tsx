@@ -174,8 +174,8 @@ Return ONLY JSON:
           </div>
         </div>
 
-        <Button variant="ai" onClick={() => generate.mutate()} disabled={generate.isPending}>
-          {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+        <Button variant="primary" onClick={() => generate.mutate()} disabled={generate.isPending}>
+          {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
           {generate.isPending ? 'Generating…' : 'Generate Case Study'}
         </Button>
         {!isAIReady() && <span className="ml-3 text-[11px] text-muted">Add an AI key in Onboarding.</span>}

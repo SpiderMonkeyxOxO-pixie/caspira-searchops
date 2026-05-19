@@ -349,8 +349,8 @@ Be direct, specific, and actionable.`,
       <Card>
         <div className="flex items-center justify-between mb-3">
           <CardTitle>AI Competitor Analysis</CardTitle>
-          <Button variant="ai" onClick={() => analyze.mutate()} disabled={analyze.isPending || !aiReady}>
-            {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending || !aiReady}>
+            {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {analyze.isPending ? 'Analyzing…' : 'Run AI Analysis'}
           </Button>
         </div>

@@ -176,8 +176,8 @@ Tone: ${brief.tone}. Write in full markdown.`,
                 className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors" />
             </div>
           </div>
-          <Button variant="ai" onClick={() => generateOutline.mutate()} disabled={generateOutline.isPending}>
-            {generateOutline.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          <Button variant="primary" onClick={() => generateOutline.mutate()} disabled={generateOutline.isPending}>
+            {generateOutline.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generateOutline.isPending ? 'Generating outline…' : 'Generate Outline'}
           </Button>
           {!isAIReady() && <span className="ml-3 text-[11px] text-muted">Add an AI key in Onboarding.</span>}
@@ -188,8 +188,8 @@ Tone: ${brief.tone}. Write in full markdown.`,
         <Card>
           <div className="flex items-center justify-between mb-4">
             <CardTitle>Article Outline</CardTitle>
-            <Button variant="ai" onClick={() => generateDraft.mutate()} disabled={generateDraft.isPending}>
-              {generateDraft.isPending ? <Loader2 size={13} className="animate-spin" /> : <Edit3 size={13} />}
+            <Button variant="primary" onClick={() => generateDraft.mutate()} disabled={generateDraft.isPending}>
+              {generateDraft.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
               {generateDraft.isPending ? 'Writing article…' : 'Generate Full Draft'}
             </Button>
           </div>
@@ -236,7 +236,7 @@ Tone: ${brief.tone}. Write in full markdown.`,
               <CardTitle>Content Review</CardTitle>
               <div className="text-2xl font-display font-black" style={{ color: score >= 70 ? '#10b981' : '#f59e0b' }}>{score}/100</div>
             </div>
-            <Button variant="ai" onClick={() => setStep('export')}><Send size={13} /> Go to Export</Button>
+            <Button variant="primary" onClick={() => setStep('export')}>Go to Export</Button>
           </div>
           <div className="space-y-2">
             {REVIEW_CHECKS_TEMPLATE.map((c, i) => (

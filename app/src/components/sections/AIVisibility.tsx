@@ -118,8 +118,7 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
               and Bing Copilot. AEO (Answer Engine Optimization) is the next frontier in iGaming search.
             </p>
           </div>
-          <Button variant="ai" onClick={generateReport} disabled={!aiReady || aiLoading}>
-            <Sparkles size={13} className={aiLoading ? 'animate-pulse' : ''} />
+          <Button variant="primary" onClick={generateReport} disabled={!aiReady || aiLoading}>
             {aiLoading ? 'Generating…' : 'AI Strategy Report'}
           </Button>
         </div>
@@ -180,8 +179,8 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
                     Real-time AI platform monitoring (ChatGPT, Perplexity, Google AIO) requires direct API access.
                     Click "AI Strategy Report" above for actionable recommendations based on your domain.
                   </div>
-                  <Button variant="ai" onClick={generateReport} disabled={!aiReady || aiLoading}>
-                    <Sparkles size={13} /> Generate AI Strategy Report
+                  <Button variant="primary" onClick={generateReport} disabled={!aiReady || aiLoading}>
+                    Generate AI Strategy Report
                   </Button>
                 </div>
               )}

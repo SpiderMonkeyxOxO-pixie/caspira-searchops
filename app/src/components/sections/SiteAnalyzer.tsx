@@ -197,10 +197,10 @@ export function SiteAnalyzer() {
             className="flex-1 bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx
                        outline-none focus:border-accent transition-colors font-mono-jarvis"
           />
-          <Button variant="ai" onClick={startCrawl} disabled={crawling || !url.trim()}>
+          <Button variant="primary" onClick={startCrawl} disabled={crawling || !url.trim()}>
             {crawling
               ? <><Loader2 size={13} className="animate-spin" /> Crawling…</>
-              : <><Search size={13} /> Crawl Site</>
+              : <>Crawl Site</>
             }
           </Button>
         </div>

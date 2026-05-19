@@ -170,8 +170,8 @@ export function ShareableLinks() {
             </div>
 
             <div className="flex gap-2">
-              <Button variant="ai" onClick={generateLink} disabled={selectedSecs.length === 0 || !title.trim()}>
-                <Globe size={13} /> Generate Link
+              <Button variant="primary" onClick={generateLink} disabled={selectedSecs.length === 0 || !title.trim()}>
+                Generate Link
               </Button>
               <Button variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
             </div>

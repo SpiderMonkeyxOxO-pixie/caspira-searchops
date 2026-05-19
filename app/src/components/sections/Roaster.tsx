@@ -99,8 +99,8 @@ Return a JSON object (no markdown):
               </button>
             ))}
           </div>
-          <Button variant="ai" onClick={() => roast.mutate()} disabled={roast.isPending || !aiReady}>
-            {roast.isPending ? <Loader2 size={13} className="animate-spin" /> : <Flame size={13} />}
+          <Button variant="primary" onClick={() => roast.mutate()} disabled={roast.isPending || !aiReady}>
+            {roast.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {roast.isPending ? 'Roasting…' : 'Roast It'}
           </Button>
         </div>

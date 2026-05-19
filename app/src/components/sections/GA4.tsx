@@ -532,7 +532,7 @@ export function GA4() {
           )}
           <div className="flex justify-center mb-5">
             <Button
-              variant="ai"
+              variant="primary"
               disabled={connecting}
               onClick={() => {
                 setConnectError(null); setConnecting(true)
@@ -543,7 +543,7 @@ export function GA4() {
             >
               {connecting
                 ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full" /> Connecting…</>
-                : <><ExternalLink size={13} /> Connect Google Analytics 4</>
+                : <>Connect Google Analytics 4</>
               }
             </Button>
           </div>

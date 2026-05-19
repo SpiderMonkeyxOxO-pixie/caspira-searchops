@@ -219,8 +219,8 @@ Be specific and tie actions to traffic impact.`,
         </Card>
       ) : (
         <Card>
-          <Button variant="ai" onClick={() => generate.mutate()} disabled={generate.isPending || !isAIReady()}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <Brain size={13} />}
+          <Button variant="primary" onClick={() => generate.mutate()} disabled={generate.isPending || !isAIReady()}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Generating roadmap…' : 'Generate AI 12-Month Roadmap'}
           </Button>
         </Card>

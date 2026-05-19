@@ -378,10 +378,10 @@ export function TeamManagement() {
                 </select>
               </div>
               <div className="flex items-end">
-                <Button variant="ai" type="submit" disabled={sending || !inviteEmail.trim()}>
+                <Button variant="primary" type="submit" disabled={sending || !inviteEmail.trim()}>
                   {sending
                     ? <RefreshCw size={12} className="animate-spin" />
-                    : <UserPlus size={12} />
+                    : null
                   }
                   {sending ? 'Sending…' : 'Send Invite'}
                 </Button>

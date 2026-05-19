@@ -206,9 +206,8 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
             <Search size={13} className={loading ? 'animate-pulse' : ''} />
             {loading ? 'Searching…' : 'Search Google'}
           </Button>
-          <Button variant="ai" onClick={generateWithAI} disabled={!aiReady || aiLoading || !seed.trim()}
+          <Button variant="primary" onClick={generateWithAI} disabled={!aiReady || aiLoading || !seed.trim()}
             title={!aiReady ? 'Add OpenRouter or Anthropic key in Onboarding' : ''}>
-            <Sparkles size={13} className={aiLoading ? 'animate-pulse' : ''} />
             {aiLoading ? 'Generating…' : `Generate with AI`}
           </Button>
           {rows.length > 0 && (

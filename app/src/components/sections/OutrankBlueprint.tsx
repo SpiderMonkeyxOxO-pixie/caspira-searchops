@@ -232,8 +232,8 @@ Rules:
         </div>
 
         <div className="flex items-center gap-4 flex-wrap">
-          <Button variant="ai" onClick={() => generate.mutate()} disabled={generate.isPending || !market.trim() || !isAIReady()}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <Target size={13} />}
+          <Button variant="primary" onClick={() => generate.mutate()} disabled={generate.isPending || !market.trim() || !isAIReady()}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Generating blueprint…' : `Generate Blueprint vs ${competitor}`}
           </Button>
           {!isAIReady() && (

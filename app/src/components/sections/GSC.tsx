@@ -472,7 +472,7 @@ export function GSC() {
           )}
           <div className="flex justify-center mb-5">
             <Button
-              variant="ai"
+              variant="primary"
               disabled={connecting}
               onClick={() => {
                 if (!clientId.trim()) return
@@ -484,7 +484,7 @@ export function GSC() {
             >
               {connecting
                 ? <><span className="animate-spin inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full" /> Connecting…</>
-                : <><ExternalLink size={13} /> Connect Google Search Console</>
+                : <>Connect Google Search Console</>
               }
             </Button>
           </div>

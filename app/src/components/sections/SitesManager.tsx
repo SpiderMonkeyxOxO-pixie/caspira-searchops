@@ -219,8 +219,8 @@ export function SitesManager() {
               placeholder={`casinoindian.in\nslotindo.com\nteenpattipro.com\nandarbaharhub.in\nrummypro.in\nslotgacor.id\njudibola.co\ncasinoonline.id\n...`}
               className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none mb-3"
             />
-            <Button variant="ai" onClick={handleBulkParse} disabled={!bulkRaw.trim()}>
-              <Upload size={13} /> Parse Domains
+            <Button variant="primary" onClick={handleBulkParse} disabled={!bulkRaw.trim()}>
+              Parse Domains
             </Button>
           </>
         ) : (
@@ -241,8 +241,8 @@ export function SitesManager() {
               ))}
             </div>
             <div className="flex gap-3">
-              <Button variant="ai" onClick={handleBulkImport}>
-                <Plus size={13} /> Import All {bulkParsed.length} Sites
+              <Button variant="primary" onClick={handleBulkImport}>
+                Import All {bulkParsed.length} Sites
               </Button>
               <Button variant="ghost" onClick={() => { setBulkParsed([]); setBulkRaw('') }}>
                 Cancel

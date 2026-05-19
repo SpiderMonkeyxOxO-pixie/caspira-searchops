@@ -95,8 +95,8 @@ Use these colors in order: ${COLORS.join(', ')}`,
             placeholder="Paste keywords (one per line)…"
             className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin mb-3"
           />
-          <Button variant="ai" className="w-full justify-center" onClick={() => cluster.mutate()} disabled={cluster.isPending}>
-            {cluster.isPending ? <Loader2 size={13} className="animate-spin" /> : <Network size={13} />}
+          <Button variant="primary" className="w-full justify-center" onClick={() => cluster.mutate()} disabled={cluster.isPending}>
+            {cluster.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {cluster.isPending ? 'Clustering…' : `Cluster ${input.split('\n').filter(Boolean).length} Keywords`}
           </Button>
           {!isAIReady() && <div className="text-[10px] text-muted mt-2">Add an AI key in Onboarding.</div>}

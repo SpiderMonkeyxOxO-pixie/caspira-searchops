@@ -132,8 +132,8 @@ Make each one platform-native and casino/iGaming appropriate.`,
               ))}
             </div>
           </div>
-          <Button variant="ai" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <Share2 size={13} />}
+          <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Generating…' : 'Generate 5 Snippets'}
           </Button>
           {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding.</div>}

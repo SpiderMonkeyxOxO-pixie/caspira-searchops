@@ -248,8 +248,7 @@ export function SiteExplorer() {
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis"
             />
           </div>
-          <Button variant="ai" onClick={() => explore()} disabled={loading || !query.trim()}>
-            <SearchCode size={13} className={loading ? 'animate-pulse' : ''} />
+          <Button variant="primary" onClick={() => explore()} disabled={loading || !query.trim()}>
             {loading ? 'Exploring…' : 'Explore Site'}
           </Button>
         </div>

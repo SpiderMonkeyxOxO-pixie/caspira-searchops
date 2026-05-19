@@ -162,12 +162,11 @@ Intent definitions:
               <Sparkles size={13} /> Analyze (Rules)
             </Button>
             <Button
-              variant="ai"
+              variant="primary"
               onClick={analyzeWithAI}
               disabled={!aiReady || aiLoading || !input.trim()}
               title={!aiReady ? 'Add Gemini or Anthropic key in Onboarding' : ''}
             >
-              <Sparkles size={13} className={aiLoading ? 'animate-pulse' : ''} />
               {aiLoading ? 'Analyzing…' : `Analyze with ${provider === 'openrouter' ? 'OpenRouter' : 'Claude'}`}
             </Button>
             <Button variant="ghost" onClick={() => { setInput(SAMPLE); setAnalyzed(false) }}>

@@ -146,8 +146,7 @@ Be specific and actionable for the regulated gambling industry.`,
             placeholder="yoursite.com or any competitor domain"
             className="flex-1 bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis"
           />
-          <Button variant="ai" onClick={runFetch} disabled={loading || !targetDomain.trim() || !dataForSEOKey}>
-            <Link2 size={13} className={loading ? 'animate-pulse' : ''} />
+          <Button variant="primary" onClick={runFetch} disabled={loading || !targetDomain.trim() || !dataForSEOKey}>
             {loading ? 'Fetching…' : 'Fetch Backlinks'}
           </Button>
         </div>
@@ -265,8 +264,8 @@ Be specific and actionable for the regulated gambling industry.`,
               </div>
             )}
           </div>
-          <Button variant="ai" onClick={() => getStrategy.mutate()} disabled={getStrategy.isPending || !aiReady}>
-            {getStrategy.isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+          <Button variant="primary" onClick={() => getStrategy.mutate()} disabled={getStrategy.isPending || !aiReady}>
+            {getStrategy.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {getStrategy.isPending ? 'Building…' : 'Generate 60-Day Sprint'}
           </Button>
         </div>

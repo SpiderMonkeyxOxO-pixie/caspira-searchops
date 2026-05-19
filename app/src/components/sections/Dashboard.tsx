@@ -262,7 +262,7 @@ export function Dashboard() {
         <Card className="bg-linear-to-br from-[#7c3aed15] to-[#00d4ff08] border-[#7c3aed30]">
           <CardTitle className="text-[#a78bfa]">Jarvis AI Ready</CardTitle>
           <div className="text-[11px] text-muted mb-4">Ask anything about your iGaming SEO strategy</div>
-          <Button variant="ai" className="w-full justify-center" onClick={() => setSection('jarvis')}>
+          <Button variant="primary" className="w-full justify-center" onClick={() => setSection('jarvis')}>
             Open AI Co-Pilot
           </Button>
         </Card>

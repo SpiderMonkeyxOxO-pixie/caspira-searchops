@@ -101,8 +101,8 @@ Return JSON only:
             rows={10}
             className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin mb-3"
           />
-          <Button variant="ai" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+          <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
+            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {generate.isPending ? 'Writing…' : `Generate ${input.split('\n').filter(Boolean).length} Meta Tags`}
           </Button>
           {!isAIReady() && <div className="text-[10px] text-muted mt-2">Add an AI key in Onboarding.</div>}

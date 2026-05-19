@@ -82,8 +82,8 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis"
             />
           </div>
-          <Button variant="ai" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
-            {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
+          <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
+            {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {analyze.isPending ? 'Analysing…' : 'Analyse SERP Features'}
           </Button>
         </div>

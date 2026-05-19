@@ -112,8 +112,8 @@ Return JSON:
               placeholder="Paste your casino article here…"
               className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
           </div>
-          <Button variant="ai" className="w-full justify-center" onClick={() => grade.mutate()} disabled={grade.isPending}>
-            {grade.isPending ? <Loader2 size={13} className="animate-spin" /> : <GraduationCap size={13} />}
+          <Button variant="primary" className="w-full justify-center" onClick={() => grade.mutate()} disabled={grade.isPending}>
+            {grade.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {grade.isPending ? 'Grading…' : 'Grade Content'}
           </Button>
           {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding.</div>}

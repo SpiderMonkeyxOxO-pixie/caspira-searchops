@@ -227,8 +227,8 @@ export function JarvisAI() {
         <div className="text-sm text-muted max-w-xs">
           Add an <strong>OpenRouter</strong> (free models available) or <strong>Anthropic</strong> API key in Onboarding to unlock AI-powered iGaming SEO strategy.
         </div>
-        <Button variant="ai" onClick={() => setSection('onboarding')}>
-          <Zap size={13} /> Add API Key
+        <Button variant="primary" onClick={() => setSection('onboarding')}>
+          Add API Key
         </Button>
       </div>
     )

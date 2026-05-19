@@ -133,7 +133,7 @@ export function APIAccess() {
                 onKeyDown={e => e.key === 'Enter' && createKey()}
                 placeholder="Key name (e.g. Production)"
                 className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors font-mono-jarvis" />
-              <Button variant="ai" onClick={createKey} disabled={!newName.trim()}>Create</Button>
+              <Button variant="primary" onClick={createKey} disabled={!newName.trim()}>Create</Button>
             </div>
           )}
 

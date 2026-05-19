@@ -107,8 +107,8 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
               placeholder="yoursite.com/page"
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
-          <Button variant="ai" onClick={() => check.mutate()} disabled={check.isPending}>
-            {check.isPending ? <Loader2 size={13} className="animate-spin" /> : <FileCode2 size={13} />}
+          <Button variant="primary" onClick={() => check.mutate()} disabled={check.isPending}>
+            {check.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {check.isPending ? 'Analysing JS…' : 'Check JS SEO'}
           </Button>
         </div>

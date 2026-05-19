@@ -88,8 +88,8 @@ Return JSON only (no markdown):
           placeholder="https://yoursite.com/page-to-audit"
           className="flex-1 bg-transparent text-sm text-tx outline-none placeholder:text-muted font-mono-jarvis"
         />
-        <Button variant="ai" onClick={() => audit.mutate()} disabled={audit.isPending}>
-          {audit.isPending ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+        <Button variant="primary" onClick={() => audit.mutate()} disabled={audit.isPending}>
+          {audit.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
           {audit.isPending ? 'Auditing…' : 'Run E-E-A-T Audit'}
         </Button>
       </Card>

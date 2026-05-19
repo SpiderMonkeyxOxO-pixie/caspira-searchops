@@ -137,8 +137,8 @@ export function AnswerThePublic() {
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
             />
           </div>
-          <Button variant="ai" onClick={generate} disabled={!topic.trim()}>
-            <Search size={13} /> Generate Questions
+          <Button variant="primary" onClick={generate} disabled={!topic.trim()}>
+            Generate Questions
           </Button>
         </div>
       </Card>

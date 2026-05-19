@@ -138,8 +138,8 @@ Mark about 40% as covered:false (honest gap analysis)`,
             <input value={niche} onChange={e => setNiche(e.target.value)}
               placeholder="e.g. online casino uk"
               className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-44" />
-            <Button variant="ai" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
-              {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : <Compass size={13} />}
+            <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
+              {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
               {analyze.isPending ? 'Mapping…' : 'Map Niche'}
             </Button>
           </div>

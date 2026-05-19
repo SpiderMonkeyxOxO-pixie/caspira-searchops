@@ -308,8 +308,8 @@ Be direct and technical.`,
                   {aiRec}
                 </div>
               ) : (
-                <Button variant="ai" onClick={() => getAI.mutate()} disabled={getAI.isPending || !isAIReady()}>
-                  {getAI.isPending ? <Loader2 size={13} className="animate-spin" /> : <Brain size={13} />}
+                <Button variant="primary" onClick={() => getAI.mutate()} disabled={getAI.isPending || !isAIReady()}>
+                  {getAI.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
                   {getAI.isPending ? 'Analyzing…' : 'Get AI Fix Priorities'}
                 </Button>
               )}

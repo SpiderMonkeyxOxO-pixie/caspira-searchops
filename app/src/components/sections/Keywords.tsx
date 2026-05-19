@@ -106,7 +106,7 @@ Make them realistic, varied difficulty, mix of intents.`,
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
             />
           </div>
-          <Button variant="ai" onClick={() => research.mutate()} disabled={research.isPending || !isAIReady()}>
+          <Button variant="primary" onClick={() => research.mutate()} disabled={research.isPending || !isAIReady()}>
             {research.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
             {research.isPending ? 'Researching…' : 'AI Research'}
           </Button>

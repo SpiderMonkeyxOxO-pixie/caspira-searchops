@@ -582,8 +582,8 @@ export function Onboarding() {
                     <span className="text-accent font-semibold">Tip: </span>{step.tip}
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ai" onClick={() => setSection(step.nav)}>
-                      <step.Icon size={13} /> {step.actionLabel}
+                    <Button variant="primary" onClick={() => setSection(step.nav)}>
+                      {step.actionLabel}
                     </Button>
                     {!done && (
                       <Button variant="ghost" onClick={() => markDone(step.id)} className="text-[11px]">

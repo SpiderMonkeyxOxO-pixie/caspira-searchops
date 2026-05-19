@@ -12,6 +12,7 @@ const LANGUAGES = [
   { code: 'it', name: 'Italian' }, { code: 'pt', name: 'Portuguese' },
   { code: 'nl', name: 'Dutch'   }, { code: 'fi', name: 'Finnish' },
   { code: 'sv', name: 'Swedish' }, { code: 'no', name: 'Norwegian' },
+  { code: 'hi', name: 'Hindi'   }, { code: 'id', name: 'Indonesian' },
 ]
 
 const REGIONS = [
@@ -21,14 +22,7 @@ const REGIONS = [
   { code: 'AT', name: 'Austria' },        { code: 'CH', name: 'Switzerland' },
   { code: 'FI', name: 'Finland' },        { code: 'SE', name: 'Sweden' },
   { code: 'NO', name: 'Norway' },         { code: 'US', name: 'United States' },
-]
-
-const DEFAULT_ENTRIES: HreflangEntry[] = [
-  { id: '1', url: 'https://casinoexpert.io/best-online-casinos',    lang: 'en', region: 'GB', isDefault: true },
-  { id: '2', url: 'https://casinoexpert.ie/best-online-casinos',    lang: 'en', region: 'IE', isDefault: false },
-  { id: '3', url: 'https://casinoexpert.io/ca/best-online-casinos', lang: 'en', region: 'CA', isDefault: false },
-  { id: '4', url: 'https://casinoexpert.io/au/best-online-casinos', lang: 'en', region: 'AU', isDefault: false },
-  { id: '5', url: 'https://casinoexpert.de/beste-online-casino',    lang: 'de', region: 'DE', isDefault: false },
+  { code: 'IN', name: 'India' },          { code: 'ID', name: 'Indonesia' },
 ]
 
 let nextId = 100
@@ -81,7 +75,7 @@ function validateEntries(entries: HreflangEntry[]): { type: 'error' | 'warning' 
 }
 
 export function HreflangBuilder() {
-  const [entries,  setEntries]  = useState<HreflangEntry[]>(DEFAULT_ENTRIES)
+  const [entries,  setEntries]  = useState<HreflangEntry[]>([])
   const [newUrl,   setNewUrl]   = useState('')
   const [newLang,  setNewLang]  = useState('en')
   const [newRegion, setNewRegion] = useState('NZ')

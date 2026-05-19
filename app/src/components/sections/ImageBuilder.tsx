@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Palette, Download, Copy, Check } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Palette, Download, Copy, Check, Upload, X } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -34,9 +34,9 @@ function splitText(text: string, maxLen: number): string[] {
   return lines.slice(0, 3)
 }
 
-function FeaturedSVG({ headline, subtitle, site, category, date, theme, template }: {
+function FeaturedSVG({ headline, subtitle, site, category, date, theme, template, bgImage }: {
   headline: string; subtitle: string; site: string; category: string; date: string
-  theme: Theme; template: string
+  theme: Theme; template: string; bgImage?: string
 }) {
   const headLines  = splitText(headline  || 'Your Article Headline Goes Here', template === 'Wide Banner' ? 28 : 22)
   const subLines   = splitText(subtitle  || 'Expert tested and regularly updated', 40)
@@ -61,6 +61,12 @@ function FeaturedSVG({ headline, subtitle, site, category, date, theme, template
 
       {/* Background */}
       <rect width={W} height={H} fill="url(#bgGrad)" />
+      {bgImage && (
+        <>
+          <image href={bgImage} x="0" y="0" width={W} height={H} preserveAspectRatio="xMidYMid slice" />
+          <rect width={W} height={H} fill={theme.bg} opacity="0.72" />
+        </>
+      )}
 
       {/* Decorative grid dots */}
       {[...Array(8)].map((_, x) => [...Array(4)].map((__, y) => (
@@ -134,8 +140,18 @@ export function ImageBuilder() {
   const [themeId,   setThemeId]   = useState('dark')
   const [template,  setTemplate]  = useState<typeof TEMPLATES[number]>('Article Cover')
   const [copied,    setCopied]    = useState(false)
+  const [bgImage,   setBgImage]   = useState<string | undefined>()
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const theme = THEMES.find(t => t.id === themeId) ?? THEMES[0]
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = ev => setBgImage(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   function downloadSVG() {
     const el = document.getElementById('featured-img-svg')
@@ -235,6 +251,30 @@ export function ImageBuilder() {
             </select>
           </div>
 
+          {/* Background image upload */}
+          <div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">BACKGROUND IMAGE</div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            {bgImage ? (
+              <div className="flex items-center gap-2 p-2 bg-surface border border-accent/30 rounded-lg">
+                <div className="w-10 h-7 rounded overflow-hidden shrink-0 border border-border">
+                  <img src={bgImage} className="w-full h-full object-cover" alt="bg" />
+                </div>
+                <span className="flex-1 text-[11px] text-accent font-mono-jarvis truncate">Custom image applied</span>
+                <button onClick={() => { setBgImage(undefined); if (fileRef.current) fileRef.current.value = '' }}
+                  className="text-muted hover:text-danger cursor-pointer shrink-0 transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-border text-xs text-muted hover:border-accent hover:text-accent transition-colors cursor-pointer">
+                <Upload size={13} /> Upload your image
+              </button>
+            )}
+            {bgImage && <div className="text-[10px] text-muted mt-1">Theme overlay applied to keep text readable</div>}
+          </div>
+
           {/* Download */}
           <div className="flex gap-2 pt-1">
             <Button variant="primary" className="flex-1 justify-center" onClick={downloadPNG}>
@@ -262,6 +302,7 @@ export function ImageBuilder() {
             <FeaturedSVG
               headline={headline} subtitle={subtitle} site={site}
               category={category} date={date} theme={theme} template={template}
+              bgImage={bgImage}
             />
           </div>
           <div className="mt-3 p-3 bg-surface border border-border rounded-lg text-[10px] text-muted">

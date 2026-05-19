@@ -30,16 +30,6 @@ function relDate(offset: number): string {
   const d = new Date(); d.setDate(d.getDate() + offset); return fmt(d)
 }
 
-const DEFAULT_ITEMS: CalendarItem[] = [
-  { id: '1', title: 'No Deposit Bonus Guide — May 2026', keyword: 'no deposit bonus casino', status: 'published', date: relDate(-2), wordCount: '2,400', priority: 'high' },
-  { id: '2', title: 'Best Live Casino Sites UK',         keyword: 'live dealer casino uk',   status: 'scheduled', date: relDate(-1), wordCount: '1,800', priority: 'medium' },
-  { id: '3', title: 'Best Online Casinos 2026',          keyword: 'best online casino uk',   status: 'review',    date: relDate(0),  wordCount: '3,200', priority: 'high' },
-  { id: '4', title: 'Bitcoin Casino No Deposit',         keyword: 'bitcoin casino no deposit', status: 'drafting', date: relDate(0), wordCount: '1,500', priority: 'high' },
-  { id: '5', title: 'Fastest Payout Casino 2026',        keyword: 'fastest payout casino',   status: 'drafting',  date: relDate(1),  wordCount: '2,100', priority: 'medium' },
-  { id: '6', title: 'Casinos Not on GamStop Guide',      keyword: 'casinos not on gamstop',  status: 'planned',   date: relDate(3),  wordCount: '2,800', priority: 'high' },
-  { id: '7', title: 'Wagering Requirements Explained',   keyword: 'wagering requirements',   status: 'planned',   date: relDate(4),  wordCount: '1,600', priority: 'medium' },
-  { id: '8', title: 'Low Wagering Casino Bonuses',       keyword: 'low wagering casino',     status: 'planned',   date: relDate(5),  wordCount: '2,000', priority: 'medium' },
-]
 
 function getWeekStart(offset: number): Date {
   const today = new Date()
@@ -54,7 +44,7 @@ function getWeekStart(offset: number): Date {
 let nextItemId = 200
 
 export function ContentCalendar() {
-  const [items,       setItems]       = useState<CalendarItem[]>(DEFAULT_ITEMS)
+  const [items,       setItems]       = useState<CalendarItem[]>([])
   const [weekOffset,  setWeekOffset]  = useState(0)
   const [draggedId,   setDraggedId]   = useState<string | null>(null)
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)

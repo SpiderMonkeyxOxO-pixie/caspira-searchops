@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   MousePointer, Eye, Percent, Hash, AlertTriangle, TrendingUp,
-  Loader2, ExternalLink,
+  Loader2, ExternalLink, ChevronDown,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,10 +25,46 @@ const impactColor: Record<string, 'red' | 'amber' | 'accent'> = {
 }
 
 const QUICK_WINS = [
-  { label: 'Boost position 11–20 pages with internal linking — quick ranking jumps',    impact: 'HIGH', type: 'Content'   },
-  { label: 'High impression / low CTR queries — optimise title tags for more clicks',   impact: 'HIGH', type: 'On-Page'   },
-  { label: 'Fix slow LCP on mobile — Core Web Vitals hurting mobile rankings',          impact: 'MED',  type: 'Technical' },
-  { label: 'Build topical clusters around top-performing queries',                       impact: 'MED',  type: 'Content'   },
+  {
+    label: 'Boost position 11–20 pages with internal linking — quick ranking jumps',
+    impact: 'HIGH', type: 'Content',
+    steps: [
+      'Find pages ranking #11–20 in GSC Performance → filter by position 11–20',
+      'Identify 3–5 existing pages on your site with topically related content',
+      'Add natural anchor-text links from those pages pointing to the target page',
+      'Prioritise pages with highest impressions but lowest clicks first',
+    ],
+  },
+  {
+    label: 'High impression / low CTR queries — optimise title tags for more clicks',
+    impact: 'HIGH', type: 'On-Page',
+    steps: [
+      'Filter GSC queries by >1,000 impressions and CTR <5%',
+      'Rewrite title tags to include the exact query and a power word (Best, Guide, Free)',
+      'Add a number or current year to signal freshness',
+      'Monitor CTR change over 14 days after publishing',
+    ],
+  },
+  {
+    label: 'Fix slow LCP on mobile — Core Web Vitals hurting mobile rankings',
+    impact: 'MED', type: 'Technical',
+    steps: [
+      'Run PageSpeed Insights on your top 5 landing pages (mobile tab)',
+      'Identify and lazy-load all images below the fold',
+      'Preload your hero image using <link rel="preload"> in <head>',
+      'Switch images to WebP/AVIF format and serve via CDN',
+    ],
+  },
+  {
+    label: 'Build topical clusters around top-performing queries',
+    impact: 'MED', type: 'Content',
+    steps: [
+      'List your top 5 money keywords from GSC or Rank Tracker',
+      'Use KW Clustering to find related long-tail supporting terms',
+      'Create or update 3–5 supporting articles per cluster topic',
+      'Interlink all cluster articles back to the main pillar page',
+    ],
+  },
 ]
 
 export function Dashboard() {
@@ -36,6 +72,7 @@ export function Dashboard() {
   const orgId  = useAuthStore().org?.id ?? ''
   const pending = tasks.filter(t => !t.done).length
 
+  const [expandedWin, setExpandedWin] = useState<number | null>(null)
   const [gscLoading, setGscLoading] = useState(true)
   const [gscSite,    setGscSite]    = useState<string | null>(null)
   const [kpis,       setKpis]       = useState<Kpis | null>(null)
@@ -229,13 +266,33 @@ export function Dashboard() {
       {/* ── Quick Wins ── */}
       <Card>
         <CardTitle className="mb-1">Quick Wins</CardTitle>
-        <div className="text-[11px] text-muted mb-4">Highest-impact SEO actions this week</div>
+        <div className="text-[11px] text-muted mb-4">Highest-impact SEO actions this week — click any card to see how to implement it</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {QUICK_WINS.map((w, i) => (
-            <div key={i} className="flex items-center gap-3 p-3 bg-surface rounded-lg border border-border hover:border-accent transition-colors">
-              <Badge variant={impactColor[w.impact]}>{w.impact}</Badge>
-              <span className="flex-1 text-xs text-tx">{w.label}</span>
-              <Badge variant="muted">{w.type}</Badge>
+            <div key={i}
+              className="rounded-lg border border-border bg-surface hover:border-accent/50 transition-colors cursor-pointer"
+              onClick={() => setExpandedWin(expandedWin === i ? null : i)}>
+              <div className="flex items-center gap-3 p-3">
+                <Badge variant={impactColor[w.impact]}>{w.impact}</Badge>
+                <span className="flex-1 text-xs text-tx">{w.label}</span>
+                <Badge variant="muted">{w.type}</Badge>
+                <ChevronDown size={13} className={`text-muted shrink-0 transition-transform ${expandedWin === i ? 'rotate-180' : ''}`} />
+              </div>
+              {expandedWin === i && (
+                <div className="px-3 pb-3 border-t border-border/60 pt-2.5">
+                  <div className="text-[10px] font-mono-jarvis text-accent tracking-widest mb-2">HOW TO IMPLEMENT</div>
+                  <ol className="space-y-1.5">
+                    {w.steps.map((step, j) => (
+                      <li key={j} className="flex items-start gap-2 text-xs text-muted">
+                        <span className="shrink-0 w-4 h-4 rounded-full bg-accent/15 text-accent text-[9px] flex items-center justify-center font-bold mt-0.5">
+                          {j + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
             </div>
           ))}
         </div>

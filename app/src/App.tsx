@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef, Component } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
 import { SlidersHorizontal, Loader2 } from 'lucide-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -147,6 +148,38 @@ const SECTION_MAP: Partial<Record<NavSection, React.LazyExoticComponent<React.Co
   seonews:        SEONews,
 }
 
+// ── Error boundary — catches any section crash, resets on nav ─
+interface EBState { error: Error | null }
+class SectionErrorBoundary extends Component<{ children: ReactNode; resetKey: string }, EBState> {
+  state: EBState = { error: null }
+  static getDerivedStateFromError(error: Error): EBState { return { error } }
+  componentDidCatch(_err: Error, info: ErrorInfo) { console.error('[SectionError]', _err, info) }
+  componentDidUpdate(prev: { resetKey: string }) {
+    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null })
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 text-center px-6">
+          <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mb-4">
+            <SlidersHorizontal size={20} className="text-danger" />
+          </div>
+          <div className="font-display font-bold text-lg text-tx mb-1">Something went wrong</div>
+          <div className="text-xs font-mono-jarvis text-danger mb-4 max-w-md break-all">
+            {this.state.error.message}
+          </div>
+          <button
+            onClick={() => this.setState({ error: null })}
+            className="px-4 py-2 rounded-lg bg-accent text-black text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity">
+            Try again
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function SectionFallback() {
   return (
     <div className="flex items-center justify-center h-64">
@@ -165,20 +198,22 @@ function SectionContent() {
   const Section = SECTION_MAP[activeSection]
 
   return (
-    <Suspense fallback={<SectionFallback />}>
-      {Section ? (
-        <Section />
-      ) : (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <div className="mb-3 text-muted"><SlidersHorizontal size={40} strokeWidth={1.25} /></div>
-          <div className="font-display font-bold text-lg text-tx mb-1">Coming Soon</div>
-          <div className="text-sm text-muted">
-            <span className="font-mono-jarvis text-accent">/{activeSection}</span>
-            {' '}is being migrated to React
+    <SectionErrorBoundary resetKey={activeSection}>
+      <Suspense fallback={<SectionFallback />}>
+        {Section ? (
+          <Section />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <div className="mb-3 text-muted"><SlidersHorizontal size={40} strokeWidth={1.25} /></div>
+            <div className="font-display font-bold text-lg text-tx mb-1">Coming Soon</div>
+            <div className="text-sm text-muted">
+              <span className="font-mono-jarvis text-accent">/{activeSection}</span>
+              {' '}is being migrated to React
+            </div>
           </div>
-        </div>
-      )}
-    </Suspense>
+        )}
+      </Suspense>
+    </SectionErrorBoundary>
   )
 }
 

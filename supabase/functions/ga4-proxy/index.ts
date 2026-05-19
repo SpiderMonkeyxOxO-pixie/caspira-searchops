@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cacheGet, cacheSet, makeCacheKey } from '../_shared/cache.ts'
+
+const GA4_TTL = 3600 // 1 hour
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +64,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
+    // Check cache before hitting GA4 API
+    const cacheKey = await makeCacheKey('ga4', org_id, property_id, report)
+    const cached   = await cacheGet<unknown>(cacheKey)
+    if (cached) {
+      return new Response(JSON.stringify(cached), {
+        headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
+      })
+    }
+
     const accessToken = await getAccessToken(supabase, org_id)
 
     const apiRes = await fetch(
@@ -75,8 +87,10 @@ serve(async (req) => {
     const data = await apiRes.json()
     if (data.error) throw new Error(`GA4 API: ${data.error.message ?? JSON.stringify(data.error)}`)
 
+    await cacheSet(cacheKey, data, GA4_TTL)
+
     return new Response(JSON.stringify(data), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

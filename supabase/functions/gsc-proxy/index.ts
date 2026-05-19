@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { cacheGet, cacheSet, makeCacheKey } from '../_shared/cache.ts'
+
+const GSC_TTL = 3600 // 1 hour
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -68,6 +71,17 @@ serve(async (req) => {
       token = await refreshAccessToken(conn.refresh_token, org_id, supabase)
     }
 
+    // Check cache (skip for sites list — it changes when user connects new properties)
+    const cacheKey = await makeCacheKey('gsc', org_id, site_url, endpoint, params)
+    if (endpoint === 'searchAnalytics') {
+      const cached = await cacheGet<unknown>(cacheKey)
+      if (cached) {
+        return new Response(JSON.stringify(cached), {
+          headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
+        })
+      }
+    }
+
     // Build GSC API request
     const encodedSite = encodeURIComponent(site_url)
     let url: string
@@ -96,8 +110,13 @@ serve(async (req) => {
       throw new Error(data.error.message ?? JSON.stringify(data.error))
     }
 
+    // Cache searchAnalytics responses
+    if (endpoint === 'searchAnalytics') {
+      await cacheSet(cacheKey, data, GSC_TTL)
+    }
+
     return new Response(JSON.stringify(data), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

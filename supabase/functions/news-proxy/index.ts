@@ -1,5 +1,9 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { cacheGet, cacheSet } from '../_shared/cache.ts'
+
+const NEWS_CACHE_KEY = 'jarvis:news:all'
+const NEWS_TTL       = 900 // 15 minutes
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -96,6 +100,14 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
   try {
+    // Serve from cache — fetching 7 RSS feeds in parallel is slow
+    const cached = await cacheGet<{ items: NewsItem[]; fetchedAt: number }>(NEWS_CACHE_KEY)
+    if (cached) {
+      return new Response(JSON.stringify(cached), {
+        headers: { ...CORS, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
+      })
+    }
+
     const results = await Promise.allSettled(
       SOURCES.map(async (src) => {
         const res = await fetch(src.url, {
@@ -117,8 +129,11 @@ serve(async (req) => {
     // Sort newest first
     all.sort((a, b) => b.pubTs - a.pubTs)
 
-    return new Response(JSON.stringify({ items: all, fetchedAt: Date.now() }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' },
+    const result = { items: all, fetchedAt: Date.now() }
+    await cacheSet(NEWS_CACHE_KEY, result, NEWS_TTL)
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...CORS, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },
     })
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e), items: [] }), {

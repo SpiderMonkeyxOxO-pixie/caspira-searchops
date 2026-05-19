@@ -30,32 +30,11 @@ const EXPIRY_OPTIONS = [
   { id: 'never', label: 'Never' },
 ]
 
-const DEFAULT_LINKS: SharedLink[] = [
-  {
-    id: '1', title: 'casinoexpert.io — Full Monthly Report', domain: 'casinoexpert.io',
-    sections: ['dashboard', 'tracker', 'backlinks', 'roi'],
-    expiry: 'Jun 14, 2026', views: 12, password: false,
-    url: 'https://jarvis.app/s/k4x9mQ', status: 'active', created: 'May 1, 2026',
-  },
-  {
-    id: '2', title: 'slotsempire.com — Rankings Only', domain: 'slotsempire.com',
-    sections: ['tracker', 'competitors'],
-    expiry: 'May 28, 2026', views: 3, password: true,
-    url: 'https://jarvis.app/s/rT2pLw', status: 'active', created: 'May 8, 2026',
-  },
-  {
-    id: '3', title: 'April 2026 Performance Review', domain: 'casinoexpert.io',
-    sections: ['dashboard', 'tracker', 'backlinks'],
-    expiry: 'May 5, 2026', views: 8, password: false,
-    url: 'https://jarvis.app/s/aB3cDe', status: 'expired', created: 'Apr 1, 2026',
-  },
-]
-
-let nextId = 100
+let nextId = 1
 
 export function ShareableLinks() {
   const { domain } = useStore()
-  const [links,         setLinks]         = useState<SharedLink[]>(DEFAULT_LINKS)
+  const [links,         setLinks]         = useState<SharedLink[]>([])
   const [showForm,      setShowForm]      = useState(false)
   const [title,         setTitle]         = useState(`${domain || 'yoursite.com'} — Monthly SEO Report`)
   const [selectedSecs,  setSelectedSecs]  = useState<string[]>(['dashboard','tracker','backlinks'])
@@ -198,6 +177,14 @@ export function ShareableLinks() {
             Clients see live data without login — no editing, no settings, no billing information. Each link can be revoked instantly.
           </div>
         </div>
+
+        {links.length === 0 && (
+          <div className="text-center py-12 text-muted">
+            <ExternalLink size={32} className="mx-auto mb-3 opacity-30" strokeWidth={1.25} />
+            <div className="text-sm">No shared links yet</div>
+            <div className="text-xs mt-1 font-mono-jarvis">Click "New Link" to create your first shareable report</div>
+          </div>
+        )}
 
         <div className="space-y-3">
           {links.map(link => (

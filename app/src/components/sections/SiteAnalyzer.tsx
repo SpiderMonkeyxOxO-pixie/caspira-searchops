@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Search, AlertTriangle, CheckCircle, XCircle, Loader2,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink, FileText, Download,
-  Clock, History, Globe, Eye,
+  Clock, History, Globe, Eye, Trash2, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -43,6 +43,14 @@ interface CrawlPage {
 
 type SeverityFilter = 'all' | 'high' | 'med' | 'low'
 type IssueTypeFilter = 'all' | string
+
+const HISTORY_PAGE_SIZE = 20
+
+interface JobDetail {
+  loading: boolean
+  high: number; med: number; low: number
+  topIssues: Array<Issue & { url: string }>
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 const SEV_BADGE: Record<string, 'red' | 'amber' | 'accent'> = {
@@ -96,6 +104,11 @@ export function SiteAnalyzer() {
   const [historyLoading,  setHistoryLoading]  = useState(false)
   const [pdfExporting,    setPdfExporting]    = useState(false)
   const [statusFilter,    setStatusFilter]    = useState<'all' | AuditStatus>('all')
+  const [historyPage,     setHistoryPage]     = useState(0)
+  const [historyTotal,    setHistoryTotal]    = useState(0)
+  const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set())
+  const [expandedJobId,   setExpandedJobId]   = useState<string | null>(null)
+  const [jobDetails,      setJobDetails]      = useState<Map<string, JobDetail>>(new Map())
 
   // Load most recent crawl job for this org
   const loadLatest = useCallback(async () => {
@@ -198,21 +211,68 @@ export function SiteAnalyzer() {
   }
 
   // ── History tab functions ──────────────────────────────────
-  const loadAllJobs = useCallback(async () => {
+  const loadAllJobs = useCallback(async (page: number, filter: 'all' | AuditStatus) => {
     if (!orgId) return
     setHistoryLoading(true)
-    const { data } = await supabase
+    const from = page * HISTORY_PAGE_SIZE
+    const to   = from + HISTORY_PAGE_SIZE - 1
+    const base = supabase
       .from('jarvis_crawl_jobs')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('org_id', orgId)
-      .order('started_at', { ascending: false }) as { data: CrawlJob[] | null }
+      .order('started_at', { ascending: false })
+    const q = filter !== 'all' ? base.eq('audit_status', filter) : base
+    const { data, count } = await q.range(from, to) as unknown as { data: CrawlJob[] | null; count: number | null }
     setAllJobs(data ?? [])
+    setHistoryTotal(count ?? 0)
+    setHistoryPage(page)
+    setSelectedIds(new Set())
     setHistoryLoading(false)
   }, [orgId])
 
   useEffect(() => {
-    if (activeTab === 'history') loadAllJobs()
-  }, [activeTab, loadAllJobs])
+    if (activeTab === 'history') loadAllJobs(0, statusFilter)
+  }, [activeTab, statusFilter, loadAllJobs])
+
+  async function expandJobResult(jobId: string) {
+    if (expandedJobId === jobId) { setExpandedJobId(null); return }
+    setExpandedJobId(jobId)
+    if (jobDetails.has(jobId)) return
+    setJobDetails(prev => new Map(prev).set(jobId, { loading: true, high: 0, med: 0, low: 0, topIssues: [] }))
+    const { data: pageRows } = await supabase
+      .from('jarvis_crawl_pages')
+      .select('issues, url')
+      .eq('job_id', jobId) as { data: { issues: Issue[]; url: string }[] | null }
+    const allIss = (pageRows ?? []).flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
+    const high = allIss.filter(i => i.severity === 'high').length
+    const med  = allIss.filter(i => i.severity === 'med').length
+    const low  = allIss.filter(i => i.severity === 'low').length
+    const seen = new Set<string>()
+    const topIssues = allIss
+      .sort((a, b) => (a.severity === 'high' ? 0 : a.severity === 'med' ? 1 : 2) - (b.severity === 'high' ? 0 : b.severity === 'med' ? 1 : 2))
+      .filter(i => { const k = i.type; if (seen.has(k)) return false; seen.add(k); return true })
+      .slice(0, 6)
+    setJobDetails(prev => new Map(prev).set(jobId, { loading: false, high, med, low, topIssues }))
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds(prev => prev.size === allJobs.length ? new Set() : new Set(allJobs.map(j => j.id)))
+  }
+
+  async function deleteSelected() {
+    if (selectedIds.size === 0) return
+    await supabase.from('jarvis_crawl_jobs').delete().in('id', [...selectedIds])
+    setSelectedIds(new Set())
+    loadAllJobs(historyPage, statusFilter)
+  }
 
   async function updateAuditStatus(jobId: string, status: AuditStatus) {
     await supabase
@@ -222,20 +282,14 @@ export function SiteAnalyzer() {
     setAllJobs(prev => prev.map(j => j.id === jobId ? { ...j, audit_status: status } : j))
   }
 
-  function exportHistoryCSV() {
-    const rows = allJobs
-      .filter(j => statusFilter === 'all' || j.audit_status === statusFilter)
+  async function exportHistoryCSV() {
+    const base = supabase.from('jarvis_crawl_jobs').select('*').eq('org_id', orgId).order('started_at', { ascending: false })
+    const q = statusFilter !== 'all' ? base.eq('audit_status', statusFilter) : base
+    const { data: rows } = await q as { data: CrawlJob[] | null }
     downloadCSV(
       `audit-history-${new Date().toISOString().slice(0, 10)}.csv`,
       ['Site URL', 'Pages Crawled', 'Issues Found', 'Audit Status', 'Crawl Status', 'Date Audited'],
-      rows.map(j => [
-        j.site_url,
-        j.total_pages,
-        j.issues,
-        j.audit_status ?? 'new',
-        j.status,
-        new Date(j.started_at).toLocaleString(),
-      ]),
+      (rows ?? []).map(j => [j.site_url, j.total_pages, j.issues, j.audit_status ?? 'new', j.status, new Date(j.started_at).toLocaleString()]),
     )
   }
 
@@ -255,7 +309,7 @@ export function SiteAnalyzer() {
     )
   }
 
-  const filteredHistory = allJobs.filter(j => statusFilter === 'all' || (j.audit_status ?? 'new') === statusFilter)
+  const totalPages = Math.ceil(historyTotal / HISTORY_PAGE_SIZE)
 
   return (
     <div className="space-y-5">
@@ -280,6 +334,7 @@ export function SiteAnalyzer() {
       {activeTab === 'history' && (
         <div className="space-y-5">
           <Card>
+            {/* Header row */}
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
                 <CardTitle className="mb-0.5">Audit History</CardTitle>
@@ -288,7 +343,6 @@ export function SiteAnalyzer() {
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Status filter */}
                 {(['all', 'new', 'pending', 'completed'] as const).map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)}
                     className={cn(
@@ -297,6 +351,12 @@ export function SiteAnalyzer() {
                     )}>{s}</button>
                 ))}
                 <div className="w-px h-5 bg-border mx-1" />
+                {selectedIds.size > 0 && canManageAudit && (
+                  <button onClick={deleteSelected}
+                    className="flex items-center gap-1 text-[11px] text-danger border border-danger/40 rounded-lg px-2.5 py-1 hover:bg-danger/10 transition-colors cursor-pointer font-semibold">
+                    <Trash2 size={11} /> Delete {selectedIds.size}
+                  </button>
+                )}
                 <button onClick={exportHistoryCSV}
                   className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer font-mono-jarvis">
                   <Download size={11} /> CSV
@@ -312,81 +372,178 @@ export function SiteAnalyzer() {
               <div className="flex items-center justify-center py-12 gap-2 text-muted text-sm">
                 <Loader2 size={14} className="animate-spin" /> Loading history…
               </div>
-            ) : filteredHistory.length === 0 ? (
+            ) : allJobs.length === 0 ? (
               <div className="text-center py-12">
                 <History size={36} className="mx-auto mb-3 text-muted opacity-30" strokeWidth={1.25} />
                 <div className="text-sm text-muted">No audits found{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ' yet'}</div>
               </div>
             ) : (
-              <div id="audit-history-table" className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-left">
-                      {['Site URL', 'Pages', 'Issues', 'Audit Status', 'Date Audited', 'Crawl Status', ...(canManageAudit ? ['Action'] : [])].map(h => (
-                        <th key={h} className="pb-3 pr-4 text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredHistory.map(j => {
-                      const auditSt = (j.audit_status ?? 'new') as AuditStatus
-                      const cfg = AUDIT_STATUS_CFG[auditSt]
-                      return (
-                        <tr key={j.id} className="border-b border-border hover:bg-surface transition-colors">
-                          <td className="py-3 pr-4">
-                            <div className="flex items-center gap-1.5 font-mono-jarvis text-accent">
-                              <Globe size={11} className="shrink-0" />
-                              <span className="truncate max-w-48">{j.site_url}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 pr-4 font-mono-jarvis text-muted">{j.total_pages}</td>
-                          <td className="py-3 pr-4">
-                            <span className={j.issues > 0 ? 'text-danger font-semibold' : 'text-accent3'}>{j.issues}</span>
-                          </td>
-                          <td className="py-3 pr-4">
-                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border', cfg.bg, cfg.border)}
-                              style={{ color: cfg.color }}>
-                              {auditSt === 'new' && <Clock size={9} />}
-                              {auditSt === 'pending' && <RefreshCw size={9} />}
-                              {auditSt === 'completed' && <CheckCircle size={9} />}
-                              {cfg.label}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-4 font-mono-jarvis text-muted text-[11px]">
-                            {new Date(j.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            <div className="text-[10px]">{new Date(j.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </td>
-                          <td className="py-3 pr-4">
-                            <span className={cn(
-                              'text-[11px] font-mono-jarvis',
-                              j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
-                            )}>{j.status}</span>
-                          </td>
-                          {canManageAudit ? (
-                            <td className="py-3">
-                              <select
-                                value={auditSt}
-                                onChange={e => updateAuditStatus(j.id, e.target.value as AuditStatus)}
-                                className="bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-mono-jarvis outline-none cursor-pointer hover:border-accent/40 transition-colors"
-                                style={{ color: cfg.color }}>
-                                <option value="new">New</option>
-                                <option value="pending">Pending</option>
-                                <option value="completed">Completed</option>
-                              </select>
-                            </td>
-                          ) : (
-                            <td className="py-3">
-                              <span className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
-                                <Eye size={10} /> View only
-                              </span>
-                            </td>
-                          )}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div id="audit-history-table" className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        {canManageAudit && (
+                          <th className="pb-3 pr-3 w-8">
+                            <input type="checkbox"
+                              checked={selectedIds.size === allJobs.length && allJobs.length > 0}
+                              onChange={toggleSelectAll}
+                              className="accent-accent cursor-pointer" />
+                          </th>
+                        )}
+                        {['Site URL', 'Pages', 'Issues', 'Audit Status', 'Date Audited', 'Crawl Status', 'Results', 'Action'].map(h => (
+                          <th key={h} className="pb-3 pr-4 text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allJobs.map(j => {
+                        const auditSt = (j.audit_status ?? 'new') as AuditStatus
+                        const cfg     = AUDIT_STATUS_CFG[auditSt]
+                        const detail  = jobDetails.get(j.id)
+                        const isOpen  = expandedJobId === j.id
+                        return (
+                          <React.Fragment key={j.id}>
+                            <tr className={cn('border-b border-border transition-colors', isOpen ? 'bg-surface' : 'hover:bg-surface/50')}>
+                              {canManageAudit && (
+                                <td className="py-3 pr-3">
+                                  <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleSelect(j.id)}
+                                    className="accent-accent cursor-pointer" />
+                                </td>
+                              )}
+                              <td className="py-3 pr-4">
+                                <div className="flex items-center gap-1.5 font-mono-jarvis text-accent">
+                                  <Globe size={11} className="shrink-0" />
+                                  <span className="truncate max-w-44">{j.site_url}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 pr-4 font-mono-jarvis text-muted">{j.total_pages}</td>
+                              <td className="py-3 pr-4">
+                                <span className={j.issues > 0 ? 'text-danger font-semibold' : 'text-accent3'}>{j.issues}</span>
+                              </td>
+                              <td className="py-3 pr-4">
+                                <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border', cfg.bg, cfg.border)}
+                                  style={{ color: cfg.color }}>
+                                  {auditSt === 'new'       && <Clock size={9} />}
+                                  {auditSt === 'pending'   && <RefreshCw size={9} />}
+                                  {auditSt === 'completed' && <CheckCircle size={9} />}
+                                  {cfg.label}
+                                </span>
+                              </td>
+                              <td className="py-3 pr-4 font-mono-jarvis text-muted text-[11px]">
+                                {new Date(j.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                <div className="text-[10px]">{new Date(j.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                              </td>
+                              <td className="py-3 pr-4">
+                                <span className={cn('text-[11px] font-mono-jarvis',
+                                  j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
+                                )}>{j.status}</span>
+                              </td>
+                              {/* Results expand */}
+                              <td className="py-3 pr-4">
+                                {j.status === 'completed' && j.issues > 0 ? (
+                                  <button onClick={() => expandJobResult(j.id)}
+                                    className="flex items-center gap-1 text-[11px] text-accent hover:underline cursor-pointer font-mono-jarvis">
+                                    {isOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                    {isOpen ? 'Hide' : 'View'}
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-muted font-mono-jarvis">—</span>
+                                )}
+                              </td>
+                              {/* Action */}
+                              <td className="py-3">
+                                {canManageAudit ? (
+                                  <select value={auditSt} onChange={e => updateAuditStatus(j.id, e.target.value as AuditStatus)}
+                                    className="bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-mono-jarvis outline-none cursor-pointer hover:border-accent/40 transition-colors"
+                                    style={{ color: cfg.color }}>
+                                    <option value="new">New</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="completed">Completed</option>
+                                  </select>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
+                                    <Eye size={10} /> View only
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+
+                            {/* Expanded results row */}
+                            {isOpen && (
+                              <tr key={`${j.id}-detail`} className="border-b border-border bg-surface/40">
+                                <td colSpan={canManageAudit ? 9 : 8} className="px-4 pb-4 pt-0">
+                                  <div className="rounded-xl border border-border bg-card p-4">
+                                    {detail?.loading ? (
+                                      <div className="flex items-center gap-2 text-muted text-xs py-2">
+                                        <Loader2 size={13} className="animate-spin" /> Loading results…
+                                      </div>
+                                    ) : detail ? (
+                                      <>
+                                        {/* Severity summary */}
+                                        <div className="grid grid-cols-3 gap-3 mb-4">
+                                          {[
+                                            { label: 'HIGH', val: detail.high, color: 'text-danger',   bg: 'bg-danger/10',   border: 'border-danger/30'   },
+                                            { label: 'MED',  val: detail.med,  color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+                                            { label: 'LOW',  val: detail.low,  color: 'text-muted',    bg: 'bg-border/60',   border: 'border-border'      },
+                                          ].map(s => (
+                                            <div key={s.label} className={cn('rounded-lg border px-4 py-3 text-center', s.bg, s.border)}>
+                                              <div className={cn('text-2xl font-display font-black', s.color)}>{s.val}</div>
+                                              <div className="text-[10px] font-mono-jarvis tracking-widest text-muted mt-0.5">{s.label} ISSUES</div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                        {/* Top issues */}
+                                        {detail.topIssues.length > 0 && (
+                                          <div className="space-y-1.5">
+                                            <div className="text-[10px] font-mono-jarvis tracking-widest text-muted mb-2">TOP ISSUES FOUND</div>
+                                            {detail.topIssues.map((iss, i) => (
+                                              <div key={i} className="flex items-start gap-3 p-2.5 bg-surface border border-border rounded-lg">
+                                                <Badge variant={SEV_BADGE[iss.severity]}>{iss.severity.toUpperCase()}</Badge>
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="text-[11px] text-tx">{iss.message}</div>
+                                                  <div className="text-[10px] font-mono-jarvis text-muted mt-0.5 truncate">{iss.url}</div>
+                                                </div>
+                                                <span className="text-[10px] font-mono-jarvis text-muted shrink-0">{iss.type.replace(/_/g, ' ')}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : null}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {historyTotal > HISTORY_PAGE_SIZE && (
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
+                    <div className="text-[11px] text-muted font-mono-jarvis">
+                      {historyPage * HISTORY_PAGE_SIZE + 1}–{Math.min((historyPage + 1) * HISTORY_PAGE_SIZE, historyTotal)} of {historyTotal} audits
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => loadAllJobs(historyPage - 1, statusFilter)} disabled={historyPage === 0}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                        <ChevronLeft size={12} /> Prev
+                      </button>
+                      <span className="text-[11px] font-mono-jarvis text-muted px-1">
+                        {historyPage + 1} / {totalPages}
+                      </span>
+                      <button onClick={() => loadAllJobs(historyPage + 1, statusFilter)} disabled={(historyPage + 1) >= totalPages}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                        Next <ChevronRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         </div>

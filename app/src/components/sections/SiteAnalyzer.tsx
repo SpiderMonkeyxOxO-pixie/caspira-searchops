@@ -88,10 +88,11 @@ export function SiteAnalyzer() {
   const [pages, setPages] = useState<CrawlPage[]>([])
   const [jobLoading, setJobLoading] = useState(true)
 
-  const [sevFilter,  setSevFilter]  = useState<SeverityFilter>('all')
-  const [typeFilter, setTypeFilter] = useState<IssueTypeFilter>('all')
-  const [expanded,   setExpanded]   = useState<string | null>(null)
-  const [showPages,  setShowPages]  = useState(false)
+  const [sevFilter,   setSevFilter]  = useState<SeverityFilter>('all')
+  const [typeFilter,  setTypeFilter] = useState<IssueTypeFilter>('all')
+  const [expanded,    setExpanded]   = useState<string | null>(null)
+  const [showPages,   setShowPages]  = useState(false)
+  const [issuesLimit, setIssuesLimit] = useState(100)
 
   // ── History tab state ──────────────────────────────────────
   const [allJobs,         setAllJobs]         = useState<CrawlJob[]>([])
@@ -392,7 +393,6 @@ export function SiteAnalyzer() {
                       {allJobs.map(j => {
                         const auditSt = (j.audit_status ?? 'new') as AuditStatus
                         const cfg     = AUDIT_STATUS_CFG[auditSt]
-                        const detail  = jobDetails.get(j.id)
                         const isDownloading = downloading.has(j.id)
                         return (
                           <tr key={j.id} className="border-b border-border hover:bg-surface/50 transition-colors">
@@ -601,7 +601,7 @@ export function SiteAnalyzer() {
               </div>
               <div className="flex gap-2 flex-wrap">
                 {(['all','high','med','low'] as SeverityFilter[]).map(s => (
-                  <button key={s} onClick={() => setSevFilter(s)}
+                  <button key={s} onClick={() => { setSevFilter(s); setIssuesLimit(100) }}
                     className={`px-2.5 py-1 rounded-md text-[11px] font-mono-jarvis transition-colors cursor-pointer
                       ${sevFilter === s ? 'bg-accent text-black' : 'bg-surface border border-border text-muted hover:border-accent'}`}>
                     {s.toUpperCase()}
@@ -609,7 +609,7 @@ export function SiteAnalyzer() {
                 ))}
                 <select
                   value={typeFilter}
-                  onChange={e => setTypeFilter(e.target.value)}
+                  onChange={e => { setTypeFilter(e.target.value); setIssuesLimit(100) }}
                   className="bg-surface border border-border rounded-md px-2 py-1 text-[11px] text-muted outline-none cursor-pointer"
                 >
                   <option value="all">All types</option>
@@ -622,7 +622,7 @@ export function SiteAnalyzer() {
               <div className="text-center py-8 text-sm text-muted">No issues match this filter.</div>
             ) : (
               <div className="space-y-1.5">
-                {filteredIssues.slice(0, 100).map((issue, i) => (
+                {filteredIssues.slice(0, issuesLimit).map((issue, i) => (
                   <div key={i}
                     className="flex items-start gap-3 p-3 bg-surface border border-border rounded-lg hover:border-accent transition-colors cursor-pointer"
                     onClick={() => setExpanded(expanded === `${i}` ? null : `${i}`)}>
@@ -637,8 +637,30 @@ export function SiteAnalyzer() {
                     {expanded === `${i}` ? <ChevronUp size={12} className="text-muted shrink-0" /> : <ChevronDown size={12} className="text-muted shrink-0" />}
                   </div>
                 ))}
-                {filteredIssues.length > 100 && (
-                  <div className="text-center text-xs text-muted pt-2">Showing 100 of {filteredIssues.length} issues</div>
+                {filteredIssues.length > issuesLimit && (
+                  <div className="flex items-center justify-between pt-3 border-t border-border mt-1">
+                    <span className="text-[11px] text-muted font-mono-jarvis">
+                      Showing {issuesLimit} of {filteredIssues.length} issues
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setIssuesLimit(l => l + 100)}
+                        className="px-3 py-1.5 rounded-lg border border-border text-[11px] text-muted hover:border-accent hover:text-accent cursor-pointer transition-colors font-mono-jarvis">
+                        Load 100 more
+                      </button>
+                      <button onClick={() => setIssuesLimit(filteredIssues.length)}
+                        className="px-3 py-1.5 rounded-lg border border-accent/40 text-[11px] text-accent hover:bg-accent/10 cursor-pointer transition-colors font-mono-jarvis">
+                        Show all {filteredIssues.length}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {issuesLimit >= filteredIssues.length && filteredIssues.length > 100 && (
+                  <div className="text-center pt-2">
+                    <button onClick={() => setIssuesLimit(100)}
+                      className="text-[11px] text-muted hover:text-accent font-mono-jarvis cursor-pointer transition-colors">
+                      Collapse to 100
+                    </button>
+                  </div>
                 )}
               </div>
             )}

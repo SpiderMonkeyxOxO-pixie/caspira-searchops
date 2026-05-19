@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Rss, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, Globe, ExternalLink, Eye, EyeOff, FileText } from 'lucide-react'
+import { Rss, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, Globe, ExternalLink, Eye, EyeOff, FileText } from 'lucide-react'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'

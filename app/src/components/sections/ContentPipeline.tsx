@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, ChevronRight, Check, Copy, Download, Sparkles, FileText, Search, Edit3, CheckCircle2, Send } from 'lucide-react'
+import { Loader2, ChevronRight, Check, Copy, Download, FileText, Search, Edit3, CheckCircle2, Send } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'

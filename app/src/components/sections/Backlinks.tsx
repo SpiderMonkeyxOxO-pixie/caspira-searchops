@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Link2, AlertCircle, Sparkles, ExternalLink, Download, RefreshCw, Globe, TrendingUp } from 'lucide-react'
+import { Loader2, Link2, AlertCircle, ExternalLink, Download, RefreshCw, Globe, TrendingUp } from 'lucide-react'
 import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'

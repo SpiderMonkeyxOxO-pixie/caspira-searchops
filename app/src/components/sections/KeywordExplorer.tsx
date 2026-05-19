@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, Sparkles, AlertCircle } from 'lucide-react'
+import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, AlertCircle } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'

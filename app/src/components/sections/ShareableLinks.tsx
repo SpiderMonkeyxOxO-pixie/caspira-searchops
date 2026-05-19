@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Copy, Check, Trash2, ExternalLink, Lock, Clock, Eye, Globe } from 'lucide-react'
+import { Plus, Copy, Check, Trash2, ExternalLink, Lock, Clock, Eye } from 'lucide-react'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'

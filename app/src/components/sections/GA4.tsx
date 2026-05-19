@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Activity, TrendingUp, Clock, MousePointerClick,
-  ArrowUpRight, ExternalLink, Loader2, Unplug, Search, Plus, X, ChevronDown, Download,
+  ArrowUpRight, Loader2, Unplug, Search, Plus, X, ChevronDown, Download,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,

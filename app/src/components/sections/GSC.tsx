@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  ExternalLink, BarChart2, Eye, MousePointer, Percent, Hash,
+  BarChart2, Eye, MousePointer, Percent, Hash,
   RefreshCw, AlertCircle, Globe, Unplug, Plus, X, Search, ChevronDown, Download,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Search, ChevronDown, ChevronRight, Copy, Check, Download } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { downloadCSV } from '@/lib/csv'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Globe, Plus, Trash2, Edit3, Check, X, Upload,
-  CheckCircle2, AlertTriangle, XCircle, Search,
+  CheckCircle2, AlertTriangle, XCircle, Search, ArrowRight,
 } from 'lucide-react'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
@@ -102,7 +102,7 @@ function EditRow({ site, onSave, onCancel }: {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SitesManager() {
-  const { sites, addSite, removeSite, updateSite, setSection } = useStore()
+  const { sites, addSite, removeSite, updateSite, setSection, domain, setDomain } = useStore()
   const orgId = useAuthStore().org?.id ?? ''
 
   // Bulk import state
@@ -332,6 +332,21 @@ export function SitesManager() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setDomain(site.domain)}
+                            title={domain === site.domain ? 'Active site' : 'Switch to this site'}
+                            className={cn(
+                              'flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold cursor-pointer transition-all border',
+                              domain === site.domain
+                                ? 'bg-accent/15 border-accent/40 text-accent'
+                                : 'border-border text-muted hover:border-accent hover:text-accent hover:bg-accent/10'
+                            )}
+                          >
+                            {domain === site.domain
+                              ? <><Check size={10} /> Active</>
+                              : <><ArrowRight size={10} /> Switch</>
+                            }
+                          </button>
                           <button onClick={() => setEditingId(site.id)}
                             className="p-1.5 rounded hover:bg-accent/10 text-muted hover:text-accent cursor-pointer transition-colors">
                             <Edit3 size={12} />

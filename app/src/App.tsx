@@ -421,6 +421,20 @@ function useAuth() {
   useEffect(() => {
     let cancelled = false
 
+    async function joinViaShareLink(userId: string, accessToken: string) {
+      const pendingOrgId = sessionStorage.getItem('pending_join_org')
+      if (!pendingOrgId) return
+      sessionStorage.removeItem('pending_join_org')
+      const { error } = await supabase
+        .from('jarvis_org_members')
+        .insert({ org_id: pendingOrgId, user_id: userId, role: 'viewer' } as never)
+      if (error) {
+        const msg = (error as { message?: string }).message ?? ''
+        if (!msg.includes('unique')) console.error('[org-share] join error:', error)
+      }
+      await loadOrg(accessToken)
+    }
+
     async function bootstrap() {
       // Force-logout escape hatch: localhost:5173/?logout=1
       // Skips Supabase entirely — just wipes storage and hard-reloads to /
@@ -429,6 +443,13 @@ function useAuth() {
         sessionStorage.clear()
         window.location.replace('/')  // full reload, empty localStorage → AuthPage
         return
+      }
+
+      // Detect share invite link: /invite/<orgId>
+      const shareMatch = window.location.pathname.match(/^\/invite\/([0-9a-f-]{36})$/)
+      if (shareMatch) {
+        sessionStorage.setItem('pending_join_org', shareMatch[1])
+        window.history.replaceState({}, '', '/')
       }
 
       // Safety net — never stay loading forever (30s to give loadOrg time to respond)
@@ -450,9 +471,12 @@ function useAuth() {
           const hasCachedOrg = !!useAuthStore.getState().org
           if (hasCachedOrg) {
             if (!cancelled) setLoading(false)
-            loadOrg(session.access_token).catch(() => {})
+            loadOrg(session.access_token)
+              .then(() => joinViaShareLink(session.user.id, session.access_token))
+              .catch(() => {})
           } else {
             await loadOrg(session.access_token)
+            await joinViaShareLink(session.user.id, session.access_token)
           }
         }
 
@@ -497,6 +521,7 @@ function useAuth() {
       setSession(session)
       if (session) {
         await loadOrg(session.access_token)
+        await joinViaShareLink(session.user.id, session.access_token)
         // Retry GSC auth if a code was stashed but orgId wasn't ready during bootstrap
         const pendingCode = sessionStorage.getItem('gsc_pending_code')
         const orgId = useAuthStore.getState().org?.id

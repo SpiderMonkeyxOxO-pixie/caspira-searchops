@@ -391,14 +391,19 @@ export function TeamManagement() {
             {inviteError   && <p className="text-xs text-danger">{inviteError}</p>}
             {inviteSuccess && <p className="text-xs text-accent3">{inviteSuccess}</p>}
             {inviteLink && (
-              <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 mt-1">
-                <Link2 size={11} className="text-muted shrink-0" />
-                <span className="text-[11px] font-mono-jarvis text-muted truncate flex-1">{inviteLink}</span>
-                <button type="button"
-                  onClick={() => { navigator.clipboard.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                  className="text-[10px] font-mono-jarvis text-accent hover:underline cursor-pointer shrink-0">
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
+              <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 space-y-2">
+                <p className="text-[11px] font-mono-jarvis text-accent font-semibold">
+                  {inviteSuccess ? 'Also share this link in case the email goes to spam:' : 'Send this invite link directly to your teammate:'}
+                </p>
+                <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2">
+                  <Link2 size={12} className="text-accent shrink-0" />
+                  <span className="text-[11px] font-mono-jarvis text-tx truncate flex-1">{inviteLink}</span>
+                  <button type="button"
+                    onClick={() => { navigator.clipboard.writeText(inviteLink!); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-md bg-accent/10 text-[10px] font-mono-jarvis text-accent hover:bg-accent/20 transition-colors cursor-pointer shrink-0">
+                    {copied ? <><Check size={10} /> Copied!</> : <><Copy size={10} /> Copy link</>}
+                  </button>
+                </div>
               </div>
             )}
 

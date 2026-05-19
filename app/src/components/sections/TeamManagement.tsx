@@ -174,38 +174,22 @@ export function TeamManagement() {
   const load = useCallback(async () => {
     if (!org) return
     setLoading(true)
-    type RawMember = { id: string; user_id: string; role: string; joined_at: string }
-    type RawProfile = { full_name: string | null; avatar_url: string | null } | null
+    type RawMember = { id: string; user_id: string; role: string; joined_at: string; email: string; full_name: string | null }
 
     try {
-      // Members — join with profiles for name/email
+      // Members — use security-definer RPC to get real emails from auth.users
       const { data: rawMembers } = await supabase
-        .from('jarvis_org_members')
-        .select('id, user_id, role, joined_at')
-        .eq('org_id', org.id)
-        .order('joined_at') as { data: RawMember[] | null; error: unknown }
+        .rpc('jarvis_get_org_members', { p_org_id: org.id }) as { data: RawMember[] | null; error: unknown }
 
       if (rawMembers) {
-        const enriched: MemberRow[] = await Promise.all(
-          rawMembers.map(async m => {
-            const { data: profile } = await supabase
-              .from('jarvis_profiles')
-              .select('full_name, avatar_url')
-              .eq('id', m.user_id)
-              .single() as { data: RawProfile; error: unknown }
-
-            const email = m.user_id === user?.id ? (user?.email ?? '—') : `user-${m.user_id.slice(0, 6)}@…`
-            return {
-              id: m.id,
-              user_id: m.user_id,
-              role: m.role as OrgRole,
-              joined_at: m.joined_at,
-              email,
-              full_name: profile?.full_name ?? null,
-            }
-          })
-        )
-        setMembers(enriched)
+        setMembers(rawMembers.map(m => ({
+          id: m.id,
+          user_id: m.user_id,
+          role: m.role as OrgRole,
+          joined_at: m.joined_at,
+          email: m.email ?? '—',
+          full_name: m.full_name ?? null,
+        })))
       }
 
       // Pending invites
@@ -220,7 +204,7 @@ export function TeamManagement() {
     } finally {
       setLoading(false)
     }
-  }, [org, user])
+  }, [org])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])

@@ -449,9 +449,15 @@ export function RankTracker() {
                       <tr key={kw.id} className="border-b border-border hover:bg-surface transition-colors">
                         <td className="px-4 py-3 font-semibold text-tx max-w-52 truncate">{kw.kw}</td>
                         <td className="px-4 py-3">
-                          <span className="font-display font-black text-base" style={{ color: posColor(kw.cur) }}>
-                            {kw.cur === null ? (kw.positions.length ? '—' : 'not checked') : `#${kw.cur}`}
-                          </span>
+                          {kw.cur === null ? (
+                            <span className="text-[11px] font-mono-jarvis text-muted italic">
+                              {kw.positions.length ? '—' : 'not checked'}
+                            </span>
+                          ) : (
+                            <span className="font-display font-black text-base" style={{ color: posColor(kw.cur) }}>
+                              #{kw.cur}
+                            </span>
+                          )}
                         </td>
                         {hasCompetitor && (
                           <td className="px-4 py-3">

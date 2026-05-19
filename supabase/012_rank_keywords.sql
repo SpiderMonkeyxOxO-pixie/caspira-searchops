@@ -1,6 +1,6 @@
 create table if not exists public.jarvis_rank_keywords (
   id         uuid        primary key default gen_random_uuid(),
-  org_id     uuid        not null references public.jarvis_orgs(id) on delete cascade,
+  org_id     uuid        not null references public.jarvis_organizations(id) on delete cascade,
   kw         text        not null,
   positions  jsonb       not null default '[]'::jsonb,
   created_at timestamptz default now(),

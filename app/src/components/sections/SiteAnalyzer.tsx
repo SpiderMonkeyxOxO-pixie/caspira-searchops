@@ -2,21 +2,33 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Search, AlertTriangle, CheckCircle, XCircle, Loader2,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink, FileText, Download,
+  Clock, History, Globe, Eye,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
+import { exportToPDF } from '@/lib/exportPDF'
 import { useAuthStore } from '@/store/authStore'
+import { cn } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────
 interface Issue { type: string; severity: 'high' | 'med' | 'low'; message: string }
+
+type AuditStatus = 'new' | 'pending' | 'completed'
 
 interface CrawlJob {
   id: string; site_url: string; status: string
   total_pages: number; issues: number
   started_at: string; finished_at: string | null; error: string | null
+  audit_status: AuditStatus
+}
+
+const AUDIT_STATUS_CFG: Record<AuditStatus, { label: string; color: string; bg: string; border: string }> = {
+  new:       { label: 'New',       color: '#00d4ff', bg: 'bg-accent/10',  border: 'border-accent/30'  },
+  pending:   { label: 'Pending',   color: '#f59e0b', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
+  completed: { label: 'Completed', color: '#10b981', bg: 'bg-accent3/10', border: 'border-accent3/30' },
 }
 
 interface CrawlPage {
@@ -59,7 +71,12 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
 
 // ── Component ─────────────────────────────────────────────────
 export function SiteAnalyzer() {
-  const orgId = useAuthStore().org?.id ?? ''
+  const { org, myRole } = useAuthStore()
+  const orgId = org?.id ?? ''
+
+  const canManageAudit = ['owner', 'admin', 'technical', 'seo_specialist'].includes(myRole ?? '')
+
+  const [activeTab, setActiveTab] = useState<'audit' | 'history'>('audit')
 
   const [url,      setUrl]      = useState('https://yonodeposit.com')
   const [crawling, setCrawling] = useState(false)
@@ -73,6 +90,12 @@ export function SiteAnalyzer() {
   const [typeFilter, setTypeFilter] = useState<IssueTypeFilter>('all')
   const [expanded,   setExpanded]   = useState<string | null>(null)
   const [showPages,  setShowPages]  = useState(false)
+
+  // ── History tab state ──────────────────────────────────────
+  const [allJobs,         setAllJobs]         = useState<CrawlJob[]>([])
+  const [historyLoading,  setHistoryLoading]  = useState(false)
+  const [pdfExporting,    setPdfExporting]    = useState(false)
+  const [statusFilter,    setStatusFilter]    = useState<'all' | AuditStatus>('all')
 
   // Load most recent crawl job for this org
   const loadLatest = useCallback(async () => {
@@ -174,6 +197,55 @@ export function SiteAnalyzer() {
     )
   }
 
+  // ── History tab functions ──────────────────────────────────
+  const loadAllJobs = useCallback(async () => {
+    if (!orgId) return
+    setHistoryLoading(true)
+    const { data } = await supabase
+      .from('jarvis_crawl_jobs')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('started_at', { ascending: false }) as { data: CrawlJob[] | null }
+    setAllJobs(data ?? [])
+    setHistoryLoading(false)
+  }, [orgId])
+
+  useEffect(() => {
+    if (activeTab === 'history') loadAllJobs()
+  }, [activeTab, loadAllJobs])
+
+  async function updateAuditStatus(jobId: string, status: AuditStatus) {
+    await supabase
+      .from('jarvis_crawl_jobs')
+      .update({ audit_status: status } as never)
+      .eq('id', jobId)
+    setAllJobs(prev => prev.map(j => j.id === jobId ? { ...j, audit_status: status } : j))
+  }
+
+  function exportHistoryCSV() {
+    const rows = allJobs
+      .filter(j => statusFilter === 'all' || j.audit_status === statusFilter)
+    downloadCSV(
+      `audit-history-${new Date().toISOString().slice(0, 10)}.csv`,
+      ['Site URL', 'Pages Crawled', 'Issues Found', 'Audit Status', 'Crawl Status', 'Date Audited'],
+      rows.map(j => [
+        j.site_url,
+        j.total_pages,
+        j.issues,
+        j.audit_status ?? 'new',
+        j.status,
+        new Date(j.started_at).toLocaleString(),
+      ]),
+    )
+  }
+
+  async function exportHistoryPDF() {
+    setPdfExporting(true)
+    try { await exportToPDF('audit-history-table', 'Audit History') }
+    catch { /* ignore */ }
+    finally { setPdfExporting(false) }
+  }
+
   // ── Loading ────────────────────────────────────────────────
   if (jobLoading) {
     return (
@@ -183,8 +255,144 @@ export function SiteAnalyzer() {
     )
   }
 
+  const filteredHistory = allJobs.filter(j => statusFilter === 'all' || (j.audit_status ?? 'new') === statusFilter)
+
   return (
     <div className="space-y-5">
+
+      {/* ── Tabs ── */}
+      <div className="flex border-b border-border">
+        {([
+          { id: 'audit',   label: 'Site Audit',    Icon: Search  },
+          { id: 'history', label: 'Audit History',  Icon: History },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            className={cn(
+              'flex items-center gap-2 px-5 py-3 text-xs font-medium cursor-pointer transition-colors border-b-2 -mb-px',
+              activeTab === t.id ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-tx'
+            )}>
+            <t.Icon size={13} /> {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Audit History Tab ── */}
+      {activeTab === 'history' && (
+        <div className="space-y-5">
+          <Card>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div>
+                <CardTitle className="mb-0.5">Audit History</CardTitle>
+                <p className="text-[11px] text-muted">
+                  All crawls for this organisation — track, distribute to dev team, and mark as resolved
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Status filter */}
+                {(['all', 'new', 'pending', 'completed'] as const).map(s => (
+                  <button key={s} onClick={() => setStatusFilter(s)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border capitalize',
+                      statusFilter === s ? 'bg-accent text-black border-accent' : 'border-border text-muted hover:border-accent'
+                    )}>{s}</button>
+                ))}
+                <div className="w-px h-5 bg-border mx-1" />
+                <button onClick={exportHistoryCSV}
+                  className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer font-mono-jarvis">
+                  <Download size={11} /> CSV
+                </button>
+                <button onClick={exportHistoryPDF} disabled={pdfExporting}
+                  className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer font-mono-jarvis">
+                  {pdfExporting ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />} PDF
+                </button>
+              </div>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-12 gap-2 text-muted text-sm">
+                <Loader2 size={14} className="animate-spin" /> Loading history…
+              </div>
+            ) : filteredHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <History size={36} className="mx-auto mb-3 text-muted opacity-30" strokeWidth={1.25} />
+                <div className="text-sm text-muted">No audits found{statusFilter !== 'all' ? ` with status "${statusFilter}"` : ' yet'}</div>
+              </div>
+            ) : (
+              <div id="audit-history-table" className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      {['Site URL', 'Pages', 'Issues', 'Audit Status', 'Date Audited', 'Crawl Status', ...(canManageAudit ? ['Action'] : [])].map(h => (
+                        <th key={h} className="pb-3 pr-4 text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHistory.map(j => {
+                      const auditSt = (j.audit_status ?? 'new') as AuditStatus
+                      const cfg = AUDIT_STATUS_CFG[auditSt]
+                      return (
+                        <tr key={j.id} className="border-b border-border hover:bg-surface transition-colors">
+                          <td className="py-3 pr-4">
+                            <div className="flex items-center gap-1.5 font-mono-jarvis text-accent">
+                              <Globe size={11} className="shrink-0" />
+                              <span className="truncate max-w-48">{j.site_url}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 pr-4 font-mono-jarvis text-muted">{j.total_pages}</td>
+                          <td className="py-3 pr-4">
+                            <span className={j.issues > 0 ? 'text-danger font-semibold' : 'text-accent3'}>{j.issues}</span>
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border', cfg.bg, cfg.border)}
+                              style={{ color: cfg.color }}>
+                              {auditSt === 'new' && <Clock size={9} />}
+                              {auditSt === 'pending' && <RefreshCw size={9} />}
+                              {auditSt === 'completed' && <CheckCircle size={9} />}
+                              {cfg.label}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 font-mono-jarvis text-muted text-[11px]">
+                            {new Date(j.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            <div className="text-[10px]">{new Date(j.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span className={cn(
+                              'text-[11px] font-mono-jarvis',
+                              j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
+                            )}>{j.status}</span>
+                          </td>
+                          {canManageAudit ? (
+                            <td className="py-3">
+                              <select
+                                value={auditSt}
+                                onChange={e => updateAuditStatus(j.id, e.target.value as AuditStatus)}
+                                className="bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-mono-jarvis outline-none cursor-pointer hover:border-accent/40 transition-colors"
+                                style={{ color: cfg.color }}>
+                                <option value="new">New</option>
+                                <option value="pending">Pending</option>
+                                <option value="completed">Completed</option>
+                              </select>
+                            </td>
+                          ) : (
+                            <td className="py-3">
+                              <span className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
+                                <Eye size={10} /> View only
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'audit' && <>
 
       {/* ── Crawl trigger ── */}
       <Card>
@@ -422,6 +630,8 @@ export function SiteAnalyzer() {
           <div className="text-sm text-muted">{job.error}</div>
         </Card>
       )}
+
+      </>}
     </div>
   )
 }

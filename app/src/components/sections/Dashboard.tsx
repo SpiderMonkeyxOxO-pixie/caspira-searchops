@@ -19,6 +19,7 @@ interface GSCRow { keys: string[]; clicks: number; impressions: number; ctr: num
 interface TrendRow { date: string; clicks: number; impressions: number }
 interface QueryRow  { query: string; clicks: number; impressions: number; position: number }
 interface Kpis { clicks: number; impressions: number; ctr: string; position: string; queryCount: number }
+interface AuditSummary { criticalIssues: number }
 
 const impactColor: Record<string, 'red' | 'amber' | 'accent'> = {
   HIGH: 'red', MED: 'amber', LOW: 'accent',
@@ -44,11 +45,12 @@ export function Dashboard() {
   const [kpis,       setKpis]       = useState<Kpis | null>(null)
   const [trend,      setTrend]      = useState<TrendRow[]>([])
   const [topQueries, setTopQueries] = useState<QueryRow[]>([])
+  const [auditSummary, setAuditSummary] = useState<AuditSummary | null>(null)
 
   useEffect(() => {
     if (!orgId) return
     setGscLoading(true)
-    setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null); setExpandedWin(null)
+    setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null); setExpandedWin(null); setAuditSummary(null)
     ;(async () => {
       try {
         const { data: conn } = await supabase
@@ -56,6 +58,21 @@ export function Dashboard() {
           .select('selected_site, available_sites')
           .eq('org_id', orgId)
           .maybeSingle() as { data: { selected_site: string | null; available_sites: string[] | null } | null }
+
+        // Fetch latest audit summary regardless of GSC connection
+        supabase
+          .from('jarvis_crawl_jobs')
+          .select('issues')
+          .eq('org_id', orgId)
+          .eq('status', 'completed')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .then(({ data }) => {
+            if (data?.length) {
+              const job = data[0] as { issues: number }
+              setAuditSummary({ criticalIssues: job.issues })
+            }
+          })
 
         const availableSites = conn?.available_sites ?? []
         const siteUrl = (domain ? matchGscSite(domain, availableSites) : null)
@@ -175,13 +192,27 @@ export function Dashboard() {
     ]
   }, [topQueries, kpis, domain, gscSite])
 
-  const KPI_CARDS = [
-    { label: 'TOTAL CLICKS',    value: kpis?.clicks.toLocaleString()      ?? '—', color: 'var(--color-accent3)', icon: MousePointer, live: true  },
-    { label: 'IMPRESSIONS',     value: kpis?.impressions.toLocaleString()  ?? '—', color: 'var(--color-accent)',  icon: Eye,          live: true  },
-    { label: 'AVG. CTR',        value: kpis?.ctr                           ?? '—', color: '#a78bfa',              icon: Percent,      live: true  },
-    { label: 'AVG. POSITION',   value: kpis ? `#${kpis.position}`          : '—', color: 'var(--color-accent4)', icon: Hash,         live: true  },
-    { label: 'KEYWORDS',        value: kpis?.queryCount.toLocaleString()   ?? '—', color: 'var(--color-accent)',  icon: TrendingUp,   live: true  },
-    { label: 'CRITICAL ISSUES', value: '—',                                        color: 'var(--color-danger)',  icon: AlertTriangle, live: false },
+  type KpiCard = {
+    label: string; value: string; color: string
+    icon: React.ElementType; loading: boolean
+    subtitle: React.ReactNode
+  }
+
+  const KPI_CARDS: KpiCard[] = [
+    { label: 'TOTAL CLICKS',    value: kpis?.clicks.toLocaleString()      ?? '—', color: 'var(--color-accent3)', icon: MousePointer, loading: gscLoading,
+      subtitle: kpis ? 'Last 28 days' : <button onClick={() => setSection('gsc')} className="text-accent hover:underline cursor-pointer">Connect GSC →</button> },
+    { label: 'IMPRESSIONS',     value: kpis?.impressions.toLocaleString()  ?? '—', color: 'var(--color-accent)',  icon: Eye,          loading: gscLoading,
+      subtitle: kpis ? 'Last 28 days' : '' },
+    { label: 'AVG. CTR',        value: kpis?.ctr                           ?? '—', color: '#a78bfa',              icon: Percent,      loading: gscLoading,
+      subtitle: kpis ? 'Last 28 days' : '' },
+    { label: 'AVG. POSITION',   value: kpis ? `#${kpis.position}`          : '—', color: 'var(--color-accent4)', icon: Hash,         loading: gscLoading,
+      subtitle: kpis ? 'Last 28 days' : '' },
+    { label: 'KEYWORDS',        value: kpis?.queryCount.toLocaleString()   ?? '—', color: 'var(--color-accent)',  icon: TrendingUp,   loading: gscLoading,
+      subtitle: kpis ? 'Last 28 days' : '' },
+    { label: 'CRITICAL ISSUES', value: auditSummary ? String(auditSummary.criticalIssues) : '—', color: 'var(--color-danger)', icon: AlertTriangle, loading: gscLoading,
+      subtitle: auditSummary
+        ? <button onClick={() => setSection('analyzer')} className="text-danger hover:underline cursor-pointer">View audit →</button>
+        : <button onClick={() => setSection('analyzer')} className="text-accent hover:underline cursor-pointer">Run audit →</button> },
   ]
 
   return (
@@ -194,10 +225,10 @@ export function Dashboard() {
             <Card key={m.label} className="hover:border-accent transition-colors">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-[10px] tracking-widest text-muted font-mono-jarvis">{m.label}</div>
-                {m.live && <span className="w-1.5 h-1.5 rounded-full bg-accent3 animate-pulse" />}
+                <span className="w-1.5 h-1.5 rounded-full bg-accent3 animate-pulse" />
               </div>
 
-              {gscLoading && m.live ? (
+              {m.loading ? (
                 <div className="h-7 flex items-center"><Loader2 size={16} className="animate-spin text-muted" /></div>
               ) : (
                 <div className="text-2xl font-display font-black" style={{ color: m.color }}>
@@ -206,11 +237,7 @@ export function Dashboard() {
               )}
 
               <div className="text-[10px] mt-1 text-muted font-mono-jarvis">
-                {m.live && !gscLoading && kpis ? 'Last 28 days' : m.live && !gscLoading ? (
-                  <button onClick={() => setSection('gsc')} className="text-accent hover:underline cursor-pointer">
-                    Connect GSC →
-                  </button>
-                ) : ''}
+                {!m.loading && m.subtitle}
               </div>
             </Card>
           )

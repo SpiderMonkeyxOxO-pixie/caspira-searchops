@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   CheckCircle2, ChevronRight, ChevronDown, KeyRound, Globe, BarChart2,
   Swords, CalendarClock, PlugZap, PenLine, Trophy, Activity, Rss,
@@ -6,13 +6,18 @@ import {
 } from 'lucide-react'
 import { getSerperStatus, resetExhaustedKeys } from '@/lib/serper'
 import { useStore } from '@/store'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import type { NavSection, Schedule, WPSite } from '@/types'
 
-interface StoreCheck { domain: string; anthropicKey: string; schedules: Schedule[]; wpSites: WPSite[] }
+interface StoreCheck {
+  domain: string; anthropicKey: string; schedules: Schedule[]; wpSites: WPSite[]
+  gscConnected: boolean; ga4Connected: boolean; hasAudit: boolean
+}
 
 interface Step {
   id: string; title: string; desc: string; Icon: React.ElementType
@@ -49,7 +54,7 @@ const STEPS: Step[] = [
     actionLabel: 'Run Audit',
     nav: 'analyzer',
     tip: 'The audit scores your site across 60+ technical and on-page factors relevant to iGaming YMYL content.',
-    check: () => false,
+    check: (s) => s.hasAudit,
   },
   {
     id: 'competitors',
@@ -79,7 +84,7 @@ const STEPS: Step[] = [
     actionLabel: 'Connect GSC',
     nav: 'gsc',
     tip: 'GSC data reveals which queries Googlebot sees you for — even ones you are not actively tracking.',
-    check: () => false,
+    check: (s) => s.gscConnected,
   },
   {
     id: 'ga4',
@@ -89,7 +94,7 @@ const STEPS: Step[] = [
     actionLabel: 'Connect GA4',
     nav: 'ga4',
     tip: 'The GSC × GA4 Cross-View maps every keyword from Search Console to its GA4 revenue.',
-    check: () => false,
+    check: (s) => s.ga4Connected,
   },
   {
     id: 'wordpress',
@@ -320,16 +325,15 @@ function SerperCard() {
       {isConnected && (
         <div className="flex items-center gap-2 flex-wrap">
           {serperKeys.split(/[\n,|]/).map(k => k.trim()).filter(Boolean).map((k, i) => {
-            const dead = getSerperStatus()
-            const isExhausted = dead.exhausted > 0
+            const isKeyExhausted = getSerperStatus().exhaustedKeys.has(k)
             return (
               <span key={i}
                 className={`text-[10px] font-mono-jarvis px-2 py-0.5 rounded-full border ${
-                  isExhausted
+                  isKeyExhausted
                     ? 'border-danger/40 text-danger bg-danger/10'
                     : 'border-accent3/40 text-accent3 bg-accent3/10'
                 }`}>
-                Key {i + 1}: ...{k.slice(-6)} {isExhausted ? '✗ exhausted' : '✓ active'}
+                Key {i + 1}: ...{k.slice(-6)} {isKeyExhausted ? '✗ exhausted' : '✓ active'}
               </span>
             )
           })}
@@ -438,13 +442,33 @@ function AiProviderSwitcher() {
 
 // ── Main Component ─────────────────────────────────────────────
 export function Onboarding() {
-  const store = useStore()
+  const store  = useStore()
+  const { org } = useAuthStore()
   const { setSection } = store
   const [expanded, setExpanded] = useState<string | null>('domain')
   const [manual,   setManual]   = useState<Set<string>>(new Set())
   const [apiOpen,  setApiOpen]  = useState(true)
 
-  const isComplete = (step: Step) => step.check(store) || manual.has(step.id)
+  const [gscConnected, setGscConnected] = useState(false)
+  const [ga4Connected, setGa4Connected] = useState(false)
+  const [hasAudit,     setHasAudit]     = useState(false)
+
+  useEffect(() => {
+    const orgId = org?.id
+    if (!orgId) return
+    Promise.all([
+      supabase.from('jarvis_gsc_connections').select('org_id').eq('org_id', orgId).maybeSingle(),
+      supabase.from('jarvis_ga4_connections').select('org_id').eq('org_id', orgId).maybeSingle(),
+      supabase.from('jarvis_crawl_jobs').select('id').eq('org_id', orgId).eq('status', 'completed').limit(1),
+    ]).then(([gscRes, ga4Res, auditRes]) => {
+      setGscConnected(!!gscRes.data)
+      setGa4Connected(!!ga4Res.data)
+      setHasAudit(!!(auditRes.data as { id: string }[] | null)?.length)
+    }).catch(() => {})
+  }, [org?.id])
+
+  const storeCheck: StoreCheck = { ...store, gscConnected, ga4Connected, hasAudit }
+  const isComplete = (step: Step) => step.check(storeCheck) || manual.has(step.id)
   const completedCount = STEPS.filter(s => isComplete(s)).length
   const progress = Math.round((completedCount / STEPS.length) * 100)
   const allDone  = completedCount === STEPS.length

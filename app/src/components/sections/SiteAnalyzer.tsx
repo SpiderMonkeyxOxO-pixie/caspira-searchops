@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
 import { exportToPDF } from '@/lib/exportPDF'
+import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/lib/utils'
 
@@ -74,13 +75,18 @@ function ScoreGauge({ score, label }: { score: number; label: string }) {
 // ── Component ─────────────────────────────────────────────────
 export function SiteAnalyzer() {
   const { org, myRole } = useAuthStore()
+  const { domain } = useStore()
   const orgId = org?.id ?? ''
 
   const canManageAudit = ['owner', 'admin', 'technical', 'seo_specialist'].includes(myRole ?? '')
 
   const [activeTab, setActiveTab] = useState<'audit' | 'history'>('audit')
 
-  const [url,      setUrl]      = useState('https://yonodeposit.com')
+  const [url,      setUrl]      = useState(() => {
+    const d = domain
+    if (!d) return ''
+    return d.startsWith('http') ? d : `https://${d}`
+  })
   const [crawling, setCrawling] = useState(false)
   const [crawlErr, setCrawlErr] = useState<string | null>(null)
 
@@ -115,7 +121,12 @@ export function SiteAnalyzer() {
       .order('started_at', { ascending: false })
       .limit(1) as { data: CrawlJob[] | null }
 
-    if (!jobs?.length) { setJobLoading(false); return }
+    if (!jobs?.length) {
+      // No crawl history yet — pre-fill URL from active site in store
+      if (domain) setUrl(domain.startsWith('http') ? domain : `https://${domain}`)
+      setJobLoading(false)
+      return
+    }
     const latest = jobs[0]
     setJob(latest)
     if (latest.site_url) setUrl(latest.site_url)
@@ -129,10 +140,18 @@ export function SiteAnalyzer() {
       setPages(pageRows ?? [])
     }
     setJobLoading(false)
-  }, [orgId])
+  }, [orgId, domain])
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadLatest() }, [loadLatest])
+
+  // When the active site changes but no crawl job is loaded, sync the URL field
+  useEffect(() => {
+    if (domain && !job && !crawling) {
+      setUrl(domain.startsWith('http') ? domain : `https://${domain}`)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain])
 
   async function startCrawl() {
     if (!url.trim() || !orgId) return
@@ -180,9 +199,14 @@ export function SiteAnalyzer() {
   const medCount  = allIssues.filter(i => i.severity === 'med').length
   const lowCount  = allIssues.filter(i => i.severity === 'low').length
 
-  const healthScore = pages.length === 0 ? null : Math.max(0,
-    Math.round(100 - (highCount * 5 + medCount * 2 + lowCount * 0.5))
-  )
+  // Score based on % of pages affected at each severity (normalized by page count)
+  // High issues: up to -50 pts · Med: up to -30 pts · Low: up to -15 pts
+  const healthScore = pages.length === 0 ? null : Math.max(0, Math.round(
+    100
+    - (pages.filter(p => p.issues.some(i => i.severity === 'high')).length / pages.length) * 50
+    - (pages.filter(p => p.issues.some(i => i.severity === 'med')).length  / pages.length) * 30
+    - (pages.filter(p => p.issues.some(i => i.severity === 'low')).length  / pages.length) * 15
+  ))
 
   const pagesWithIssues = pages.filter(p => p.issues.length > 0).length
 

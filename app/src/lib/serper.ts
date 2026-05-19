@@ -36,11 +36,11 @@ export function isSerperReady() {
   return getSerperKeys().length > 0
 }
 
-export function getSerperStatus(): { total: number; active: number; exhausted: number } {
-  const all      = getSerperKeys()
-  const dead     = getExhausted()
-  const exhausted = all.filter(k => dead.has(k)).length
-  return { total: all.length, active: all.length - exhausted, exhausted }
+export function getSerperStatus(): { total: number; active: number; exhausted: number; exhaustedKeys: Set<string> } {
+  const all           = getSerperKeys()
+  const dead          = getExhausted()
+  const exhaustedCount = all.filter(k => dead.has(k)).length
+  return { total: all.length, active: all.length - exhaustedCount, exhausted: exhaustedCount, exhaustedKeys: dead }
 }
 
 export async function callSerper(

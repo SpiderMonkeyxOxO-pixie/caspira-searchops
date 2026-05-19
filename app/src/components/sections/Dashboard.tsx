@@ -67,8 +67,17 @@ const QUICK_WINS = [
   },
 ]
 
+function matchGscSite(domain: string, sites: string[]): string | undefined {
+  if (!domain) return undefined
+  const clean = domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '').toLowerCase()
+  return sites.find(s => {
+    const sc = s.replace('sc-domain:', '').replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '').toLowerCase()
+    return sc === clean || sc.endsWith('.' + clean) || clean.endsWith('.' + sc)
+  })
+}
+
 export function Dashboard() {
-  const { tasks, setSection } = useStore()
+  const { tasks, setSection, domain } = useStore()
   const orgId  = useAuthStore().org?.id ?? ''
   const pending = tasks.filter(t => !t.done).length
 
@@ -81,27 +90,32 @@ export function Dashboard() {
 
   useEffect(() => {
     if (!orgId) return
+    setGscLoading(true)
+    setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null)
     ;(async () => {
       try {
         const { data: conn } = await supabase
           .from('jarvis_gsc_connections')
-          .select('selected_site')
+          .select('selected_site, available_sites')
           .eq('org_id', orgId)
-          .maybeSingle() as { data: { selected_site: string | null } | null }
+          .maybeSingle() as { data: { selected_site: string | null; available_sites: string[] | null } | null }
 
-        if (!conn?.selected_site) return
-        setGscSite(conn.selected_site)
+        const availableSites = conn?.available_sites ?? []
+        const siteUrl = (domain ? matchGscSite(domain, availableSites) : null)
+          ?? conn?.selected_site
+        if (!siteUrl) return
+        setGscSite(siteUrl)
 
         const startDate = fmt(new Date(Date.now() - 28 * 86_400_000))
         const endDate   = fmt(new Date())
 
         const [trendRes, queryRes] = await Promise.all([
           supabase.functions.invoke('gsc-proxy', {
-            body: { org_id: orgId, site_url: conn.selected_site, endpoint: 'searchAnalytics',
+            body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
               params: { startDate, endDate, dimensions: ['date'], rowLimit: 28 } },
           }),
           supabase.functions.invoke('gsc-proxy', {
-            body: { org_id: orgId, site_url: conn.selected_site, endpoint: 'searchAnalytics',
+            body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
               params: { startDate, endDate, dimensions: ['query'], rowLimit: 100 } },
           }),
         ])
@@ -136,7 +150,7 @@ export function Dashboard() {
         setGscLoading(false)
       }
     })()
-  }, [orgId])
+  }, [orgId, domain])
 
   const KPI_CARDS = [
     { label: 'TOTAL CLICKS',    value: kpis?.clicks.toLocaleString()      ?? '—', color: 'var(--color-accent3)', icon: MousePointer, live: true  },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Search, AlertTriangle, CheckCircle, XCircle, Loader2,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink, FileText, Download,
@@ -45,12 +45,6 @@ type SeverityFilter = 'all' | 'high' | 'med' | 'low'
 type IssueTypeFilter = 'all' | string
 
 const HISTORY_PAGE_SIZE = 20
-
-interface JobDetail {
-  loading: boolean
-  high: number; med: number; low: number
-  topIssues: Array<Issue & { url: string }>
-}
 
 // ── Helpers ───────────────────────────────────────────────────
 const SEV_BADGE: Record<string, 'red' | 'amber' | 'accent'> = {
@@ -107,8 +101,7 @@ export function SiteAnalyzer() {
   const [historyPage,     setHistoryPage]     = useState(0)
   const [historyTotal,    setHistoryTotal]    = useState(0)
   const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set())
-  const [expandedJobId,   setExpandedJobId]   = useState<string | null>(null)
-  const [jobDetails,      setJobDetails]      = useState<Map<string, JobDetail>>(new Map())
+  const [downloading,     setDownloading]     = useState<Set<string>>(new Set())
 
   // Load most recent crawl job for this org
   const loadLatest = useCallback(async () => {
@@ -234,25 +227,24 @@ export function SiteAnalyzer() {
     if (activeTab === 'history') loadAllJobs(0, statusFilter)
   }, [activeTab, statusFilter, loadAllJobs])
 
-  async function expandJobResult(jobId: string) {
-    if (expandedJobId === jobId) { setExpandedJobId(null); return }
-    setExpandedJobId(jobId)
-    if (jobDetails.has(jobId)) return
-    setJobDetails(prev => new Map(prev).set(jobId, { loading: true, high: 0, med: 0, low: 0, topIssues: [] }))
-    const { data: pageRows } = await supabase
-      .from('jarvis_crawl_pages')
-      .select('issues, url')
-      .eq('job_id', jobId) as { data: { issues: Issue[]; url: string }[] | null }
-    const allIss = (pageRows ?? []).flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
-    const high = allIss.filter(i => i.severity === 'high').length
-    const med  = allIss.filter(i => i.severity === 'med').length
-    const low  = allIss.filter(i => i.severity === 'low').length
-    const seen = new Set<string>()
-    const topIssues = allIss
-      .sort((a, b) => (a.severity === 'high' ? 0 : a.severity === 'med' ? 1 : 2) - (b.severity === 'high' ? 0 : b.severity === 'med' ? 1 : 2))
-      .filter(i => { const k = i.type; if (seen.has(k)) return false; seen.add(k); return true })
-      .slice(0, 6)
-    setJobDetails(prev => new Map(prev).set(jobId, { loading: false, high, med, low, topIssues }))
+  async function downloadJobIssues(job: CrawlJob) {
+    setDownloading(prev => new Set(prev).add(job.id))
+    try {
+      const { data: pageRows } = await supabase
+        .from('jarvis_crawl_pages')
+        .select('url, issues')
+        .eq('job_id', job.id) as { data: { url: string; issues: Issue[] }[] | null }
+      const allIss = (pageRows ?? []).flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
+      const site = job.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+      const date = new Date(job.started_at).toISOString().slice(0, 10)
+      downloadCSV(
+        `audit-issues-${site}-${date}.csv`,
+        ['URL', 'Severity', 'Type', 'Message'],
+        allIss.map(i => [i.url, i.severity, i.type.replace(/_/g, ' '), i.message]),
+      )
+    } finally {
+      setDownloading(prev => { const n = new Set(prev); n.delete(job.id); return n })
+    }
   }
 
   function toggleSelect(id: string) {
@@ -401,121 +393,72 @@ export function SiteAnalyzer() {
                         const auditSt = (j.audit_status ?? 'new') as AuditStatus
                         const cfg     = AUDIT_STATUS_CFG[auditSt]
                         const detail  = jobDetails.get(j.id)
-                        const isOpen  = expandedJobId === j.id
+                        const isDownloading = downloading.has(j.id)
                         return (
-                          <React.Fragment key={j.id}>
-                            <tr className={cn('border-b border-border transition-colors', isOpen ? 'bg-surface' : 'hover:bg-surface/50')}>
-                              {canManageAudit && (
-                                <td className="py-3 pr-3">
-                                  <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleSelect(j.id)}
-                                    className="accent-accent cursor-pointer" />
-                                </td>
-                              )}
-                              <td className="py-3 pr-4">
-                                <div className="flex items-center gap-1.5 font-mono-jarvis text-accent">
-                                  <Globe size={11} className="shrink-0" />
-                                  <span className="truncate max-w-44">{j.site_url}</span>
-                                </div>
+                          <tr key={j.id} className="border-b border-border hover:bg-surface/50 transition-colors">
+                            {canManageAudit && (
+                              <td className="py-3 pr-3">
+                                <input type="checkbox" checked={selectedIds.has(j.id)} onChange={() => toggleSelect(j.id)}
+                                  className="accent-accent cursor-pointer" />
                               </td>
-                              <td className="py-3 pr-4 font-mono-jarvis text-muted">{j.total_pages}</td>
-                              <td className="py-3 pr-4">
-                                <span className={j.issues > 0 ? 'text-danger font-semibold' : 'text-accent3'}>{j.issues}</span>
-                              </td>
-                              <td className="py-3 pr-4">
-                                <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border', cfg.bg, cfg.border)}
-                                  style={{ color: cfg.color }}>
-                                  {auditSt === 'new'       && <Clock size={9} />}
-                                  {auditSt === 'pending'   && <RefreshCw size={9} />}
-                                  {auditSt === 'completed' && <CheckCircle size={9} />}
-                                  {cfg.label}
-                                </span>
-                              </td>
-                              <td className="py-3 pr-4 font-mono-jarvis text-muted text-[11px]">
-                                {new Date(j.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                <div className="text-[10px]">{new Date(j.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-                              </td>
-                              <td className="py-3 pr-4">
-                                <span className={cn('text-[11px] font-mono-jarvis',
-                                  j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
-                                )}>{j.status}</span>
-                              </td>
-                              {/* Results expand */}
-                              <td className="py-3 pr-4">
-                                {j.status === 'completed' && j.issues > 0 ? (
-                                  <button onClick={() => expandJobResult(j.id)}
-                                    className="flex items-center gap-1 text-[11px] text-accent hover:underline cursor-pointer font-mono-jarvis">
-                                    {isOpen ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                                    {isOpen ? 'Hide' : 'View'}
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-muted font-mono-jarvis">—</span>
-                                )}
-                              </td>
-                              {/* Action */}
-                              <td className="py-3">
-                                {canManageAudit ? (
-                                  <select value={auditSt} onChange={e => updateAuditStatus(j.id, e.target.value as AuditStatus)}
-                                    className="bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-mono-jarvis outline-none cursor-pointer hover:border-accent/40 transition-colors"
-                                    style={{ color: cfg.color }}>
-                                    <option value="new">New</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="completed">Completed</option>
-                                  </select>
-                                ) : (
-                                  <span className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
-                                    <Eye size={10} /> View only
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-
-                            {/* Expanded results row */}
-                            {isOpen && (
-                              <tr key={`${j.id}-detail`} className="border-b border-border bg-surface/40">
-                                <td colSpan={canManageAudit ? 9 : 8} className="px-4 pb-4 pt-0">
-                                  <div className="rounded-xl border border-border bg-card p-4">
-                                    {detail?.loading ? (
-                                      <div className="flex items-center gap-2 text-muted text-xs py-2">
-                                        <Loader2 size={13} className="animate-spin" /> Loading results…
-                                      </div>
-                                    ) : detail ? (
-                                      <>
-                                        {/* Severity summary */}
-                                        <div className="grid grid-cols-3 gap-3 mb-4">
-                                          {[
-                                            { label: 'HIGH', val: detail.high, color: 'text-danger',   bg: 'bg-danger/10',   border: 'border-danger/30'   },
-                                            { label: 'MED',  val: detail.med,  color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
-                                            { label: 'LOW',  val: detail.low,  color: 'text-muted',    bg: 'bg-border/60',   border: 'border-border'      },
-                                          ].map(s => (
-                                            <div key={s.label} className={cn('rounded-lg border px-4 py-3 text-center', s.bg, s.border)}>
-                                              <div className={cn('text-2xl font-display font-black', s.color)}>{s.val}</div>
-                                              <div className="text-[10px] font-mono-jarvis tracking-widest text-muted mt-0.5">{s.label} ISSUES</div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                        {/* Top issues */}
-                                        {detail.topIssues.length > 0 && (
-                                          <div className="space-y-1.5">
-                                            <div className="text-[10px] font-mono-jarvis tracking-widest text-muted mb-2">TOP ISSUES FOUND</div>
-                                            {detail.topIssues.map((iss, i) => (
-                                              <div key={i} className="flex items-start gap-3 p-2.5 bg-surface border border-border rounded-lg">
-                                                <Badge variant={SEV_BADGE[iss.severity]}>{iss.severity.toUpperCase()}</Badge>
-                                                <div className="flex-1 min-w-0">
-                                                  <div className="text-[11px] text-tx">{iss.message}</div>
-                                                  <div className="text-[10px] font-mono-jarvis text-muted mt-0.5 truncate">{iss.url}</div>
-                                                </div>
-                                                <span className="text-[10px] font-mono-jarvis text-muted shrink-0">{iss.type.replace(/_/g, ' ')}</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </>
-                                    ) : null}
-                                  </div>
-                                </td>
-                              </tr>
                             )}
-                          </React.Fragment>
+                            <td className="py-3 pr-4">
+                              <div className="flex items-center gap-1.5 font-mono-jarvis text-accent">
+                                <Globe size={11} className="shrink-0" />
+                                <span className="truncate max-w-44">{j.site_url}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 pr-4 font-mono-jarvis text-muted">{j.total_pages}</td>
+                            <td className="py-3 pr-4">
+                              <span className={j.issues > 0 ? 'text-danger font-semibold' : 'text-accent3'}>{j.issues}</span>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border', cfg.bg, cfg.border)}
+                                style={{ color: cfg.color }}>
+                                {auditSt === 'new'       && <Clock size={9} />}
+                                {auditSt === 'pending'   && <RefreshCw size={9} />}
+                                {auditSt === 'completed' && <CheckCircle size={9} />}
+                                {cfg.label}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 font-mono-jarvis text-muted text-[11px]">
+                              {new Date(j.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              <div className="text-[10px]">{new Date(j.started_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span className={cn('text-[11px] font-mono-jarvis',
+                                j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
+                              )}>{j.status}</span>
+                            </td>
+                            {/* Download issues CSV */}
+                            <td className="py-3 pr-4">
+                              {j.status === 'completed' && j.issues > 0 ? (
+                                <button onClick={() => downloadJobIssues(j)} disabled={isDownloading}
+                                  className="flex items-center gap-1 text-[11px] text-accent hover:text-accent3 cursor-pointer font-mono-jarvis transition-colors disabled:opacity-50">
+                                  {isDownloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
+                                  {isDownloading ? 'Saving…' : 'Download'}
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-muted font-mono-jarvis">—</span>
+                              )}
+                            </td>
+                            {/* Action */}
+                            <td className="py-3">
+                              {canManageAudit ? (
+                                <select value={auditSt} onChange={e => updateAuditStatus(j.id, e.target.value as AuditStatus)}
+                                  className="bg-surface border border-border rounded-lg px-2 py-1 text-[11px] font-mono-jarvis outline-none cursor-pointer hover:border-accent/40 transition-colors"
+                                  style={{ color: cfg.color }}>
+                                  <option value="new">New</option>
+                                  <option value="pending">Pending</option>
+                                  <option value="completed">Completed</option>
+                                </select>
+                              ) : (
+                                <span className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
+                                  <Eye size={10} /> View only
+                                </span>
+                              )}
+                            </td>
+                          </tr>
                         )
                       })}
                     </tbody>

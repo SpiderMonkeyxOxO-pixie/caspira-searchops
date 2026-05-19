@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   MousePointer, Eye, Percent, Hash, AlertTriangle, TrendingUp,
   Loader2, ExternalLink, ChevronDown,
@@ -24,49 +24,6 @@ const impactColor: Record<string, 'red' | 'amber' | 'accent'> = {
   HIGH: 'red', MED: 'amber', LOW: 'accent',
 }
 
-const QUICK_WINS = [
-  {
-    label: 'Boost position 11–20 pages with internal linking — quick ranking jumps',
-    impact: 'HIGH', type: 'Content',
-    steps: [
-      'Find pages ranking #11–20 in GSC Performance → filter by position 11–20',
-      'Identify 3–5 existing pages on your site with topically related content',
-      'Add natural anchor-text links from those pages pointing to the target page',
-      'Prioritise pages with highest impressions but lowest clicks first',
-    ],
-  },
-  {
-    label: 'High impression / low CTR queries — optimise title tags for more clicks',
-    impact: 'HIGH', type: 'On-Page',
-    steps: [
-      'Filter GSC queries by >1,000 impressions and CTR <5%',
-      'Rewrite title tags to include the exact query and a power word (Best, Guide, Free)',
-      'Add a number or current year to signal freshness',
-      'Monitor CTR change over 14 days after publishing',
-    ],
-  },
-  {
-    label: 'Fix slow LCP on mobile — Core Web Vitals hurting mobile rankings',
-    impact: 'MED', type: 'Technical',
-    steps: [
-      'Run PageSpeed Insights on your top 5 landing pages (mobile tab)',
-      'Identify and lazy-load all images below the fold',
-      'Preload your hero image using <link rel="preload"> in <head>',
-      'Switch images to WebP/AVIF format and serve via CDN',
-    ],
-  },
-  {
-    label: 'Build topical clusters around top-performing queries',
-    impact: 'MED', type: 'Content',
-    steps: [
-      'List your top 5 money keywords from GSC or Rank Tracker',
-      'Use KW Clustering to find related long-tail supporting terms',
-      'Create or update 3–5 supporting articles per cluster topic',
-      'Interlink all cluster articles back to the main pillar page',
-    ],
-  },
-]
-
 function matchGscSite(domain: string, sites: string[]): string | undefined {
   if (!domain) return undefined
   const clean = domain.replace(/^(https?:\/\/)?(www\.)?/, '').replace(/\/$/, '').toLowerCase()
@@ -91,7 +48,7 @@ export function Dashboard() {
   useEffect(() => {
     if (!orgId) return
     setGscLoading(true)
-    setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null)
+    setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null); setExpandedWin(null)
     ;(async () => {
       try {
         const { data: conn } = await supabase
@@ -151,6 +108,72 @@ export function Dashboard() {
       }
     })()
   }, [orgId, domain])
+
+  // ── Dynamic Quick Wins — recomputed whenever GSC data changes ─
+  const quickWins = useMemo(() => {
+    const siteName = domain
+      || (gscSite ? gscSite.replace('sc-domain:', '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : '')
+      || 'your site'
+    const hasData  = topQueries.length > 0 && kpis !== null
+    const bestQ    = topQueries[0]
+    const page2Q   = topQueries.filter(q => q.position > 10)
+    const avgCtrNum = kpis ? parseFloat(kpis.ctr) : null
+
+    return [
+      {
+        label: page2Q.length > 0
+          ? `${page2Q.length} quer${page2Q.length > 1 ? 'ies' : 'y'} for "${siteName}" stuck on page 2+ — boost with internal linking`
+          : `Boost position 11–20 pages for ${siteName} with internal linking`,
+        impact: 'HIGH', type: 'Content',
+        steps: [
+          hasData && page2Q.length > 0
+            ? `"${page2Q[0].query}" ranks #${Math.round(page2Q[0].position)} with ${page2Q[0].impressions.toLocaleString()} impressions — just off page 1`
+            : `Open GSC Performance for ${siteName} and filter position 11–20`,
+          'Identify 3–5 existing pages on your site with topically related content',
+          'Add natural anchor-text links pointing to each target page',
+          'Prioritise by highest impressions × lowest clicks ratio',
+        ],
+      },
+      {
+        label: hasData && avgCtrNum !== null && avgCtrNum < 5
+          ? `${siteName} avg CTR is ${kpis!.ctr} — rewrite title tags to recover clicks`
+          : `High impression / low CTR queries on ${siteName} — optimise title tags`,
+        impact: 'HIGH', type: 'On-Page',
+        steps: [
+          hasData && bestQ
+            ? `Top query "${bestQ.query}" gets ${bestQ.impressions.toLocaleString()} impressions — rewrite its title tag first`
+            : `Filter GSC queries for ${siteName} by >1,000 impressions and CTR <5%`,
+          'Add a power word (Best, Guide, Reviewed, Free) to each title',
+          'Include the current year to signal freshness',
+          'Monitor CTR change over 14 days after publishing',
+        ],
+      },
+      {
+        label: `Fix slow LCP on mobile for ${siteName} — Core Web Vitals impact`,
+        impact: 'MED', type: 'Technical',
+        steps: [
+          `Run PageSpeed Insights on ${siteName}'s top 5 landing pages (Mobile tab)`,
+          'Identify and lazy-load all images below the fold',
+          'Preload the hero image with <link rel="preload"> in <head>',
+          'Convert images to WebP/AVIF and serve them via CDN',
+        ],
+      },
+      {
+        label: hasData && bestQ
+          ? `Build topical clusters around "${bestQ.query}" — ${siteName}'s top keyword`
+          : `Build topical clusters around ${siteName}'s top-performing queries`,
+        impact: 'MED', type: 'Content',
+        steps: [
+          hasData
+            ? `Top ${Math.min(topQueries.length, 3)} keywords: ${topQueries.slice(0, 3).map(q => `"${q.query}"`).join(', ')}`
+            : `List your top 5 money keywords from GSC or Rank Tracker for ${siteName}`,
+          'Use KW Clustering to find related long-tail supporting terms',
+          'Create or update 3–5 supporting articles per cluster topic',
+          'Interlink all cluster articles back to the main pillar page',
+        ],
+      },
+    ]
+  }, [topQueries, kpis, domain, gscSite])
 
   const KPI_CARDS = [
     { label: 'TOTAL CLICKS',    value: kpis?.clicks.toLocaleString()      ?? '—', color: 'var(--color-accent3)', icon: MousePointer, live: true  },
@@ -282,7 +305,7 @@ export function Dashboard() {
         <CardTitle className="mb-1">Quick Wins</CardTitle>
         <div className="text-[11px] text-muted mb-4">Highest-impact SEO actions this week — click any card to see how to implement it</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {QUICK_WINS.map((w, i) => (
+          {quickWins.map((w, i) => (
             <div key={i}
               className="rounded-lg border border-border bg-surface hover:border-accent/50 transition-colors cursor-pointer"
               onClick={() => setExpandedWin(expandedWin === i ? null : i)}>

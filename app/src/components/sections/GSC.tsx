@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   BarChart2, Eye, MousePointer, Percent, Hash,
   RefreshCw, AlertCircle, Globe, Unplug, Plus, X, Search, ChevronDown, Download,
-  MapPin, Link2, FileText, CheckCircle2, XCircle, ExternalLink, AlertTriangle,
+  MapPin, Link2, FileText, CheckCircle2, ExternalLink, AlertTriangle,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'

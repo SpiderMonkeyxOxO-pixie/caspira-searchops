@@ -1,12 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   TrendingUp, TrendingDown, CheckCircle2,
-  ChevronUp, ChevronDown, Search, Zap, Plus,
+  ChevronUp, ChevronDown, Search, Zap, Plus, Loader2,
 } from 'lucide-react'
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { useStore } from '@/store'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -42,6 +44,29 @@ const CHART_COLORS = ['#00d4ff', '#7c3aed', '#10b981', '#f59e0b', '#ec4899', '#f
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+interface EnrichedData {
+  score: number; issues: number; status: 'good' | 'warning' | 'danger'
+  trafficRaw: number; topKw: string; pos: number
+}
+
+function normDomain(d: string) {
+  return d.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase()
+}
+
+function formatTraffic(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K'
+  return n > 0 ? String(n) : '—'
+}
+
+function matchGscSite(domain: string, sites: string[]): string | undefined {
+  const clean = normDomain(domain)
+  return sites.find(s => {
+    const sc = s.replace('sc-domain:', '').replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').toLowerCase()
+    return sc === clean || sc.endsWith('.' + clean) || clean.endsWith('.' + sc)
+  })
+}
+
 function scoreColor(score: number) {
   if (score >= 70) return '#10b981'
   if (score >= 50) return '#f59e0b'
@@ -69,26 +94,29 @@ function parseTrafficRaw(t: string): number {
   return n || 0
 }
 
-function siteToAgency(s: Site): AgencySite {
+function siteToAgency(s: Site, e?: EnrichedData): AgencySite {
+  const issues = e?.issues ?? s.issues
+  const score  = e?.score  ?? s.score
+  const status = e?.status ?? s.status
   return {
     id: s.id,
     name: s.name,
     domain: s.domain,
-    score: s.score,
-    traffic: s.traffic,
-    trafficRaw: parseTrafficRaw(s.traffic),
+    score,
+    traffic: e ? formatTraffic(e.trafficRaw) : s.traffic,
+    trafficRaw: e?.trafficRaw ?? parseTrafficRaw(s.traffic),
     trafficChange: '—',
     changeUp: true,
     keys: s.keys,
     dr: 0,
-    issues: s.issues,
-    status: s.status,
+    issues,
+    status,
     country: s.country ?? '—',
     client: s.client ?? '—',
-    topKw: '—',
-    pos: 0,
+    topKw: e?.topKw ?? '—',
+    pos: e?.pos ?? 0,
     lastCrawl: '—',
-    alertCount: s.issues > 30 ? 4 : s.issues > 15 ? 2 : s.issues > 5 ? 1 : 0,
+    alertCount: issues > 30 ? 4 : issues > 15 ? 2 : issues > 5 ? 1 : 0,
   }
 }
 
@@ -96,6 +124,9 @@ function siteToAgency(s: Site): AgencySite {
 
 export function AgencyDashboard() {
   const { sites: storeSites, setSection } = useStore()
+  const { org } = useAuthStore()
+  const orgId = org?.id ?? ''
+
   const [tab,       setTab]       = useState<Tab>('overview')
   const [search,    setSearch]    = useState('')
   const [statusFilter, setStatus] = useState<'all'|'good'|'warning'|'danger'>('all')
@@ -103,7 +134,87 @@ export function AgencyDashboard() {
   const [sortBy,    setSortBy]    = useState<SortBy>('score')
   const [sortDir,   setSortDir]   = useState<'asc'|'desc'>('desc')
 
-  const DISPLAY_SITES: AgencySite[] = storeSites.map(siteToAgency)
+  const [enriched,   setEnriched]   = useState<Map<string, EnrichedData>>(new Map())
+  const [enriching,  setEnriching]  = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  useEffect(() => {
+    if (!orgId || storeSites.length === 0) return
+    setEnriching(true)
+
+    ;(async () => {
+      try {
+        // 1. Latest completed crawl job per domain
+        const { data: jobs } = await supabase
+          .from('jarvis_crawl_jobs')
+          .select('site_url, issues, total_pages')
+          .eq('org_id', orgId)
+          .eq('status', 'completed')
+          .order('started_at', { ascending: false }) as {
+            data: { site_url: string; issues: number; total_pages: number }[] | null
+          }
+
+        const crawlMap = new Map<string, { issues: number; total_pages: number }>()
+        for (const j of jobs ?? []) {
+          const k = normDomain(j.site_url)
+          if (!crawlMap.has(k)) crawlMap.set(k, j)
+        }
+
+        // 2. GSC available sites list
+        const { data: conn } = await supabase
+          .from('jarvis_gsc_connections')
+          .select('available_sites')
+          .eq('org_id', orgId)
+          .maybeSingle() as { data: { available_sites: string[] | null } | null }
+
+        const availableSites = conn?.available_sites ?? []
+
+        // 3. GSC data per site (parallel)
+        const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
+        const endDate   = new Date().toISOString().slice(0, 10)
+
+        const gscResults = await Promise.allSettled(
+          storeSites.map(site => {
+            const gscSite = matchGscSite(site.domain, availableSites)
+            if (!gscSite) return Promise.resolve(null)
+            return supabase.functions.invoke('gsc-proxy', {
+              body: { org_id: orgId, site_url: gscSite, endpoint: 'searchAnalytics',
+                params: { startDate, endDate, dimensions: ['query'], rowLimit: 100 } },
+            }).then(({ data }) => data).catch(() => null)
+          })
+        )
+
+        // 4. Build enriched map
+        const map = new Map<string, EnrichedData>()
+        storeSites.forEach((site, i) => {
+          const crawl = crawlMap.get(normDomain(site.domain))
+          let score  = site.score
+          let issues = site.issues
+          if (crawl) {
+            issues = crawl.issues
+            const ratio = crawl.total_pages > 0 ? crawl.issues / crawl.total_pages : 0
+            score = Math.max(0, Math.round(100 - ratio * 30))
+          }
+          const status: 'good' | 'warning' | 'danger' = score >= 70 ? 'good' : score >= 50 ? 'warning' : 'danger'
+
+          type GSCRow = { keys: string[]; clicks: number; position: number }
+          const gscRes = gscResults[i]
+          const rows: GSCRow[] = (gscRes.status === 'fulfilled' && gscRes.value?.rows) ? gscRes.value.rows : []
+          const trafficRaw = rows.reduce((s, r) => s + r.clicks, 0)
+          const topKw = rows[0]?.keys[0] ?? '—'
+          const pos   = rows[0]?.position ? Math.round(rows[0].position * 10) / 10 : 0
+
+          map.set(site.domain, { score, issues, status, trafficRaw, topKw, pos })
+        })
+
+        setEnriched(map)
+        setLastUpdated(new Date())
+      } catch { /* best-effort */ }
+      setEnriching(false)
+    })()
+  }, [orgId, storeSites.length])
+
+  const DISPLAY_SITES: AgencySite[] = storeSites.map(s => siteToAgency(s, enriched.get(s.domain)))
   const usingRealData = storeSites.length > 0
 
   const totalTraffic  = DISPLAY_SITES.reduce((a, s) => a + s.trafficRaw, 0)
@@ -185,7 +296,13 @@ export function AgencyDashboard() {
             <span className={p.color}>{p.label}</span>
           </div>
         ))}
-        <div className="text-[11px] text-muted ml-auto font-mono-jarvis">Last updated: May 15, 2026 · 08:00 AM</div>
+        <div className="flex items-center gap-2 ml-auto text-[11px] text-muted font-mono-jarvis">
+          {enriching && <Loader2 size={11} className="animate-spin text-accent" />}
+          {lastUpdated
+            ? `Last updated: ${lastUpdated.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })} · ${lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}`
+            : enriching ? 'Loading data…' : 'Not yet loaded'
+          }
+        </div>
       </div>
 
       {/* Tabs */}

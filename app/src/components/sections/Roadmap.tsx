@@ -7,6 +7,7 @@ import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 const MILESTONES = [
   { month:1,  label:'Technical foundation',    done:true  },
@@ -122,8 +123,15 @@ Be specific and tie actions to traffic impact.`,
             <RangeSlider label="Link Building"       value={links}   onChange={setLinks} />
             <RangeSlider label="Technical SEO"       value={tech}    onChange={setTech} />
           </div>
+          <div className="mt-4 flex items-center gap-1 text-[10px] text-muted font-mono-jarvis">
+            Investment mix affects the 12-month traffic projection.
+            <InfoTooltip text="Adjust sliders to model different investment strategies. Content Production drives organic visibility; Link Building builds domain authority; Technical SEO ensures crawlability and Core Web Vitals." />
+          </div>
           <div className="mt-6 p-4 bg-surface border border-border rounded-xl text-center">
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">MONTH 12 FORECAST</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">
+              MONTH 12 FORECAST
+              <InfoTooltip text="Projected monthly organic visitors at the 12-month mark based on your investment mix. This is a model estimate — actual results depend on competition, budget, and execution quality." />
+            </div>
             <div className="text-2xl font-display font-black text-accent3">
               {peak.toLocaleString()}
             </div>
@@ -168,7 +176,10 @@ Be specific and tie actions to traffic impact.`,
 
       {/* Milestones */}
       <Card>
-        <CardTitle className="mb-4 flex items-center gap-2"><Target size={15} className="text-accent" /> Key Milestones</CardTitle>
+        <CardTitle className="mb-4 flex items-center gap-2">
+          <Target size={15} className="text-accent" /> Key Milestones
+          <InfoTooltip text="Milestones mark major ranking and authority achievements on the 12-month timeline. Green = achieved. These are reference points for your quarterly SEO reviews." />
+        </CardTitle>
         <div className="flex items-center gap-0 overflow-x-auto pb-2">
           {MILESTONES.map((m, i) => (
             <div key={i} className="flex items-center">

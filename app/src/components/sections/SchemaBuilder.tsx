@@ -3,6 +3,7 @@ import { Copy, Check, CheckCircle2 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type SchemaType = 'Article' | 'LocalBusiness' | 'Product' | 'FAQ' | 'BreadcrumbList' | 'Organization'
 
@@ -108,7 +109,7 @@ export function SchemaBuilder() {
   return (
     <div className="space-y-5">
       {/* Type selector */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {TYPES.map(t => (
           <button key={t} onClick={() => { setActiveType(t); setValues({}) }}
             className={cn(
@@ -117,12 +118,16 @@ export function SchemaBuilder() {
             )}
           >{t}</button>
         ))}
+        <InfoTooltip text="Schema markup (structured data) helps Google understand your page content and can unlock rich results in SERPs — FAQ accordions, star ratings, breadcrumbs, and more." />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Fields */}
         <Card>
-          <CardTitle className="mb-1">{activeType} Schema</CardTitle>
+          <div className="flex items-center gap-2 mb-1">
+            <CardTitle>{activeType} Schema</CardTitle>
+            <InfoTooltip text={`${activeType} schema uses JSON-LD format and is added to your page's <head>. It is invisible to users but read by search engines and AI crawlers.`} />
+          </div>
           <div className="text-[11px] text-muted mb-4">{SCHEMAS[activeType].description}</div>
           <div className="space-y-3">
             {SCHEMAS[activeType].fields.map(f => (

@@ -6,6 +6,7 @@ import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface SerpFeature {
   feature: string
@@ -24,6 +25,17 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
   'People Also Ask':  <HelpCircle size={13} />,
   'Knowledge Panel':  <BookOpen size={13} />,
   'Top Stories':      <TrendingUp size={13} />,
+}
+
+const FEATURE_TOOLTIPS: Record<string, string> = {
+  'Featured Snippet': 'A boxed answer shown above all organic results (Position 0). Captured with direct, concise answers to question keywords — ideal for "how to" and "what is" casino queries.',
+  'People Also Ask':  'Expandable question boxes below the Featured Snippet. Each question you win expands to show more related questions, creating a PAA chain effect.',
+  'Knowledge Panel':  'A sidebar card showing entity information (brand, founder, social links). Strengthened by Organization schema and Wikipedia/Wikidata presence.',
+  'Local Pack':       'A map + 3 listings shown for geo-intent queries. Requires a verified Google Business Profile and local SEO signals.',
+  'Shopping':         'Product listing ads shown for commercial queries. Requires Google Merchant Center and structured Product schema with price data.',
+  'Image Pack':       'A horizontal strip of images shown for visual queries. Optimise with descriptive filenames, alt text, and image schema.',
+  'Video Carousel':   'Video results shown for how-to and review queries. Optimise YouTube videos with timestamps and VideoObject schema.',
+  'Top Stories':      'A carousel of recent news articles. Requires Google News inclusion and NewsArticle schema with a recent publication date.',
 }
 
 const OPP_COLOR: Record<string, 'green' | 'amber' | 'red'> = {
@@ -95,13 +107,16 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'FEATURES TRACKED', val: features.length,                                                           color: '#00d4ff' },
-              { label: 'OWNED',            val: features.reduce((s, f) => s + (f.keywords?.filter(k => k.owned).length ?? 0), 0), color: '#10b981' },
-              { label: 'OPPORTUNITIES',    val: features.filter(f => f.opportunity === 'high').length,                     color: '#f59e0b' },
+              { label: 'FEATURES TRACKED', val: features.length,                                                                color: '#00d4ff', tip: 'Total SERP features analysed for this domain. Each feature (e.g. Featured Snippet, PAA) represents a distinct SERP real-estate opportunity.' },
+              { label: 'OWNED',            val: features.reduce((s, f) => s + (f.keywords?.filter(k => k.owned).length ?? 0), 0), color: '#10b981', tip: 'Keywords where your site currently holds this SERP feature. Owning features increases click share beyond your organic position.' },
+              { label: 'OPPORTUNITIES',    val: features.filter(f => f.opportunity === 'high').length,                          color: '#f59e0b', tip: 'High-opportunity features where your site has a realistic chance of capture. Prioritise these with targeted schema, content restructuring, or FAQ additions.' },
             ].map(s => (
               <Card key={s.label} className="text-center py-4">
                 <div className="text-3xl font-display font-black mb-1" style={{ color: s.color }}>{s.val}</div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{s.label}</div>
+                <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+                  {s.label}
+                  <InfoTooltip text={s.tip} />
+                </div>
               </Card>
             ))}
           </div>
@@ -121,6 +136,9 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="font-semibold text-sm text-tx">{f.feature}</span>
+                        {FEATURE_TOOLTIPS[f.feature] && (
+                          <InfoTooltip text={FEATURE_TOOLTIPS[f.feature]} />
+                        )}
                         <Badge variant={OPP_COLOR[f.opportunity ?? 'medium']}>
                           {(f.opportunity ?? 'medium').toUpperCase()}
                         </Badge>

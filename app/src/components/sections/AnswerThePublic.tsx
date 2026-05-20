@@ -3,6 +3,7 @@ import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download } from 'luci
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface QGroup { category: string; color: string; keywords: string[] }
 
@@ -148,14 +149,17 @@ export function AnswerThePublic() {
           <div className="flex items-center justify-between">
             <div className="grid grid-cols-4 gap-4 flex-1">
               {[
-                { label: 'TOTAL KEYWORDS',  val: total,       color: '#00d4ff' },
-                { label: 'QUESTION TYPES',  val: questions,   color: '#10b981' },
-                { label: 'PREPOSITIONS',    val: preps,       color: '#f59e0b' },
-                { label: 'COMPARISONS',     val: comparisons, color: '#7c3aed' },
+                { label: 'TOTAL KEYWORDS', val: total,       color: '#00d4ff', tip: 'Total question and comparison keywords generated for this topic. Use these as content brief seeds or FAQ headings.' },
+                { label: 'QUESTION TYPES', val: questions,   color: '#10b981', tip: 'Keywords framed as questions (What, How, Why, Which, Is, Can, Are, Will). These map to People Also Ask and Featured Snippet opportunities.' },
+                { label: 'PREPOSITIONS',   val: preps,       color: '#f59e0b', tip: 'Keywords using prepositions (For, Without). These capture long-tail intent — e.g. "online casino for beginners india" targets a specific audience.' },
+                { label: 'COMPARISONS',    val: comparisons, color: '#7c3aed', tip: 'VS comparison keywords — high-intent queries from users deciding between options. Great for dedicated comparison pages that convert well.' },
               ].map(k => (
                 <Card key={k.label} className="text-center py-4">
                   <div className="text-2xl font-display font-black mb-1" style={{ color: k.color }}>{k.val}</div>
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{k.label}</div>
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+                    {k.label}
+                    <InfoTooltip text={k.tip} />
+                  </div>
                 </Card>
               ))}
             </div>

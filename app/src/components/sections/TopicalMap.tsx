@@ -5,6 +5,7 @@ import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface Subtopic { name: string; covered: boolean; thin?: boolean }
 interface Cluster {
@@ -147,13 +148,16 @@ Mark about 40% as covered:false (honest gap analysis)`,
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'OVERALL COVERAGE', val: `${overallCoverage}%`, color: '#00d4ff' },
-            { label: 'TOPICS COVERED',   val: totalCovered,          color: '#10b981' },
-            { label: 'CONTENT GAPS',     val: totalGaps,             color: '#ef4444' },
+            { label: 'OVERALL COVERAGE', val: `${overallCoverage}%`, color: '#00d4ff', tip: 'Average topical coverage across all clusters. 100% means you have content covering every subtopic Google expects for this niche — the goal for topical authority.' },
+            { label: 'TOPICS COVERED',   val: totalCovered,          color: '#10b981', tip: 'Number of subtopics where you already have content. These contribute to topical authority for this niche.' },
+            { label: 'CONTENT GAPS',     val: totalGaps,             color: '#ef4444', tip: 'Subtopics with no content on your site. Gaps weaken topical authority — Google may not consider you an expert if key subtopics are missing.' },
           ].map(s => (
             <div key={s.label} className="bg-surface border border-border rounded-xl p-3 text-center">
               <div className="text-2xl font-display font-black mb-0.5" style={{ color: s.color }}>{s.val}</div>
-              <div className="text-[9px] text-muted font-mono-jarvis tracking-widest">{s.label}</div>
+              <div className="flex items-center justify-center gap-1 text-[9px] text-muted font-mono-jarvis tracking-widest">
+                {s.label}
+                <InfoTooltip text={s.tip} size={10} />
+              </div>
             </div>
           ))}
         </div>

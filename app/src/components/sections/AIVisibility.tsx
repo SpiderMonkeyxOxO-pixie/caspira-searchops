@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { callAI, isAIReady, getActiveProvider } from '@/lib/ai'
 import { useStore } from '@/store'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type Tab = 'overview' | 'optimize'
 type CheckStatus = 'done' | 'pending' | 'partial'
@@ -112,7 +113,10 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
       <Card>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle className="mb-1">AI Visibility</CardTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <CardTitle>AI Visibility</CardTitle>
+              <InfoTooltip text="AI Visibility (AEO — Answer Engine Optimization) measures how often your casino site is cited or referenced inside AI-powered search tools like ChatGPT, Perplexity, Google AI Overviews, and Gemini." />
+            </div>
             <p className="text-sm text-muted leading-relaxed max-w-xl">
               Track how your casino site appears inside ChatGPT, Google AI Overviews, Perplexity, Gemini,
               and Bing Copilot. AEO (Answer Engine Optimization) is the next frontier in iGaming search.
@@ -188,14 +192,15 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
               {/* Platform note */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
-                  { name: 'Google AI Overviews', color: '#4285F4', note: 'Add FAQ + Organization schema to your pages to increase citation chances.' },
-                  { name: 'ChatGPT / Perplexity', color: '#10a37f', note: 'Build authoritative backlinks and earn mentions in news publications.' },
-                  { name: 'Gemini / Bing Copilot', color: '#8E44AD', note: 'Ensure your E-E-A-T signals (author bios, expert credentials) are strong.' },
+                  { name: 'Google AI Overviews', color: '#4285F4', note: 'Add FAQ + Organization schema to your pages to increase citation chances.', tip: 'Google AI Overviews (formerly SGE) appear at the top of search results and directly answer queries. Sites with FAQ schema and strong E-E-A-T are most frequently cited.' },
+                  { name: 'ChatGPT / Perplexity', color: '#10a37f', note: 'Build authoritative backlinks and earn mentions in news publications.', tip: 'ChatGPT and Perplexity source answers from the web in real-time. Sites with strong backlink profiles, news citations, and authoritative long-form content get cited most.' },
+                  { name: 'Gemini / Bing Copilot', color: '#8E44AD', note: 'Ensure your E-E-A-T signals (author bios, expert credentials) are strong.', tip: 'Google Gemini and Bing Copilot heavily weight E-E-A-T signals — clear author credentials, expert bios, and trust signals on YMYL pages like casino reviews.' },
                 ].map(p => (
                   <div key={p.name} className="p-3 rounded-xl border border-border bg-surface space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ background: p.color }} />
                       <span className="text-[11px] font-semibold text-tx">{p.name}</span>
+                      <InfoTooltip text={p.tip} />
                     </div>
                     <div className="text-[11px] text-muted leading-relaxed">{p.note}</div>
                   </div>
@@ -219,13 +224,19 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
               </div>
 
               {(['High', 'Medium', 'Low'] as const).map(impact => {
+                const impactTips: Record<string, string> = {
+                  High:   'High-impact tasks directly affect whether AI models cite your site — e.g. FAQ schema, Organization schema, and authoritative news citations.',
+                  Medium: 'Medium-impact tasks support AI visibility indirectly — author bios, brand mentions, and Speakable schema improve LLM trust signals.',
+                  Low:    'Low-impact tasks provide incremental improvements — data citations and source linking add marginal authority signals for AI sourcing.',
+                }
                 const items = checklist.filter(c => c.impact === impact)
                 return (
                   <div key={impact}>
-                    <div className="text-[10px] font-mono-jarvis tracking-widest mb-2" style={{
+                    <div className="flex items-center gap-1 text-[10px] font-mono-jarvis tracking-widest mb-2" style={{
                       color: impact === 'High' ? '#ef4444' : impact === 'Medium' ? '#f59e0b' : '#5a7a9a'
                     }}>
                       {impact.toUpperCase()} IMPACT
+                      <InfoTooltip text={impactTips[impact]} />
                     </div>
                     <div className="space-y-2">
                       {items.map(item => (

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface BlItem {
   domain:   string
@@ -174,16 +175,19 @@ Be specific and actionable for the regulated gambling industry.`,
         <>
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'TOTAL BACKLINKS',  val: summary?.total,      color: '#00d4ff', Icon: Link2      },
-              { label: 'REF. DOMAINS',     val: summary?.refDomains, color: '#10b981', Icon: Globe      },
-              { label: 'DOFOLLOW',         val: dofollow,            color: '#7c3aed', Icon: TrendingUp  },
+              { label: 'TOTAL BACKLINKS',  val: summary?.total,      color: '#00d4ff', Icon: Link2,      tip: 'Total number of backlinks pointing to this domain, including multiple links from the same referring domain.' },
+              { label: 'REF. DOMAINS',     val: summary?.refDomains, color: '#10b981', Icon: Globe,      tip: 'Referring Domains — the number of unique domains linking to this site. A higher count indicates broader link diversity.' },
+              { label: 'DOFOLLOW',         val: dofollow,            color: '#7c3aed', Icon: TrendingUp,  tip: 'Dofollow links pass link equity (PageRank) to your site and contribute directly to domain authority.' },
             ].map(k => (
               <Card key={k.label} className="text-center py-5">
                 <k.Icon size={14} className="mx-auto mb-1.5" style={{ color: k.color }} />
                 <div className="text-2xl font-display font-black mb-0.5" style={{ color: k.color }}>
                   {fmt(k.val)}
                 </div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{k.label}</div>
+                <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+                  {k.label}
+                  <InfoTooltip text={k.tip} />
+                </div>
               </Card>
             ))}
           </div>
@@ -220,9 +224,15 @@ Be specific and actionable for the regulated gambling industry.`,
                   <thead>
                     <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                       <th className="text-left pb-2 font-medium">REFERRING DOMAIN</th>
-                      <th className="text-center pb-2 font-medium w-16">RANK</th>
-                      <th className="text-left pb-2 font-medium pl-4">ANCHOR TEXT</th>
-                      <th className="text-center pb-2 font-medium">TYPE</th>
+                      <th className="text-center pb-2 font-medium w-16">
+                        <span className="inline-flex items-center gap-1">RANK <InfoTooltip text="Domain Rank (DR) — a 0–100 score measuring the overall backlink authority of the linking domain. Higher is stronger." /></span>
+                      </th>
+                      <th className="text-left pb-2 font-medium pl-4">
+                        <span className="inline-flex items-center gap-1">ANCHOR TEXT <InfoTooltip text="The clickable text of the hyperlink. Keyword-rich anchors pass topical relevance; generic anchors (e.g. 'click here') are safer but less impactful." /></span>
+                      </th>
+                      <th className="text-center pb-2 font-medium">
+                        <span className="inline-flex items-center gap-1">TYPE <InfoTooltip text="Dofollow links pass PageRank and SEO value. Nofollow links (rel='nofollow') do not pass link equity but can drive traffic and brand awareness." /></span>
+                      </th>
                       <th className="text-right pb-2 font-medium">DATE</th>
                     </tr>
                   </thead>

@@ -3,6 +3,7 @@ import { Globe, Plus, Trash2, Copy, Check, AlertCircle, CheckCircle2, Download }
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface HreflangEntry { id: string; url: string; lang: string; region: string; isDefault: boolean }
 
@@ -134,13 +135,16 @@ export function HreflangBuilder() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'LANGUAGE TARGETS', val: entries.length,                           color: '#00d4ff' },
-          { label: 'ERRORS',           val: errors,                                   color: errors ? '#ef4444' : '#10b981' },
-          { label: 'UNIQUE LANGS',     val: new Set(entries.map(e => e.lang)).size,   color: '#7c3aed' },
+          { label: 'LANGUAGE TARGETS', val: entries.length,                         color: '#00d4ff', tip: 'Each hreflang entry tells Google which language/region version of a page to show to users in that locale.' },
+          { label: 'ERRORS',           val: errors,                                 color: errors ? '#ef4444' : '#10b981', tip: 'Validation errors that will prevent hreflang from working correctly — e.g. missing x-default, duplicate codes, or relative URLs.' },
+          { label: 'UNIQUE LANGS',     val: new Set(entries.map(e => e.lang)).size, color: '#7c3aed', tip: 'Number of distinct language codes across all entries. Each language can have multiple region variants (e.g. en-GB, en-IE, en-AU).' },
         ].map(s => (
           <Card key={s.label} className="text-center py-4">
             <div className="text-3xl font-display font-black mb-1" style={{ color: s.color }}>{s.val}</div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{s.label}</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+              {s.label}
+              <InfoTooltip text={s.tip} />
+            </div>
           </Card>
         ))}
       </div>
@@ -159,14 +163,20 @@ export function HreflangBuilder() {
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">LANGUAGE</div>
+                <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">
+                  LANGUAGE
+                  <InfoTooltip text="ISO 639-1 language code (e.g. 'en' for English, 'hi' for Hindi, 'id' for Indonesian). Combined with a region code to create locale-specific hreflang tags." />
+                </div>
                 <select value={newLang} onChange={e => setNewLang(e.target.value)}
                   className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
                   {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.code} — {l.name}</option>)}
                 </select>
               </div>
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">REGION</div>
+                <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">
+                  REGION
+                  <InfoTooltip text="ISO 3166-1 alpha-2 region code (e.g. 'GB', 'IN', 'ID'). Optional — omit for language-only targeting. Use with language to geo-target (e.g. en-IN for English speakers in India)." />
+                </div>
                 <select value={newRegion} onChange={e => setNewRegion(e.target.value)}
                   className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
                   <option value="">No region</option>
@@ -205,6 +215,7 @@ export function HreflangBuilder() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
+                      <InfoTooltip text="x-default is a special hreflang value that specifies the fallback page for users who don't match any other locale. Required for hreflang to work correctly — typically your main English or international page." side="left" />
                       <button onClick={() => setDefault(entry.id)}
                         className={`text-[10px] px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
                           entry.isDefault ? 'border-accent3 bg-accent3/10 text-accent3' : 'border-border text-muted hover:border-accent3'

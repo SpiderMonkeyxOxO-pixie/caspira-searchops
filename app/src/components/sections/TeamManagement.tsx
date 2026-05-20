@@ -14,6 +14,7 @@ import { downloadCSV } from '@/lib/csv'
 import { NAV, ALL_SECTIONS } from '@/lib/nav'
 import type { OrgRole, OrgInvite } from '@/types/supabase'
 import type { NavSection } from '@/types'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 // ── Role metadata ─────────────────────────────────────────────
 const ROLE_META: Record<OrgRole, { label: string; color: string; Icon: React.ElementType; access: string }> = {
@@ -353,7 +354,7 @@ export function TeamManagement() {
                 </div>
               </div>
               <div className="w-48">
-                <label className="block text-[10px] text-muted font-mono-jarvis mb-1.5">ROLE</label>
+                <label className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis mb-1.5">ROLE <InfoTooltip text="Owner: full access + billing. Admin: full access, no billing. SEO Specialist: keywords, content, AI tools. Technical: tech SEO tools. Content Writer: article and content tools. Viewer: read-only dashboard." /></label>
                 <select value={inviteRole} onChange={e => setInviteRole(e.target.value as OrgRole)}
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors cursor-pointer">
                   {INVITABLE_ROLES.map(r => (
@@ -542,8 +543,9 @@ export function TeamManagement() {
           {/* ── Permissions tab ── */}
           {tab === 'permissions' && (
             <div>
-              <p className="text-xs text-muted mb-4 font-mono-jarvis">
+              <p className="text-xs text-muted mb-4 font-mono-jarvis flex items-center gap-1">
                 Owners always have full access. Configure which sections each role can see.
+                <InfoTooltip text="Role permissions control which sidebar sections each role can access. Changes apply org-wide and take effect on next login for affected members." side="right" />
               </p>
 
               {/* Role selector */}
@@ -632,6 +634,7 @@ export function TeamManagement() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold text-sm text-tx">{meta.label}</span>
+                      <InfoTooltip text={`${meta.label}: ${meta.access}`} />
                     </div>
                     <div className="text-xs text-muted">{meta.access}</div>
                   </div>

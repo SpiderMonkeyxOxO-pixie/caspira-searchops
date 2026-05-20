@@ -4,6 +4,7 @@ import {
   Swords, CalendarClock, PlugZap, PenLine, Trophy, Activity, Rss,
   Eye, EyeOff, Link, Zap, TrendingUp, Search, RefreshCw, Sparkles,
 } from 'lucide-react'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { getSerperStatus, resetExhaustedKeys } from '@/lib/serper'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
@@ -409,6 +410,7 @@ function AiProviderSwitcher() {
       <div className="flex items-center gap-2 mb-1">
         <Zap size={13} className="text-accent" />
         <span className="text-xs font-semibold text-tx">Active AI Provider</span>
+        <InfoTooltip text="The active AI provider powers all AI features in Jarvis — Jarvis AI chat, Article Writer, Content Grader, and more. Switch freely between OpenRouter (free models) and Anthropic Claude (paid)." />
         <span className="text-[10px] text-muted ml-auto">Powers Jarvis AI, Keyword Explorer, AI Visibility &amp; more</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -507,7 +509,10 @@ export function Onboarding() {
               <div className="h-full bg-accent rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
             </div>
             <div className="flex justify-between text-[10px] text-muted font-mono-jarvis mt-1">
-              <span>{progress}% complete</span>
+              <span className="flex items-center gap-1">
+                {progress}% complete
+                <InfoTooltip text="Setup progress tracks how many onboarding steps are done. Complete all steps to unlock every Jarvis module and ensure accurate data across tools." />
+              </span>
               <span>{completedCount} of {STEPS.length} steps done</span>
             </div>
           </div>

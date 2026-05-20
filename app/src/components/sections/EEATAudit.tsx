@@ -5,6 +5,7 @@ import { callClaude } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 
 interface EEATDimension { score: number; findings: string[]; fixes: string[] }
@@ -19,10 +20,10 @@ interface EEATResult {
 
 
 const DIMENSIONS = [
-  { key: 'experience' as const,       label: 'Experience',       icon: Star,        color: '#00d4ff' },
-  { key: 'expertise' as const,        label: 'Expertise',        icon: BookOpen,    color: '#a78bfa' },
-  { key: 'authoritativeness' as const,label: 'Authoritativeness',icon: Award,       color: '#10b981' },
-  { key: 'trustworthiness' as const,  label: 'Trustworthiness',  icon: ShieldCheck, color: '#f59e0b' },
+  { key: 'experience' as const,       label: 'Experience',       icon: Star,        color: '#00d4ff', tip: 'Experience — Google assesses whether the content creator has first-hand experience with the topic. For iGaming, this means reviewing casinos you have actually used.' },
+  { key: 'expertise' as const,        label: 'Expertise',        icon: BookOpen,    color: '#a78bfa', tip: 'Expertise — the depth of knowledge demonstrated in the content. Expert content cites regulations, odds, RTP, and game mechanics accurately.' },
+  { key: 'authoritativeness' as const,label: 'Authoritativeness',icon: Award,       color: '#10b981', tip: 'Authoritativeness — how recognised your site is within the iGaming space. Measured by backlinks from trusted gambling publications and brand mentions.' },
+  { key: 'trustworthiness' as const,  label: 'Trustworthiness',  icon: ShieldCheck, color: '#f59e0b', tip: 'Trustworthiness — the most important E-E-A-T signal. Includes transparent ownership, licensing info, clear T&Cs, HTTPS, and accurate, updated content.' },
 ]
 
 function ScoreRing({ score, color }: { score: number; color: string }) {
@@ -99,7 +100,10 @@ Return JSON only (no markdown):
           {/* Overall */}
           <Card className="text-center py-6">
             <div className="text-6xl font-display font-black text-accent mb-2">{result.overall}</div>
-            <div className="text-[11px] text-muted font-mono-jarvis tracking-widest mb-3">OVERALL E-E-A-T SCORE</div>
+            <div className="flex items-center justify-center gap-1 text-[11px] text-muted font-mono-jarvis tracking-widest mb-3">
+              OVERALL E-E-A-T SCORE
+              <InfoTooltip text="E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) — Google's quality framework for YMYL content like iGaming. A higher combined score improves ranking potential for competitive casino keywords." />
+            </div>
             <div className="text-sm text-muted max-w-lg mx-auto leading-relaxed">{result.summary}</div>
           </Card>
 
@@ -117,6 +121,7 @@ Return JSON only (no markdown):
                       <div className="flex items-center gap-2 mb-1">
                         <Icon size={14} style={{ color: dim.color }} />
                         <div className="font-display font-bold text-sm" style={{ color: dim.color }}>{dim.label}</div>
+                        <InfoTooltip text={dim.tip} />
                       </div>
                       <div className="text-[11px] text-muted">
                         {d.score >= 70 ? 'Good — maintain and build on this' : d.score >= 50 ? 'Moderate — needs improvement' : 'Weak — priority area'}

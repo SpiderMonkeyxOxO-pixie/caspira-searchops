@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { callSerper, isSerperReady } from '@/lib/serper'
 import { useStore } from '@/store'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type ChangeType = 'up' | 'down' | 'new' | 'dropped' | 'same'
 
@@ -141,14 +142,17 @@ export function UpdateSERP() {
         <>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: 'GAINERS',  val: gainers, color: '#10b981' },
-              { label: 'LOSERS',   val: losers,  color: '#ef4444' },
-              { label: 'NEW',      val: newKws,  color: '#00d4ff' },
-              { label: 'DROPPED',  val: dropped, color: '#6b7280' },
+              { label: 'GAINERS', val: gainers, color: '#10b981', tip: 'Keywords that moved up in position since the last check. A position improvement means Google found your page more relevant.' },
+              { label: 'LOSERS',  val: losers,  color: '#ef4444', tip: 'Keywords that dropped in position since the last check. Investigate for content freshness, competitor activity, or algorithm changes.' },
+              { label: 'NEW',     val: newKws,  color: '#00d4ff', tip: 'Keywords newly appearing in your tracked results — either you just started tracking them or your page recently entered the top 100.' },
+              { label: 'DROPPED', val: dropped, color: '#6b7280', tip: 'Keywords no longer in the top 100 Google results for your domain. May indicate deindexation, penalty, or strong competitor displacement.' },
             ].map(k => (
               <Card key={k.label} className="text-center py-3">
                 <div className="text-2xl font-display font-black mb-0.5" style={{ color: k.color }}>{k.val}</div>
-                <div className="text-[9px] text-muted font-mono-jarvis tracking-widest">{k.label}</div>
+                <div className="flex items-center justify-center gap-1 text-[9px] text-muted font-mono-jarvis tracking-widest">
+                  {k.label}
+                  <InfoTooltip text={k.tip} size={10} />
+                </div>
               </Card>
             ))}
           </div>
@@ -176,9 +180,15 @@ export function UpdateSERP() {
                 <thead>
                   <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                     <th className="text-left pb-2 font-medium">KEYWORD</th>
-                    <th className="text-center pb-2 font-medium">POSITION</th>
-                    <th className="text-center pb-2 font-medium">PREV</th>
-                    <th className="text-center pb-2 font-medium">CHANGE</th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">POSITION <InfoTooltip text="Current Google ranking position for your domain. #1–3 = top results. #1–10 = page 1. '—' means not in top 100." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">PREV <InfoTooltip text="Your position at the previous SERP check. Compare with the current position to see rank movement." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">CHANGE <InfoTooltip text="Position change since last check. A positive number (green) means you moved up; negative (red) means you dropped." /></span>
+                    </th>
                     <th className="text-left pb-2 font-medium pl-4">RANKING URL</th>
                   </tr>
                 </thead>

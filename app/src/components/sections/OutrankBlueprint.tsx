@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -358,12 +359,22 @@ Rules:
                 <thead>
                   <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                     <th className="text-left pb-2 font-medium">KEYWORD</th>
-                    <th className="text-center pb-2 font-medium">VOLUME</th>
-                    <th className="text-center pb-2 font-medium">KD</th>
-                    <th className="text-center pb-2 font-medium">THEIR POS</th>
-                    <th className="text-center pb-2 font-medium">YOUR POS</th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">VOLUME <InfoTooltip text="Monthly search volume — estimated number of searches per month for this keyword in the target market." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">KD <InfoTooltip text="Keyword Difficulty (0–100) — how hard it is to rank on page 1. Below 40 is achievable; above 70 requires strong domain authority and links." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">THEIR POS <InfoTooltip text="The competitor's current ranking position for this keyword. A position of 1–3 means they dominate this keyword." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">YOUR POS <InfoTooltip text="Your site's current ranking position. '—' means you are not in the top 100 for this keyword." /></span>
+                    </th>
                     <th className="text-left pb-2 font-medium pl-4">CONTENT TYPE</th>
-                    <th className="text-center pb-2 font-medium">PRIORITY</th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">PRIORITY <InfoTooltip text="HIGH = high volume + competitor ranks, you don't — biggest opportunity. MED = moderate gap. LOW = low volume or very high difficulty." /></span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -432,7 +443,10 @@ Rules:
                 <div key={i} className="flex items-start gap-4 p-4 bg-surface border border-border rounded-xl">
                   <div className="shrink-0 text-center">
                     <div className="text-xl font-display font-black text-accent2">{l.da}</div>
-                    <div className="text-[9px] text-muted font-mono-jarvis tracking-widest">DA</div>
+                    <div className="flex items-center justify-center gap-0.5 text-[9px] text-muted font-mono-jarvis tracking-widest">
+                      DA
+                      <InfoTooltip text="Domain Authority (DA) — a 1–100 score predicting a domain's ranking strength. Higher DA = more link equity passed. Target DA 50+ for impactful links." size={10} />
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -481,8 +495,12 @@ Rules:
                 <thead>
                   <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                     <th className="text-left pb-2 font-medium">TASK</th>
-                    <th className="text-center pb-2 font-medium w-20">IMPACT</th>
-                    <th className="text-center pb-2 font-medium w-20">EFFORT</th>
+                    <th className="text-center pb-2 font-medium w-20">
+                      <span className="inline-flex items-center gap-1">IMPACT <InfoTooltip text="Estimated SEO impact if this task is completed. HIGH tasks directly affect rankings; LOW tasks provide marginal or indirect benefit." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium w-20">
+                      <span className="inline-flex items-center gap-1">EFFORT <InfoTooltip text="Estimated implementation effort. HIGH effort = developer work or content production. LOW effort = a quick copy or settings change." /></span>
+                    </th>
                     <th className="text-left pb-2 font-medium pl-4">ACTION</th>
                   </tr>
                 </thead>

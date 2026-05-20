@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type RedirectType = 301 | 302 | 307 | 410
 interface Redirect { id: string; from: string; to: string; type: RedirectType; chain: boolean; chainDepth: number }
@@ -145,14 +146,17 @@ export function RedirectManager() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'TOTAL RULES',      val: redirects.length, color: '#00d4ff' },
-          { label: 'CHAIN WARNINGS',   val: chains,           color: '#ef4444' },
-          { label: 'TEMP (302)',        val: temp302,          color: '#f59e0b' },
-          { label: 'GONE (410)',        val: gone410,          color: '#7c3aed' },
+          { label: 'TOTAL RULES',    val: redirects.length, color: '#00d4ff', tip: 'Total number of redirect rules configured. Each rule maps an old URL to a new destination.' },
+          { label: 'CHAIN WARNINGS', val: chains,           color: '#ef4444', tip: 'Redirect chains occur when the destination of one redirect is itself redirected. Chains waste crawl budget and dilute link equity — consolidate to single hops.' },
+          { label: 'TEMP (302)',     val: temp302,          color: '#f59e0b', tip: '302 Temporary redirect — tells search engines the move is temporary. PageRank is not permanently transferred. Use 301 for permanent URL changes.' },
+          { label: 'GONE (410)',     val: gone410,          color: '#7c3aed', tip: '410 Gone — signals that a page has been permanently removed with no replacement. Googlebot deindexes it faster than a 404.' },
         ].map(s => (
           <Card key={s.label} className="text-center py-4">
             <div className="text-3xl font-display font-black mb-1" style={{ color: s.color }}>{s.val}</div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{s.label}</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+              {s.label}
+              <InfoTooltip text={s.tip} />
+            </div>
           </Card>
         ))}
       </div>
@@ -176,7 +180,10 @@ export function RedirectManager() {
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">TYPE</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">
+              TYPE
+              <InfoTooltip text="301 Permanent — passes full link equity, tells Google to update its index. 302 Temporary — preserves link equity on origin. 410 Gone — permanently deleted, no replacement." />
+            </div>
             <div className="flex gap-1">
               {([301, 302, 410] as RedirectType[]).map(t => (
                 <button key={t} onClick={() => setNewType(t)}

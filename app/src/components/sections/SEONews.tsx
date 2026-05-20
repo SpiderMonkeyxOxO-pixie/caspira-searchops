@@ -5,6 +5,7 @@ import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface NewsItem {
   id:          string
@@ -199,14 +200,17 @@ export function SEONews() {
       {items.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'TOTAL ARTICLES', val: items.length,                                     color: '#00d4ff' },
-            { label: 'UNREAD',         val: unreadCount,                                      color: unreadCount > 0 ? '#f59e0b' : '#10b981' },
-            { label: 'BREAKING',       val: items.filter(i => isBreaking(i.pubTs)).length,    color: '#ef4444' },
-            { label: 'SOURCES',        val: new Set(items.map(i => i.source)).size,           color: '#7c3aed' },
+            { label: 'TOTAL ARTICLES', val: items.length,                                  color: '#00d4ff', tip: 'Total articles fetched from all SEO news sources in this refresh cycle.' },
+            { label: 'UNREAD',         val: unreadCount,                                   color: unreadCount > 0 ? '#f59e0b' : '#10b981', tip: 'Articles published since you last visited this section. Unread articles are highlighted with a coloured border.' },
+            { label: 'BREAKING',       val: items.filter(i => isBreaking(i.pubTs)).length, color: '#ef4444', tip: 'Articles published within the last 6 hours — very recent news that may indicate a live Google algorithm update or major industry event.' },
+            { label: 'SOURCES',        val: new Set(items.map(i => i.source)).size,        color: '#7c3aed', tip: 'Number of unique news sources in this feed: Google Search Central, Search Engine Land, SE Journal, SE Roundtable, Moz, Ahrefs, SEMrush.' },
           ].map(s => (
             <Card key={s.label} className="text-center py-4">
               <div className="text-2xl font-display font-black mb-1" style={{ color: s.color }}>{s.val}</div>
-              <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{s.label}</div>
+              <div className="flex items-center justify-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+                {s.label}
+                <InfoTooltip text={s.tip} />
+              </div>
             </Card>
           ))}
         </div>
@@ -291,9 +295,13 @@ export function SEONews() {
                   {unread && !breaking && !fresh && (
                     <span className="w-2 h-2 rounded-full bg-accent shrink-0" />
                   )}
-                  <Badge variant={CATEGORY_COLORS[item.category] ?? 'muted'} className="ml-auto shrink-0">
-                    {item.category}
-                  </Badge>
+                  <span className="ml-auto shrink-0 flex items-center gap-1">
+                    <Badge variant={CATEGORY_COLORS[item.category] ?? 'muted'}>
+                      {item.category}
+                    </Badge>
+                    {item.category === 'Algorithm' && <InfoTooltip text="Algorithm update — Google changed its ranking signals. Monitor your traffic and rankings closely for the next 2 weeks." size={10} side="left" />}
+                    {item.category === 'AI Search' && <InfoTooltip text="AI Search news — changes to Google AI Overviews, ChatGPT Search, Perplexity, or Gemini that affect how SEO content is cited." size={10} side="left" />}
+                  </span>
                 </div>
 
                 {/* Title */}

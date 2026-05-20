@@ -6,6 +6,7 @@ import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 
 const WORD_COUNTS = [1500, 2000, 2500, 3000]
@@ -128,25 +129,25 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
           <CardTitle>Article Brief</CardTitle>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TOPIC / TITLE</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TOPIC / TITLE <InfoTooltip text="The article topic used as the H1 heading. Make it specific and descriptive — e.g. 'Best Casino Bonuses in India 2026'." /></div>
             <input value={topic} onChange={e => setTopic(e.target.value)}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">PRIMARY KEYWORD</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">PRIMARY KEYWORD <InfoTooltip text="The main keyword to optimise for. It will be placed in the H1, first paragraph, and 2-3 subheadings." /></div>
             <input value={keyword} onChange={e => setKeyword(e.target.value)}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SECONDARY KEYWORDS</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">SECONDARY KEYWORDS <InfoTooltip text="Supporting keywords to weave naturally into subheadings and body copy. Enter one per line or comma-separated." /></div>
             <textarea value={secKws} onChange={e => setSecKws(e.target.value)} rows={2}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none" />
           </div>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">WORD COUNT</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">WORD COUNT <InfoTooltip text="Target article length. iGaming review and guide content typically performs best at 2,000–3,000 words for E-E-A-T and YMYL compliance." /></div>
             <div className="flex gap-1">
               {WORD_COUNTS.map(w => (
                 <button key={w} onClick={() => setWordCount(w)}
@@ -158,7 +159,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
           </div>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TONE</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TONE <InfoTooltip text="Writing style. 'Expert' suits review sites targeting Google's E-E-A-T; 'Conversational' works well for blog and guide content." /></div>
             <div className="grid grid-cols-2 gap-1">
               {TONES.map(t => (
                 <button key={t} onClick={() => setTone(t)}
@@ -170,7 +171,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
           </div>
 
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">CATEGORY</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">CATEGORY <InfoTooltip text="Article type. Drives the content structure — e.g. Casino Review includes operator details, bonuses, and licensing sections." /></div>
             <select value={category} onChange={e => setCategory(e.target.value as typeof CATEGORIES[number])}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
               {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -191,7 +192,9 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <Badge variant="green">{words.toLocaleString()} words</Badge>
+                  <InfoTooltip text="Actual word count of the generated article. Target range is shown by your selected Word Count option." side="bottom" />
                   <Badge variant="accent">{minutes} min read</Badge>
+                  <InfoTooltip text="Estimated reading time at 200 words per minute — useful for gauging content depth." side="bottom" />
                   <Badge variant="purple">{tone}</Badge>
                 </div>
                 <div className="flex gap-2">

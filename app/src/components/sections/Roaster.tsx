@@ -5,14 +5,15 @@ import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 
 type Intensity = 'mild' | 'medium' | 'savage'
 
-const INTENSITY: Record<Intensity, { label: string; color: string; Icon: React.ElementType }> = {
-  mild:   { label: 'Mild',   color: '#f59e0b', Icon: Thermometer },
-  medium: { label: 'Medium', color: '#ef8c34', Icon: Flame },
-  savage: { label: 'Savage', color: '#ef4444', Icon: Skull },
+const INTENSITY: Record<Intensity, { label: string; color: string; Icon: React.ElementType; tip: string }> = {
+  mild:   { label: 'Mild',   color: '#f59e0b', Icon: Thermometer, tip: 'Constructive feedback — candid about issues but focused on actionable improvements.' },
+  medium: { label: 'Medium', color: '#ef8c34', Icon: Flame,       tip: 'Direct and honest roast with sharp iGaming-specific observations and no fluff.' },
+  savage: { label: 'Savage', color: '#ef4444', Icon: Skull,       tip: 'Maximum aggression — brutally funny, painfully specific casino SEO takedowns with gambling analogies.' },
 }
 
 interface RoastResult {
@@ -76,7 +77,7 @@ Return a JSON object (no markdown):
   return (
     <div className="space-y-5">
       <Card>
-        <CardTitle className="mb-3">AI Site Roaster</CardTitle>
+        <CardTitle className="mb-3 flex items-center gap-1.5">AI Site Roaster <InfoTooltip text="JARVIS gives an honest, no-filter critique of your casino site's SEO. Scores each issue category out of 10 and provides a specific fix for each." /></CardTitle>
         <div className="flex gap-3 mb-4">
           <div className="relative flex-1">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -96,6 +97,7 @@ Return a JSON object (no markdown):
                 style={intensity === key ? { background: val.color } : {}}
               >
                 <val.Icon size={11} /> {val.label}
+                <InfoTooltip text={val.tip} />
               </button>
             ))}
           </div>
@@ -124,7 +126,7 @@ Return a JSON object (no markdown):
             <div className="text-6xl font-display font-black mb-2" style={{ color: scoreColor(result.score) }}>
               {result.score}
             </div>
-            <div className="text-[11px] text-muted font-mono-jarvis tracking-widest mb-3">SEO HEALTH SCORE</div>
+            <div className="text-[11px] text-muted font-mono-jarvis tracking-widest mb-3 flex items-center justify-center gap-1">SEO HEALTH SCORE <InfoTooltip text="Composite SEO score out of 100 based on Title Tags, Page Speed, E-E-A-T, Bonus Pages, Backlinks, and Schema. 70+ = healthy; below 50 = critical issues." /></div>
             <div className="text-sm text-tx italic max-w-xl mx-auto">"{result.headline}"</div>
           </Card>
 
@@ -132,7 +134,7 @@ Return a JSON object (no markdown):
             {result.sections.map((s, i) => (
               <Card key={i} style={{ borderColor: (s.rating < 5 ? '#ef444430' : s.rating < 7 ? '#f59e0b30' : '#10b98130') }}>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="font-display font-bold text-sm text-tx">{s.title}</div>
+                  <div className="font-display font-bold text-sm text-tx flex items-center gap-1">{s.title} <InfoTooltip text={`Category score for "${s.title}". Rated 1–10: 7+ = good, 4–6 = needs work, 1–3 = critical issue.`} /></div>
                   <RatingBar rating={s.rating} />
                 </div>
                 <p className="text-xs text-muted italic mb-3 leading-relaxed">"{s.roast}"</p>

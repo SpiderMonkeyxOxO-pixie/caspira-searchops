@@ -6,6 +6,7 @@ import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface GapItem {
   topic: string
@@ -61,16 +62,16 @@ Generate 6 realistic casino/gambling gaps (bonus pages, review content, game gui
     <div className="space-y-5">
       {/* Inputs */}
       <Card>
-        <CardTitle className="mb-4">Content Gap Finder</CardTitle>
+        <CardTitle className="mb-4 flex items-center gap-1.5">Content Gap Finder <InfoTooltip text="A content gap is a topic your competitors rank for in Google but your site does not. Filling these gaps captures traffic you're currently missing." /></CardTitle>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {[
-            { label: 'YOUR DOMAIN', value: own,   onChange: setOwn,   placeholder: 'casinosite.com' },
-            { label: 'COMPETITOR 1', value: c1,   onChange: setC1,    placeholder: 'casino.org' },
-            { label: 'COMPETITOR 2', value: c2,   onChange: setC2,    placeholder: 'gambling.com' },
-            { label: 'NICHE/TOPIC',  value: niche, onChange: setNiche, placeholder: 'e.g. casino bonus' },
+            { label: 'YOUR DOMAIN', value: own,   onChange: setOwn,   placeholder: 'casinosite.com', tip: 'Your casino or affiliate site domain. Used as the baseline — the AI identifies topics competitors cover that you do not.' },
+            { label: 'COMPETITOR 1', value: c1,   onChange: setC1,    placeholder: 'casino.org',     tip: 'A direct competitor domain. The AI checks what topics they rank for that your site is missing.' },
+            { label: 'COMPETITOR 2', value: c2,   onChange: setC2,    placeholder: 'gambling.com',   tip: 'A second competitor domain for a wider gap analysis across multiple rivals.' },
+            { label: 'NICHE/TOPIC',  value: niche, onChange: setNiche, placeholder: 'e.g. casino bonus', tip: 'The content niche to focus the gap analysis on — e.g. "casino bonus", "live casino", "sports betting".' },
           ].map(f => (
             <div key={f.label}>
-              <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">{f.label}</div>
+              <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">{f.label} <InfoTooltip text={f.tip} /></div>
               <input value={f.value} onChange={e => f.onChange(e.target.value)}
                 placeholder={f.placeholder}
                 className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors"
@@ -93,13 +94,13 @@ Generate 6 realistic casino/gambling gaps (bonus pages, review content, game gui
               <CardTitle className="mb-3">Gap Summary</CardTitle>
               <div className="grid grid-cols-3 gap-3 mb-4">
                 {[
-                  { label:'HIGH OPP.',  val: gaps.filter(g=>g.opportunity==='HIGH').length, color:'#10b981' },
-                  { label:'MED OPP.',   val: gaps.filter(g=>g.opportunity==='MED').length,  color:'#f59e0b' },
-                  { label:'TOTAL GAPS', val: gaps.length,                                   color:'#00d4ff' },
+                  { label:'HIGH OPP.',  val: gaps.filter(g=>g.opportunity==='HIGH').length, color:'#10b981', tip: 'Keyword gaps with KD < 35 — easiest to win quickly with new content.' },
+                  { label:'MED OPP.',   val: gaps.filter(g=>g.opportunity==='MED').length,  color:'#f59e0b', tip: 'Medium-difficulty gaps worth targeting once high-opportunity topics are covered.' },
+                  { label:'TOTAL GAPS', val: gaps.length,                                   color:'#00d4ff', tip: 'Total number of content gap topics identified across your competitors.' },
                 ].map(s => (
                   <div key={s.label} className="bg-surface border border-border rounded-xl p-3 text-center">
                     <div className="text-2xl font-display font-black" style={{ color:s.color }}>{s.val}</div>
-                    <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mt-1">{s.label}</div>
+                    <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mt-1 flex items-center justify-center gap-1">{s.label} <InfoTooltip text={s.tip} /></div>
                   </div>
                 ))}
               </div>
@@ -126,8 +127,11 @@ Generate 6 realistic casino/gambling gaps (bonus pages, review content, game gui
                     <div className="font-semibold text-sm text-tx mb-1">{g.topic}</div>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono-jarvis text-accent">{g.vol}/mo</span>
+                      <InfoTooltip text="Estimated monthly search volume for this keyword gap." side="bottom" />
                       <span className="text-[10px] text-muted">KD {g.kd}</span>
+                      <InfoTooltip text="Keyword Difficulty (0–100). Lower KD means easier to rank for. Gaps with KD < 35 are HIGH opportunity." side="bottom" />
                       <Badge variant={OPP_COLOR[g.opportunity]}>{g.opportunity}</Badge>
+                      <InfoTooltip text="Opportunity rating: HIGH = KD < 35 (quick wins), MED = moderate difficulty, LOW = very competitive." side="bottom" />
                     </div>
                   </div>
                   <Button variant="ghost" className="text-[11px] py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">

@@ -3,6 +3,7 @@ import { Sparkles, Info, ShoppingCart, FileText, Navigation, ChevronRight, Alert
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { callAI, isAIReady, getActiveProvider } from '@/lib/ai'
 import { downloadCSV } from '@/lib/csv'
 
@@ -144,7 +145,7 @@ Intent definitions:
   return (
     <div className="space-y-5">
       <Card>
-        <CardTitle className="mb-1">Intent Analyzer</CardTitle>
+        <CardTitle className="mb-1 flex items-center gap-1.5">Intent Analyzer <InfoTooltip text="Classifies each keyword by search intent (Info / Commercial / Transactional / Navigational) so you know what type of content to produce before writing." /></CardTitle>
         <p className="text-sm text-muted mb-4">
           Paste any keyword list to classify search intent and get content format recommendations.
           Tells your writers exactly what to produce before they write a word.
@@ -197,7 +198,7 @@ Intent definitions:
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Chart */}
             <Card>
-              <CardTitle className="mb-4">Intent Breakdown</CardTitle>
+              <CardTitle className="mb-4 flex items-center gap-1.5">Intent Breakdown <InfoTooltip text="Distribution of your keyword list across the four intent categories. A healthy iGaming site targets a mix of all four — heavy Trans bias indicates thin content risk." /></CardTitle>
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={chartData} layout="vertical" margin={{ left: 4, right: 24 }}>
                   <XAxis type="number" hide />
@@ -237,7 +238,7 @@ Intent definitions:
 
             {/* Strategy insights */}
             <Card className="lg:col-span-2">
-              <CardTitle className="mb-3">Content Strategy</CardTitle>
+              <CardTitle className="mb-3 flex items-center gap-1.5">Content Strategy <InfoTooltip text="Recommended content format and word count for each intent group in your keyword list. Use this as a brief for your writers." /></CardTitle>
               <div className="grid grid-cols-2 gap-3">
                 {chartData.map(d => {
                   const Icon = INTENT_ICON[d.intent as Intent]
@@ -248,11 +249,13 @@ Intent definitions:
                         <span className="font-semibold text-sm text-tx">{d.intent}</span>
                         <span className="text-[10px] font-mono-jarvis text-muted ml-auto">{d.count} kws · {d.pct}%</span>
                       </div>
-                      <div className="text-[11px] text-muted leading-relaxed">
+                      <div className="text-[11px] text-muted leading-relaxed flex items-center gap-1">
                         Format: <span className="text-tx">{FORMAT_MAP[d.intent as Intent][0]}</span>
+                        <InfoTooltip text="The recommended content format for this intent. Matching format to intent improves CTR and reduces bounce rate." />
                       </div>
-                      <div className="text-[11px] text-muted">
+                      <div className="text-[11px] text-muted flex items-center gap-1">
                         Words: <span className="text-tx">{WC_MAP[d.intent as Intent]}</span>
+                        <InfoTooltip text="Suggested word count range. Going significantly under may signal thin content to Google." />
                       </div>
                     </div>
                   )
@@ -284,10 +287,18 @@ Intent definitions:
                 <thead>
                   <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                     <th className="text-left pb-2 font-medium">KEYWORD</th>
-                    <th className="text-center pb-2 font-medium">INTENT</th>
-                    <th className="text-center pb-2 font-medium w-36">CONFIDENCE</th>
-                    <th className="text-left pb-2 font-medium pl-4">RECOMMENDED FORMAT</th>
-                    <th className="text-right pb-2 font-medium">WORD COUNT</th>
+                    <th className="text-center pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1">INTENT <InfoTooltip text="Search intent: Info = user wants to learn; Comm = comparing options; Trans = ready to convert; Nav = looking for a specific brand." /></span>
+                    </th>
+                    <th className="text-center pb-2 font-medium w-36">
+                      <span className="inline-flex items-center gap-1">CONFIDENCE <InfoTooltip text="How confident the classifier is in the intent label (50–99%). Higher = clearer keyword signal." /></span>
+                    </th>
+                    <th className="text-left pb-2 font-medium pl-4">
+                      <span className="inline-flex items-center gap-1">RECOMMENDED FORMAT <InfoTooltip text="The content format best suited to this intent — matches user expectations and Google's preferred result type." /></span>
+                    </th>
+                    <th className="text-right pb-2 font-medium">
+                      <span className="inline-flex items-center gap-1 justify-end">WORD COUNT <InfoTooltip text="Suggested article length based on intent. Trans pages need less copy; Comm comparison pages need more depth." side="left" /></span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

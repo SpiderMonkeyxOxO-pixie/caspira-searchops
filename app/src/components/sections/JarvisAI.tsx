@@ -5,6 +5,7 @@ import { callAI, callAIWithImage, isAIReady, getActiveProvider, type ImageAttach
 import { useStore } from '@/store'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 
 type JarvisMode = 'white' | 'gray' | 'black'
@@ -239,7 +240,10 @@ export function JarvisAI() {
 
       {/* ── Mode selector ── */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">STRATEGY MODE</span>
+        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">
+          STRATEGY MODE
+          <InfoTooltip text="Controls how aggressive Jarvis's SEO advice is. White-hat = Google-safe only; Gray-hat = calculated risk; Black-hat = maximum aggression with no restrictions." />
+        </span>
         <div className="flex gap-1 p-1 bg-surface border border-border rounded-xl">
           {(Object.keys(MODE_META) as JarvisMode[]).map((m) => {
             const cfg = MODE_META[m]

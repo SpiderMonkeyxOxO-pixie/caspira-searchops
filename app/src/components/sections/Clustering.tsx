@@ -5,6 +5,7 @@ import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 
 interface Cluster {
@@ -68,9 +69,9 @@ Use these colors in order: ${COLORS.join(', ')}`,
   }
 
   const MODES = [
-    { id: 'topic',  label: 'By Topic' },
-    { id: 'intent', label: 'By Intent' },
-    { id: 'funnel', label: 'By Funnel' },
+    { id: 'topic',  label: 'By Topic',  tip: 'Groups keywords by semantic topic similarity. Best for building topic clusters and pillar pages.' },
+    { id: 'intent', label: 'By Intent', tip: 'Groups by search intent (Info / Commercial / Transactional / Navigational). Helps match content type to user goal.' },
+    { id: 'funnel', label: 'By Funnel', tip: 'Groups by funnel stage: TOFU (awareness), MOFU (consideration), BOFU (conversion). Useful for planning content across the buyer journey.' },
   ] as const
 
   return (
@@ -78,14 +79,14 @@ Use these colors in order: ${COLORS.join(', ')}`,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Input */}
         <Card className="lg:col-span-1">
-          <CardTitle className="mb-3">Keyword Clustering Engine</CardTitle>
+          <CardTitle className="mb-3 flex items-center gap-1.5">Keyword Clustering Engine <InfoTooltip text="Groups your keywords into semantic clusters so you can build topic-authoritative content. Each cluster maps to one pillar page and its supporting posts." /></CardTitle>
           <div className="flex gap-1 mb-3">
             {MODES.map(m => (
               <button key={m.id} onClick={() => setMode(m.id)}
-                className={cn('flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all',
+                className={cn('flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all flex items-center justify-center gap-1',
                   mode === m.id ? 'bg-accent text-black' : 'border border-border text-muted hover:border-accent'
                 )}
-              >{m.label}</button>
+              >{m.label} <InfoTooltip text={m.tip} /></button>
             ))}
           </div>
           <textarea
@@ -119,18 +120,23 @@ Use these colors in order: ${COLORS.join(', ')}`,
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ background: c.color }} />
                     <div className="flex-1 text-left">
                       <div className="font-display font-bold text-sm" style={{ color: c.color }}>{c.name}</div>
-                      <div className="text-[11px] text-muted">{c.keywords.length} keywords · {c.pillar}</div>
+                      <div className="text-[11px] text-muted flex items-center gap-1">
+                        <span>{c.keywords.length} keywords</span>
+                        <InfoTooltip text="Number of keywords in this cluster. Larger clusters indicate a broad topic with more content opportunities." side="right" />
+                        <span>· {c.pillar}</span>
+                      </div>
                     </div>
                     <Badge variant={c.intent === 'Info' ? 'accent' : c.intent === 'Trans' ? 'green' : 'purple'}>
                       {c.intent}
                     </Badge>
+                    <InfoTooltip text="Dominant search intent for this cluster. Info = educational content; Comm = comparison pages; Trans = conversion-focused landing pages; Nav = brand pages." side="left" />
                     <span className="text-muted">{expanded.has(i) ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}</span>
                   </button>
 
                   {expanded.has(i) && (
                     <div className="px-4 pb-4">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">PILLAR PAGE</div>
+                        <div className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">PILLAR PAGE <InfoTooltip text="The suggested pillar (hub) page title that covers this topic cluster broadly. Supporting cluster keywords become internal links into this page." /></div>
                         <button onClick={() => copyCluster(c)} className="text-[11px] text-muted hover:text-accent flex items-center gap-1 cursor-pointer transition-colors">
                           <Copy size={11} /> Copy all
                         </button>

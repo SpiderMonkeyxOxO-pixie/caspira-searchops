@@ -5,6 +5,7 @@ import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface CategoryScore { label: string; score: number; max: number; color: string }
 interface Issue { severity: 'critical' | 'warning' | 'info' | 'pass'; message: string; suggestion: string }
@@ -102,12 +103,12 @@ Return JSON:
         <Card className="lg:col-span-2 space-y-3">
           <CardTitle>Content Grader</CardTitle>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TARGET KEYWORD</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TARGET KEYWORD <InfoTooltip text="The primary keyword the article should rank for. Used to evaluate keyword placement, density, and optimisation." /></div>
             <input value={keyword} onChange={e => setKeyword(e.target.value)}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">PASTE ARTICLE</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">PASTE ARTICLE <InfoTooltip text="Paste the full article text. Only the first 3,000 characters are sent for grading — ensure your intro and headings are near the top." /></div>
             <textarea value={text} onChange={e => setText(e.target.value)} rows={14}
               placeholder="Paste your casino article here…"
               className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
@@ -125,7 +126,12 @@ Return JSON:
             {/* Score + categories */}
             <Card>
               <div className="flex items-center gap-6 mb-4">
-                <ScoreRing score={result.overall} />
+                <div className="relative">
+                  <ScoreRing score={result.overall} />
+                  <div className="absolute -top-1 -right-1">
+                    <InfoTooltip text="Overall content score out of 100. Combines Structure, Keyword Optimisation, Readability, E-E-A-T, and Internal Linking. Aim for 70+ for competitive iGaming SERPs." side="right" />
+                  </div>
+                </div>
                 <div className="flex-1">
                   <div className="font-display font-black text-xl text-tx mb-1">
                     {result.overall >= 70 ? 'Good' : result.overall >= 45 ? 'Needs Work' : 'Poor'} Content Quality
@@ -141,10 +147,18 @@ Return JSON:
                 </div>
               </div>
               <div className="space-y-2.5">
-                {result.categories.map(cat => (
+                {result.categories.map(cat => {
+                  const CAT_TIPS: Record<string, string> = {
+                    'Structure & Headings':    'Evaluates H1/H2/H3 hierarchy, heading keyword inclusion, and section organisation. Max 20 pts.',
+                    'Keyword Optimisation':    'Checks keyword density, placement in title, intro, and subheadings, and avoidance of over-optimisation. Max 25 pts.',
+                    'Readability':             'Assesses sentence length, paragraph structure, active voice, and overall readability score. Max 20 pts.',
+                    'E-E-A-T Signals':         'Looks for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL iGaming content. Max 20 pts.',
+                    'Internal Linking':        'Counts contextual internal links to related casino pages, pillar content, and responsible gambling resources. Max 15 pts.',
+                  }
+                  return (
                   <div key={cat.label}>
                     <div className="flex justify-between text-[11px] mb-1">
-                      <span className="text-tx">{cat.label}</span>
+                      <span className="text-tx flex items-center gap-1">{cat.label} <InfoTooltip text={CAT_TIPS[cat.label] ?? cat.label} /></span>
                       <span className="font-mono-jarvis" style={{ color: cat.color }}>{cat.score}/{cat.max}</span>
                     </div>
                     <div className="h-2 bg-border rounded-full overflow-hidden">
@@ -152,7 +166,8 @@ Return JSON:
                         style={{ width: `${(cat.score / cat.max) * 100}%`, background: cat.color }} />
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </Card>
 

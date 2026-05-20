@@ -5,6 +5,7 @@ import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 
 interface MetaRow {
@@ -83,7 +84,10 @@ Return JSON only:
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-1">
           <CardTitle className="mb-3">Bulk Meta Writer</CardTitle>
-          <div className="text-[11px] text-muted mb-3">Format: /url | Page Title | Target Keyword</div>
+          <div className="text-[11px] text-muted mb-3 flex items-center gap-1">
+            Format: /url | Page Title | Target Keyword
+            <InfoTooltip text="Enter one page per line. Each line must follow the format: /url-path | Existing Page Title | Target Keyword. The AI uses all three values to write optimised meta tags." />
+          </div>
 
           <div className="flex flex-col gap-1 mb-3">
             {TONES.map(t => (
@@ -145,7 +149,7 @@ Return JSON only:
               <div className="space-y-2">
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">TITLE</span>
+                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">TITLE <InfoTooltip text="Meta title shown in Google SERPs. Ideal length is 50–60 characters. Green = optimal, amber = near limit, red = truncated by Google." /></span>
                     <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.titleLen, 60))}>
                       {r.titleLen}/60
                     </span>
@@ -156,7 +160,7 @@ Return JSON only:
                 </div>
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">DESCRIPTION</span>
+                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">DESCRIPTION <InfoTooltip text="Meta description shown below the title in SERPs. Target 140–155 characters. Longer descriptions get cut off with an ellipsis." /></span>
                     <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.descLen, 155))}>
                       {r.descLen}/155
                     </span>

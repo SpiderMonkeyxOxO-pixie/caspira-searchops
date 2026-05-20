@@ -456,6 +456,11 @@ export function GA4() {
         }),
       ])
 
+      if (coreRes.error)       throw new Error(coreRes.error.message)
+      if (coreRes.data?.error) throw new Error(coreRes.data.error)
+      if (extRes.error)        throw new Error(extRes.error.message)
+      if (extRes.data?.error)  throw new Error(extRes.data.error)
+
       const core = (coreRes.data?.reports ?? []) as (RawReport | null)[]
       const ext  = (extRes.data?.reports  ?? []) as (RawReport | null)[]
 

@@ -155,7 +155,7 @@ serve(async (req) => {
     console.error('[ga4-proxy]', msg)
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } },
+      { headers: { ...cors, 'Content-Type': 'application/json' } },
     )
   }
 })

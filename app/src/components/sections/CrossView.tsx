@@ -162,8 +162,10 @@ export function CrossView() {
         }),
       ])
 
-      if (gscRes.error) throw new Error(gscRes.error.message)
-      if (ga4Res.error) throw new Error(ga4Res.error.message)
+      if (gscRes.error)       throw new Error(gscRes.error.message)
+      if (gscRes.data?.error) throw new Error(gscRes.data.error)
+      if (ga4Res.error)       throw new Error(ga4Res.error.message)
+      if (ga4Res.data?.error) throw new Error(ga4Res.data.error)
 
       // Parse GSC rows
       type GscRow = { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }

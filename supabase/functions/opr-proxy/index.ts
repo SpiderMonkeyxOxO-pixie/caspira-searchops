@@ -42,7 +42,7 @@ serve(async (req) => {
     const { domain, apiKey } = await req.json()
     if (!domain || !apiKey) {
       return new Response(JSON.stringify({ error: 'domain and apiKey required' }), {
-        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 

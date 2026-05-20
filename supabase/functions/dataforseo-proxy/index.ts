@@ -14,14 +14,14 @@ serve(async (req) => {
 
     if (!credentials || !endpoint) {
       return new Response(JSON.stringify({ error: 'credentials and endpoint required' }), {
-        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 
     const colonIdx = credentials.indexOf(':')
     if (colonIdx === -1) {
       return new Response(JSON.stringify({ error: 'credentials must be login:password format' }), {
-        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+        headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
 

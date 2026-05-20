@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  Search, AlertTriangle, CheckCircle, XCircle, Loader2,
+  Search, CheckCircle, XCircle, Loader2,
   RefreshCw, ChevronDown, ChevronUp, ExternalLink, FileText, Download,
   Clock, History, Globe, Eye, Trash2, ChevronLeft, ChevronRight,
 } from 'lucide-react'

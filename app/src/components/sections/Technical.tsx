@@ -143,15 +143,6 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-function Metric({ label, val, unit, target, good }: { label: string; val: number; unit: string; target: number; good: boolean }) {
-  return (
-    <div className="bg-surface border border-border rounded-xl p-3 text-center">
-      <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1">{label}</div>
-      <div className={cn('text-xl font-display font-black', good ? 'text-accent3' : 'text-danger')}>{val}{unit}</div>
-      <div className="text-[10px] text-muted mt-0.5">target &lt;{target}{unit}</div>
-    </div>
-  )
-}
 
 function savingsLabel(opp: Opportunity): string {
   if (opp.savingsMs >= 100) return opp.savingsMs >= 1000 ? `${(opp.savingsMs / 1000).toFixed(1)}s saved` : `${opp.savingsMs}ms saved`

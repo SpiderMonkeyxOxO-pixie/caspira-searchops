@@ -12,7 +12,7 @@ interface Props {
 
 export function InfoTooltip({ text, size = 12, side = 'top', width = 'w-52', className }: Props) {
   const [show, setShow] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   function open()  { clearTimeout(timer.current); setShow(true) }
   function close() { timer.current = setTimeout(() => setShow(false), 120) }

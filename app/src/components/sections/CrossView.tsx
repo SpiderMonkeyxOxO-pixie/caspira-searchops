@@ -63,7 +63,7 @@ function matchGscSite(domain: string, sites: string[]): string | undefined {
   })
 }
 
-function SortBtn({ col, active, dir, onClick }: { col: string; active: boolean; dir: 'asc'|'desc'; onClick: () => void }) {
+function SortBtn({ col: _col, active, dir, onClick }: { col: string; active: boolean; dir: 'asc'|'desc'; onClick: () => void }) {
   return (
     <button onClick={onClick} className="ml-0.5 cursor-pointer hover:text-accent transition-colors">
       {active
@@ -332,7 +332,7 @@ export function CrossView() {
                 <InfoTooltip text="Each row is a page ranked in Google. GSC columns show search visibility; GA4 columns show what visitors actually do. The Efficiency score is sessions ÷ clicks — low values mean clicks aren't turning into tracked sessions." />
               </CardTitle>
               <div className="flex items-center gap-3 mt-1 text-[10px] font-mono-jarvis">
-                <span className="flex items-center gap-1 text-accent3"><span className="w-1.5 h-1.5 rounded-full bg-accent3" /> GSC: {gscConn.selected_site || gscConn.available_sites?.[0]}</span>
+                <span className="flex items-center gap-1 text-accent3"><span className="w-1.5 h-1.5 rounded-full bg-accent3" /> GSC: {gscConn?.selected_site || gscConn?.available_sites?.[0]}</span>
                 <span className="text-muted">·</span>
                 <span className="flex items-center gap-1 text-accent"><span className="w-1.5 h-1.5 rounded-full bg-accent" /> GA4: {ga4Conn.property_name || ga4Conn.property_id}</span>
               </div>

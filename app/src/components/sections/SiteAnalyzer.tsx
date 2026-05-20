@@ -40,6 +40,15 @@ interface CrawlPage {
   canonical: string | null; is_noindex: boolean
   word_count: number; img_total: number; img_no_alt: number
   issues: Issue[]
+  // enhanced fields (may be null on older crawls)
+  response_time: number | null
+  html_size: number | null
+  crawl_depth: number | null
+  inbound_links: number | null
+  has_schema: boolean | null
+  has_og_tags: boolean | null
+  redirect_detected: boolean | null
+  h2_count: number | null
 }
 
 type SeverityFilter = 'all' | 'high' | 'med' | 'low'
@@ -223,8 +232,8 @@ export function SiteAnalyzer() {
     const site = job?.site_url ?? 'site'
     const date = new Date().toISOString().slice(0, 10)
     downloadCSV(`site-pages-${site.replace(/^https?:\/\//, '')}-${date}.csv`,
-      ['URL', 'Status Code', 'Title', 'Title Length', 'H1 Count', 'Word Count', 'Issues', 'Noindex'],
-      pages.map(p => [p.url, p.status_code, p.title ?? '', p.title_len, p.h1_count, p.word_count, p.issues.length, p.is_noindex ? 'Yes' : 'No']),
+      ['URL', 'Status', 'Title', 'Title Len', 'H1', 'H2', 'Words', 'Speed (ms)', 'Depth', 'Links In', 'Schema', 'OG Tags', 'Noindex', 'Issues'],
+      pages.map(p => [p.url, p.status_code, p.title ?? '', p.title_len, p.h1_count, p.h2_count ?? '', p.word_count, p.response_time ?? '', p.crawl_depth ?? '', p.inbound_links ?? '', p.has_schema ? 'Yes' : 'No', p.has_og_tags ? 'Yes' : 'No', p.is_noindex ? 'Yes' : 'No', p.issues.length]),
     )
   }
 
@@ -712,8 +721,8 @@ export function SiteAnalyzer() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border text-left">
-                      {['URL','Status','Title','H1','Words','Issues'].map(h => (
-                        <th key={h} className="pb-2 pr-4 font-mono-jarvis text-[10px] text-muted tracking-widest">{h}</th>
+                      {['URL','Status','Title','H1','Words','Speed','Depth','Links In','Issues'].map(h => (
+                        <th key={h} className="pb-2 pr-4 font-mono-jarvis text-[10px] text-muted tracking-widest whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -747,11 +756,30 @@ export function SiteAnalyzer() {
                             {p.word_count}
                           </span>
                         </td>
+                        <td className="py-2 pr-4 whitespace-nowrap">
+                          {p.response_time != null ? (
+                            <span className={p.response_time > 3000 ? 'text-danger' : p.response_time > 1500 ? 'text-amber-400' : 'text-accent3'}>
+                              {p.response_time > 999 ? `${(p.response_time/1000).toFixed(1)}s` : `${p.response_time}ms`}
+                            </span>
+                          ) : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {p.crawl_depth != null
+                            ? <span className="text-muted">{p.crawl_depth}</span>
+                            : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="py-2 pr-4">
+                          {p.inbound_links != null ? (
+                            <span className={p.inbound_links === 0 ? 'text-danger' : 'text-muted'}>
+                              {p.inbound_links}
+                            </span>
+                          ) : <span className="text-muted">—</span>}
+                        </td>
                         <td className="py-2">
                           {p.issues.length === 0 ? (
                             <CheckCircle size={13} className="text-accent3" />
                           ) : (
-                            <div className="flex gap-1">
+                            <div className="flex gap-1 items-center">
                               {p.issues.some(i => i.severity === 'high') && <span className="w-2 h-2 rounded-full bg-danger" />}
                               {p.issues.some(i => i.severity === 'med')  && <span className="w-2 h-2 rounded-full bg-amber-400" />}
                               {p.issues.some(i => i.severity === 'low')  && <span className="w-2 h-2 rounded-full bg-muted" />}

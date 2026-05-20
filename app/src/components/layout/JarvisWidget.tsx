@@ -69,7 +69,7 @@ function MessageContent({ content }: { content: string }) {
 }
 
 export function JarvisWidget() {
-  const { activeSection, setSection, domain, jarvisMode, setJarvisMode } = useStore()
+  const { activeSection, setSection, domain, jarvisMode, setJarvisMode, setSettingsOpen } = useStore()
   const ready = isAIReady()
 
   const modeColor = MODE_COLOR[jarvisMode]
@@ -338,8 +338,8 @@ export function JarvisWidget() {
                 {!ready && (
                   <div className="text-[10px] text-muted mt-1.5 text-center font-mono-jarvis">
                     No AI key —{' '}
-                    <button onClick={() => setSection('onboarding')} className="text-accent hover:underline cursor-pointer">
-                      add one in Onboarding
+                    <button onClick={() => setSettingsOpen(true)} className="text-accent hover:underline cursor-pointer">
+                      add one in Settings
                     </button>
                   </div>
                 )}

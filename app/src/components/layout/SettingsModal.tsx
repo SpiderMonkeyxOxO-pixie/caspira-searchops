@@ -36,6 +36,7 @@ function KeyInput({
 
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const {
+    aiProvider, setAiProvider,
     anthropicKey, setAnthropicKey,
     geminiKey, setGeminiKey,
     psiKey, setPsiKey,
@@ -48,6 +49,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     serperKeys, setSerperKeys,
   } = useStore()
 
+  const [providerInput,     setProviderInput]     = useState(aiProvider)
   const [urlInput,          setUrlInput]          = useState(backendUrl)
   const [keyInput,          setKeyInput]          = useState(backendKey)
   const [googleInput,       setGoogleInput]       = useState(googleClientId)
@@ -73,6 +75,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const backendChanged = urlInput.trim() !== backendUrl || keyInput.trim() !== backendKey
 
   function handleSave() {
+    setAiProvider(providerInput)
     setAnthropicKey(anthropicInput.trim())
     setGeminiKey(geminiInput.trim())
     setOpenRouterKey(openRouterInput.trim())
@@ -179,7 +182,33 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
           {/* ── AI Keys ── */}
           <div className="pb-6 border-b border-border">
-            <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-4 font-semibold">AI PROVIDERS</div>
+            <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-3 font-semibold">AI PROVIDERS</div>
+
+            {/* Active provider toggle */}
+            <div className="mb-4">
+              <label className="text-[11px] tracking-widest text-muted font-mono-jarvis block mb-1.5">ACTIVE PROVIDER</label>
+              <div className="flex gap-2">
+                {(['openrouter', 'anthropic'] as const).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setProviderInput(p)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-mono-jarvis border transition-colors ${
+                      providerInput === p
+                        ? 'bg-accent/10 border-accent text-accent'
+                        : 'bg-surface border-border text-muted hover:text-tx'
+                    }`}
+                  >
+                    {p === 'openrouter' ? 'OpenRouter (free models ✓)' : 'Anthropic (Claude)'}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted mt-1">
+                {providerInput === 'openrouter'
+                  ? 'Jarvis AI will use your OpenRouter key — free models available'
+                  : 'Jarvis AI will use your Anthropic key — Claude Sonnet 4.6'}
+              </div>
+            </div>
 
             <KeyInput
               label="ANTHROPIC API KEY"

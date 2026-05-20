@@ -143,7 +143,7 @@ function MessageContent({ content }: { content: string }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function JarvisAI() {
-  const { domain, setSection, aiProvider, jarvisMode, setJarvisMode } = useStore()
+  const { domain, setSection, aiProvider, jarvisMode, setJarvisMode, setSettingsOpen } = useStore()
   const ready = isAIReady()
   const provider = getActiveProvider()
   const providerLabel = provider === 'openrouter' ? 'OpenRouter' : 'Claude Sonnet'
@@ -228,8 +228,8 @@ export function JarvisAI() {
         <div className="text-sm text-muted max-w-xs">
           Add an <strong>OpenRouter</strong> (free models available) or <strong>Anthropic</strong> API key in Onboarding to unlock AI-powered iGaming SEO strategy.
         </div>
-        <Button variant="primary" onClick={() => setSection('onboarding')}>
-          Add API Key
+        <Button variant="primary" onClick={() => setSettingsOpen(true)}>
+          Add API Key in Settings
         </Button>
       </div>
     )

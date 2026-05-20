@@ -93,12 +93,11 @@ const SECTION_TITLES: Record<string, string> = {
 }
 
 export function TopBar() {
-  const { activeSection, domain, setDomain, setSection, sites, anthropicKey, theme, setTheme, newsUnreadCount } = useStore()
-  const [settingsOpen,  setSettingsOpen]  = useState(false)
+  const { activeSection, domain, setDomain, setSection, sites, openRouterKey, anthropicKey, aiProvider, theme, setTheme, newsUnreadCount, settingsOpen, setSettingsOpen } = useStore()
   const [exporting,     setExporting]     = useState(false)
   const [switcherOpen,  setSwitcherOpen]  = useState(false)
   const switcherRef = useRef<HTMLDivElement>(null)
-  const aiReady = !!anthropicKey
+  const aiReady = aiProvider === 'openrouter' ? !!openRouterKey : !!anthropicKey
 
   // Close dropdown on outside click
   useEffect(() => {

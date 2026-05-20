@@ -84,6 +84,8 @@ interface JarvisState {
   setTheme: (t: 'dark' | 'light' | 'auto') => void
   setDensity: (d: 'default' | 'compact') => void
   setSidebarCollapsed: (v: boolean) => void
+  settingsOpen: boolean
+  setSettingsOpen: (v: boolean) => void
 
   // Data
   sites: Site[]
@@ -164,6 +166,8 @@ export const useStore = create<JarvisState>()(
       setTheme: (theme) => set({ theme }),
       setDensity: (density) => set({ density }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      settingsOpen: false,
+      setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
 
       sites: [],
       tasks: [],

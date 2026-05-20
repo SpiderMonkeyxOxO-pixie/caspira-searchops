@@ -379,7 +379,7 @@ export function GA4() {
         // Batch 1: trend, channels, pages, KPIs
         supabase.functions.invoke('ga4-proxy', {
           body: {
-            org_id, property_id: propertyId, mode: 'batchRunReports',
+            org_id: orgId, property_id: propertyId, mode: 'batchRunReports',
             reports: [
               {
                 dateRanges: dr,
@@ -415,7 +415,7 @@ export function GA4() {
         // Batch 2: geo, tech, events
         supabase.functions.invoke('ga4-proxy', {
           body: {
-            org_id, property_id: propertyId, mode: 'batchRunReports',
+            org_id: orgId, property_id: propertyId, mode: 'batchRunReports',
             reports: [
               {
                 dateRanges: dr,

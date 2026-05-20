@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react'
-import { ClipboardList, RefreshCw, ChevronDown, User2, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { NAV } from '@/lib/nav'
 import { cn } from '@/lib/utils'
 
-// Build label + icon lookup from NAV config
 const SECTION_META: Record<string, { label: string; icon: React.ElementType }> = {}
 for (const group of NAV) {
   for (const item of group.items) {
@@ -21,48 +19,31 @@ interface LogEntry {
   expires_at: string
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const s = Math.floor(diff / 1000)
-  if (s < 60) return 'just now'
-  const m = Math.floor(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  return `${Math.floor(h / 24)}d ago`
+function fmtTimestamp(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 function expiresIn(iso: string): string {
   const diff = new Date(iso).getTime() - Date.now()
-  if (diff <= 0) return 'expired'
+  if (diff <= 0) return 'EXPIRED'
   const h = Math.floor(diff / 3_600_000)
   const m = Math.floor((diff % 3_600_000) / 60_000)
-  if (h === 0) return `${m}m`
-  return `${h}h ${m}m`
+  return h === 0 ? `${m}m` : `${h}h ${m}m`
 }
 
-function avatarColor(email: string): string {
-  const colors = [
-    'bg-accent/20 text-accent',
-    'bg-accent2/20 text-accent2',
-    'bg-accent3/20 text-accent3',
-    'bg-accent4/20 text-accent4',
-    'bg-danger/20 text-danger',
-  ]
-  let hash = 0
-  for (let i = 0; i < email.length; i++) hash = (hash * 31 + email.charCodeAt(i)) & 0xffffffff
-  return colors[Math.abs(hash) % colors.length]
+function Cursor() {
+  return <span className="inline-block w-2 h-3.5 bg-[#00ff41] animate-pulse align-middle ml-0.5" />
 }
 
 export function ActivityLogs() {
   const { org } = useAuthStore()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [filterSection, setFilterSection] = useState<string>('all')
-  const [filterUser, setFilterUser] = useState<string>('all')
+  const [grep, setGrep] = useState('')
   const [, setTick] = useState(0)
 
-  // Re-render every minute so relative times stay fresh
   useEffect(() => {
     const id = setInterval(() => setTick(t => t + 1), 60_000)
     return () => clearInterval(id)
@@ -84,7 +65,6 @@ export function ActivityLogs() {
 
   useEffect(() => {
     fetchLogs()
-
     if (!org) return
     const channel = supabase
       .channel(`activity-logs-${org.id}`)
@@ -97,175 +77,189 @@ export function ActivityLogs() {
         setLogs(prev => [payload.new as LogEntry, ...prev].slice(0, 500))
       })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [org?.id])
 
-  const uniqueUsers = [...new Set(logs.map(l => l.user_email).filter(Boolean))] as string[]
+  const uniqueUsers    = [...new Set(logs.map(l => l.user_email).filter(Boolean))] as string[]
   const uniqueSections = [...new Set(logs.map(l => l.section))]
-  const isFiltered = filterSection !== 'all' || filterUser !== 'all'
 
   const filtered = logs.filter(l => {
-    if (filterSection !== 'all' && l.section !== filterSection) return false
-    if (filterUser !== 'all' && l.user_email !== filterUser) return false
-    return true
+    if (!grep.trim()) return true
+    const q = grep.toLowerCase()
+    return (
+      l.user_email?.toLowerCase().includes(q) ||
+      l.section.toLowerCase().includes(q) ||
+      (SECTION_META[l.section]?.label ?? '').toLowerCase().includes(q)
+    )
   })
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-            <ClipboardList size={20} className="text-accent" />
-          </div>
-          <div>
-            <h1 className="font-display font-bold text-xl text-tx">Activity Logs</h1>
-            <p className="text-xs text-muted mt-0.5">Who visited which section — entries auto-purge after 48 hours</p>
-          </div>
-        </div>
-        <button
-          onClick={fetchLogs}
-          disabled={loading}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-surface2 text-sm text-muted transition-colors disabled:opacity-50 shrink-0"
-        >
-          <RefreshCw size={13} className={cn(loading && 'animate-spin')} />
-          Refresh
-        </button>
-      </div>
+    <div className="p-6 max-w-5xl mx-auto">
+      {/* Terminal window */}
+      <div className="rounded-xl overflow-hidden border border-[#00ff4118] shadow-[0_0_60px_#00ff4108]" style={{ background: '#060606' }}>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Total events', value: filtered.length },
-          { label: 'Active users', value: uniqueUsers.length },
-          { label: 'Sections visited', value: uniqueSections.length },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl bg-surface border border-border p-4">
-            <div className="text-2xl font-display font-bold text-tx">{s.value}</div>
-            <div className="text-xs text-muted mt-0.5">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative">
-          <select
-            value={filterUser}
-            onChange={e => setFilterUser(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-1.5 rounded-lg bg-surface border border-border text-sm text-tx focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
-          >
-            <option value="all">All users</option>
-            {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-        </div>
-
-        <div className="relative">
-          <select
-            value={filterSection}
-            onChange={e => setFilterSection(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-1.5 rounded-lg bg-surface border border-border text-sm text-tx focus:outline-none focus:ring-1 focus:ring-accent cursor-pointer"
-          >
-            <option value="all">All sections</option>
-            {uniqueSections.map(s => (
-              <option key={s} value={s}>{SECTION_META[s]?.label ?? s}</option>
-            ))}
-          </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-        </div>
-
-        {isFiltered && (
-          <button
-            onClick={() => { setFilterUser('all'); setFilterSection('all') }}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border text-xs text-muted hover:text-tx hover:bg-surface2 transition-colors"
-          >
-            <X size={11} />
-            Clear filters
-          </button>
-        )}
-
-        {isFiltered && (
-          <span className="text-xs text-muted ml-auto">
-            {filtered.length} of {logs.length} events
+        {/* Title bar */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#111]" style={{ background: '#0d0d0d' }}>
+          <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
+          <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+          <div className="w-3 h-3 rounded-full bg-[#28c840]" />
+          <span className="ml-3 text-[11px] font-mono text-[#444] tracking-widest select-none">
+            jarvis — activity-logs — bash — 120×40
           </span>
-        )}
-      </div>
-
-      {/* Table */}
-      <div className="rounded-xl bg-surface border border-border overflow-hidden">
-        {/* Header row */}
-        <div className="grid grid-cols-[1fr_1fr_90px_72px] text-[10px] font-mono-jarvis text-muted uppercase tracking-widest px-4 py-2.5 border-b border-border bg-surface2">
-          <span>User</span>
-          <span>Section</span>
-          <span>When</span>
-          <span>Expires</span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#00ff41] animate-pulse" />
+            <span className="text-[10px] font-mono text-[#00ff41] tracking-widest">LIVE</span>
+          </div>
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center h-32 text-muted text-sm gap-2">
-            <RefreshCw size={14} className="animate-spin" />
-            Loading…
+        {/* Terminal body */}
+        <div className="p-5 font-mono text-xs leading-relaxed" style={{ minHeight: 480 }}>
+
+          {/* Boot header */}
+          <div className="mb-4 space-y-0.5 text-[#333] select-none">
+            <div>{'// =================================================='}</div>
+            <div>{'// JARVIS Activity Log Daemon  v1.0.0'}</div>
+            <div>{'// Auto-purge: 48h TTL  |  Realtime: enabled'}</div>
+            <div>{'// =================================================='}</div>
           </div>
-        )}
 
-        {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-32 text-muted gap-2">
-            <ClipboardList size={24} strokeWidth={1.25} className="opacity-40" />
-            <span className="text-sm">
-              {isFiltered ? 'No events match the current filters' : 'No activity recorded yet — navigate around to generate logs'}
-            </span>
-          </div>
-        )}
-
-        {!loading && filtered.map(log => {
-          const meta = SECTION_META[log.section]
-          const Icon = meta?.icon
-          const initials = log.user_email ? log.user_email[0].toUpperCase() : '?'
-          const colorCls = log.user_email ? avatarColor(log.user_email) : 'bg-surface2 text-muted'
-
-          return (
-            <div
-              key={log.id}
-              className="grid grid-cols-[1fr_1fr_90px_72px] px-4 py-3 border-b border-border/50 last:border-0 hover:bg-surface2/40 transition-colors"
-            >
-              {/* User */}
-              <div className="flex items-center gap-2 min-w-0">
-                <div className={cn('w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold', colorCls)}>
-                  {log.user_email ? initials : <User2 size={11} />}
-                </div>
-                <span className="text-xs text-tx truncate">{log.user_email ?? 'Unknown'}</span>
-              </div>
-
-              {/* Section */}
-              <div className="flex items-center gap-2 min-w-0">
-                {Icon && <Icon size={13} className="text-muted shrink-0" />}
-                <span className="text-xs text-tx truncate">{meta?.label ?? log.section}</span>
-              </div>
-
-              {/* When */}
-              <div className="flex items-center">
-                <span className="text-xs text-muted">{relativeTime(log.visited_at)}</span>
-              </div>
-
-              {/* Expires */}
-              <div className="flex items-center">
-                <span className={cn(
-                  'text-xs font-mono-jarvis',
-                  expiresIn(log.expires_at) === 'expired' ? 'text-danger' : 'text-muted'
-                )}>
-                  {expiresIn(log.expires_at)}
-                </span>
+          {/* Stats block */}
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[#00ff41]">$</span>
+              <span className="text-[#888]">jarvis stats --scope=activity</span>
+            </div>
+            <div className="ml-4 space-y-0.5">
+              <div>
+                <span className="text-[#555]">total_events   </span>
+                <span className="text-[#00ff41] font-bold">{String(logs.length).padStart(4, ' ')}</span>
+                <span className="text-[#555] ml-6">active_users   </span>
+                <span className="text-[#00d4ff] font-bold">{String(uniqueUsers.length).padStart(4, ' ')}</span>
+                <span className="text-[#555] ml-6">sections_hit   </span>
+                <span className="text-[#f59e0b] font-bold">{String(uniqueSections.length).padStart(4, ' ')}</span>
               </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      <p className="text-[10px] text-muted text-center">
-        Logs auto-delete 48 hours after creation via pg_cron (hourly sweep). Max 500 entries shown.
-      </p>
+          {/* Divider */}
+          <div className="text-[#1a1a1a] mb-4 select-none">{'─'.repeat(80)}</div>
+
+          {/* grep command / filter input */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[#00ff41] shrink-0">$</span>
+            <span className="text-[#888] shrink-0">grep -i</span>
+            <span className="text-[#555] shrink-0">"</span>
+            <input
+              value={grep}
+              onChange={e => setGrep(e.target.value)}
+              placeholder="filter by user or section…"
+              className="flex-1 bg-transparent text-[#00d4ff] outline-none placeholder:text-[#2a2a2a] caret-[#00ff41]"
+            />
+            <span className="text-[#555] shrink-0">"</span>
+            <span className="text-[#888] shrink-0">activity.log</span>
+            {grep && (
+              <button
+                onClick={() => setGrep('')}
+                className="text-[#444] hover:text-[#888] transition-colors ml-1"
+              >
+                [clear]
+              </button>
+            )}
+          </div>
+
+          {/* Column header */}
+          <div className="flex gap-0 mb-1 text-[10px] text-[#2a2a2a] tracking-widest uppercase select-none">
+            <span className="w-[180px] shrink-0">TIMESTAMP</span>
+            <span className="w-[210px] shrink-0">USER</span>
+            <span className="flex-1">SECTION</span>
+            <span className="w-[80px] text-right shrink-0">TTL</span>
+          </div>
+          <div className="text-[#1a1a1a] mb-2 select-none">{'─'.repeat(80)}</div>
+
+          {/* Log lines */}
+          {loading && (
+            <div className="text-[#333] mt-4">
+              <span className="text-[#00ff41]">$</span>
+              <span className="ml-2">loading entries</span>
+              <span className="animate-pulse">...</span>
+            </div>
+          )}
+
+          {!loading && filtered.length === 0 && (
+            <div className="mt-4 space-y-1">
+              <div className="text-[#444]">
+                <span className="text-[#ff5f57]">!</span>
+                <span className="ml-2">{grep ? `grep: no match for "${grep}"` : 'no log entries found — navigate sections to generate activity'}</span>
+              </div>
+            </div>
+          )}
+
+          {!loading && filtered.map((log, idx) => {
+            const meta     = SECTION_META[log.section]
+            const ttl      = expiresIn(log.expires_at)
+            const isNew    = idx === 0
+            const ttlColor = ttl === 'EXPIRED' ? '#ff5f57' : parseInt(ttl) < 2 && ttl.endsWith('h') ? '#ffbd2e' : '#555'
+
+            return (
+              <div
+                key={log.id}
+                className={cn(
+                  'flex items-start gap-0 py-[2px] group hover:bg-[#ffffff03] transition-colors rounded',
+                  isNew && 'bg-[#00ff4105]'
+                )}
+              >
+                {/* Timestamp */}
+                <span className="w-[180px] shrink-0 text-[#2e2e2e] group-hover:text-[#3a3a3a] transition-colors">
+                  [{fmtTimestamp(log.visited_at)}]
+                </span>
+
+                {/* User */}
+                <span className="w-[210px] shrink-0 text-[#00ff41] truncate">
+                  {log.user_email ?? 'anonymous'}
+                </span>
+
+                {/* Arrow + Section */}
+                <span className="flex-1 flex items-center gap-1.5 min-w-0">
+                  <span className="text-[#2a2a2a]">→</span>
+                  <span className="text-[#00d4ff] truncate">{meta?.label ?? log.section}</span>
+                  {isNew && <span className="text-[#00ff41] text-[9px] tracking-widest ml-1">[NEW]</span>}
+                </span>
+
+                {/* TTL */}
+                <span className="w-[80px] text-right shrink-0" style={{ color: ttlColor }}>
+                  {ttl}
+                </span>
+              </div>
+            )
+          })}
+
+          {/* Bottom prompt */}
+          <div className="mt-4">
+            <div className="text-[#1a1a1a] mb-2 select-none">{'─'.repeat(80)}</div>
+            {grep && filtered.length > 0 && (
+              <div className="text-[#555] mb-2">
+                grep: <span className="text-[#00ff41]">{filtered.length}</span> match{filtered.length !== 1 ? 'es' : ''} found
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-[#00ff41]">$</span>
+              <button
+                onClick={fetchLogs}
+                disabled={loading}
+                className="text-[#555] hover:text-[#888] transition-colors disabled:opacity-40 cursor-pointer"
+              >
+                {loading ? 'refreshing...' : 'refresh --force'}
+              </button>
+              <Cursor />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-6 text-[#222] text-[10px] select-none">
+            {'// logs purge automatically at expires_at  |  max 500 entries  |  realtime via supabase'}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

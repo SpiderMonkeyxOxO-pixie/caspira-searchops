@@ -1,7 +1,43 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { cacheGet, cacheSet, makeCacheKey } from '../_shared/cache.ts'
+
+// ── Inline cache (Upstash Redis — optional, graceful no-op if not configured) ─
+const REDIS_URL   = Deno.env.get('UPSTASH_REDIS_REST_URL')
+const REDIS_TOKEN = Deno.env.get('UPSTASH_REDIS_REST_TOKEN')
+const CACHE_ON    = !!(REDIS_URL && REDIS_TOKEN)
+
+async function shortHash(obj: unknown): Promise<string> {
+  const data = new TextEncoder().encode(JSON.stringify(obj))
+  const buf  = await crypto.subtle.digest('SHA-256', data)
+  return Array.from(new Uint8Array(buf)).slice(0, 8)
+    .map(b => b.toString(16).padStart(2, '0')).join('')
+}
+async function cacheGet<T>(key: string): Promise<T | null> {
+  if (!CACHE_ON) return null
+  try {
+    const res  = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    })
+    const json = await res.json()
+    return json.result ? JSON.parse(json.result) as T : null
+  } catch { return null }
+}
+async function cacheSet(key: string, value: unknown, ttlSec: number): Promise<void> {
+  if (!CACHE_ON) return
+  try {
+    await fetch(`${REDIS_URL}/pipeline`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify([['SET', key, JSON.stringify(value), 'EX', ttlSec]]),
+    })
+  } catch { /* best-effort */ }
+}
+async function makeCacheKey(prefix: string, ...parts: unknown[]): Promise<string> {
+  const h = await shortHash(parts)
+  return `jarvis:${prefix}:${h}`
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const GA4_TTL = 3600 // 1 hour
 
@@ -22,7 +58,7 @@ async function getAccessToken(
 
   if (error || !conn) throw new Error('GA4 not connected for this org')
 
-  // Token still valid
+  // Token still valid (60s buffer)
   if (new Date(conn.token_expiry) > new Date(Date.now() + 60_000)) {
     return conn.access_token
   }

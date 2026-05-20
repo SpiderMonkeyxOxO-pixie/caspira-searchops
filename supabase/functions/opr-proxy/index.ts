@@ -1,6 +1,32 @@
 // @ts-nocheck
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { cacheGet, cacheSet } from '../_shared/cache.ts'
+
+// ── Inline cache (Upstash Redis — optional, graceful no-op if not configured) ─
+const REDIS_URL   = Deno.env.get('UPSTASH_REDIS_REST_URL')
+const REDIS_TOKEN = Deno.env.get('UPSTASH_REDIS_REST_TOKEN')
+const CACHE_ON    = !!(REDIS_URL && REDIS_TOKEN)
+
+async function cacheGet<T>(key: string): Promise<T | null> {
+  if (!CACHE_ON) return null
+  try {
+    const res  = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    })
+    const json = await res.json()
+    return json.result ? JSON.parse(json.result) as T : null
+  } catch { return null }
+}
+async function cacheSet(key: string, value: unknown, ttlSec: number): Promise<void> {
+  if (!CACHE_ON) return
+  try {
+    await fetch(`${REDIS_URL}/pipeline`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify([['SET', key, JSON.stringify(value), 'EX', ttlSec]]),
+    })
+  } catch { /* best-effort */ }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const OPR_TTL = 86400 // 24 hours — PageRank barely changes
 
@@ -46,4 +72,3 @@ serve(async (req) => {
     })
   }
 })
-  

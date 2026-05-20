@@ -1,4 +1,5 @@
 import { useStore } from '@/store'
+import { supabase } from '@/lib/supabase'
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6'
 
@@ -17,41 +18,23 @@ export function getActiveProvider(): 'anthropic' | 'openrouter' {
 async function callAnthropicDirect(system: string, user: string, maxTokens: number): Promise<string> {
   const key = useStore.getState().anthropicKey
   if (!key) throw new Error('NO_KEY')
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens,
-      system,
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
+      apiKey: key, model: CLAUDE_MODEL, system, maxTokens,
       messages: [{ role: 'user', content: user }],
-    }),
+    },
   })
-  if (!res.ok) throw new Error(await res.text())
-  const data = await res.json()
-  return (data.content as Array<{ text?: string }>)?.map(c => c.text ?? '').join('') ?? ''
+  if (error) throw new Error(error.message)
+  if (data?.error) throw new Error(data.error)
+  return (data?.content as Array<{ text?: string }>)?.map(c => c.text ?? '').join('') ?? ''
 }
 
 async function callAnthropicWithImage(system: string, user: string, image: ImageAttachment, maxTokens: number): Promise<string> {
   const key = useStore.getState().anthropicKey
   if (!key) throw new Error('NO_KEY')
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: maxTokens,
-      system,
+  const { data, error } = await supabase.functions.invoke('claude-proxy', {
+    body: {
+      apiKey: key, model: CLAUDE_MODEL, system, maxTokens,
       messages: [{
         role: 'user',
         content: [
@@ -59,11 +42,11 @@ async function callAnthropicWithImage(system: string, user: string, image: Image
           { type: 'text', text: user },
         ],
       }],
-    }),
+    },
   })
-  if (!res.ok) throw new Error(await res.text())
-  const data = await res.json()
-  return (data.content as Array<{ text?: string }>)?.map(c => c.text ?? '').join('') ?? ''
+  if (error) throw new Error(error.message)
+  if (data?.error) throw new Error(data.error)
+  return (data?.content as Array<{ text?: string }>)?.map(c => c.text ?? '').join('') ?? ''
 }
 
 async function callOpenRouterDirect(system: string, user: string, maxTokens: number): Promise<string> {

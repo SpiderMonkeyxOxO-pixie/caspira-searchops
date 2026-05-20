@@ -153,25 +153,38 @@ interface EBState { error: Error | null }
 class SectionErrorBoundary extends Component<{ children: ReactNode; resetKey: string }, EBState> {
   state: EBState = { error: null }
   static getDerivedStateFromError(error: Error): EBState { return { error } }
-  componentDidCatch(_err: Error, info: ErrorInfo) { console.error('[SectionError]', _err, info) }
+  componentDidCatch(err: Error, info: ErrorInfo) {
+    console.error('[SectionError]', err, info)
+    // Stale chunk after a new deployment — reload once to fetch the new bundle
+    if (err.message.includes('Failed to fetch dynamically imported module') ||
+        err.message.includes('Importing a module script failed')) {
+      window.location.reload()
+    }
+  }
   componentDidUpdate(prev: { resetKey: string }) {
     if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null })
   }
   render() {
     if (this.state.error) {
+      const isChunkError = this.state.error.message.includes('Failed to fetch dynamically imported module') ||
+                           this.state.error.message.includes('Importing a module script failed')
       return (
         <div className="flex flex-col items-center justify-center h-64 text-center px-6">
           <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mb-4">
             <SlidersHorizontal size={20} className="text-danger" />
           </div>
-          <div className="font-display font-bold text-lg text-tx mb-1">Something went wrong</div>
-          <div className="text-xs font-mono-jarvis text-danger mb-4 max-w-md break-all">
-            {this.state.error.message}
+          <div className="font-display font-bold text-lg text-tx mb-1">
+            {isChunkError ? 'New version available' : 'Something went wrong'}
+          </div>
+          <div className="text-xs font-mono-jarvis text-muted mb-4 max-w-md">
+            {isChunkError
+              ? 'A new deployment was detected. Reloading to get the latest version…'
+              : this.state.error.message}
           </div>
           <button
-            onClick={() => this.setState({ error: null })}
+            onClick={() => isChunkError ? window.location.reload() : this.setState({ error: null })}
             className="px-4 py-2 rounded-lg bg-accent text-black text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity">
-            Try again
+            {isChunkError ? 'Reload now' : 'Try again'}
           </button>
         </div>
       )

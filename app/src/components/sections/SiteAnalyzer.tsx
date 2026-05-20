@@ -274,39 +274,39 @@ export function SiteAnalyzer() {
       const site = job.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '')
       const date = new Date(job.started_at).toISOString().slice(0, 10)
 
-      // Build full markdown report
-      const highIss = allIss.filter(i => i.severity === 'high')
-      const medIss  = allIss.filter(i => i.severity === 'med')
-      const lowIss  = allIss.filter(i => i.severity === 'low')
-      const lines: string[] = [
-        `# Site Audit Report — ${job.site_url}`,
-        `Date: ${new Date(job.started_at).toLocaleString()}`,
-        `Pages crawled: ${job.total_pages}  |  Total issues: ${job.issues}`,
-        `High: ${highIss.length}  |  Medium: ${medIss.length}  |  Low: ${lowIss.length}`,
-        '',
-        '---',
-        '',
-        '## Issues',
-        '',
-        '| Severity | Type | Message | URL |',
-        '|----------|------|---------|-----|',
-        ...allIss.map(i => `| ${i.severity.toUpperCase()} | ${i.type.replace(/_/g, ' ')} | ${i.message} | ${i.url} |`),
-        '',
-        '---',
-        '',
-        '## Pages',
-        '',
-        '| URL | Status | Title | H1 | Words | Speed | Depth | Links In | Issues |',
-        '|-----|--------|-------|----|-------|-------|-------|----------|--------|',
-        ...rows.map(p => `| ${p.url} | ${p.status_code} | ${p.title ?? 'Missing'} | ${p.h1_count} | ${p.word_count} | ${p.response_time != null ? p.response_time + 'ms' : '—'} | ${p.crawl_depth ?? '—'} | ${p.inbound_links ?? '—'} | ${(p.issues ?? []).length} |`),
-      ]
-      const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
-      const url  = URL.createObjectURL(blob)
-      const a    = Object.assign(document.createElement('a'), {
-        href: url, download: `audit-report-${site}-${date}.md`,
-      })
-      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Issues sheet rows — one row per issue with full page context
+      const issueRows = rows.flatMap(p =>
+        (p.issues ?? []).length > 0
+          ? (p.issues ?? []).map(i => [
+              p.url,
+              p.status_code,
+              p.title ?? '',
+              p.h1_count,
+              p.word_count,
+              p.response_time ?? '',
+              p.crawl_depth ?? '',
+              p.inbound_links ?? '',
+              i.severity.toUpperCase(),
+              i.type.replace(/_/g, ' '),
+              i.message,
+            ])
+          : [[
+              p.url,
+              p.status_code,
+              p.title ?? '',
+              p.h1_count,
+              p.word_count,
+              p.response_time ?? '',
+              p.crawl_depth ?? '',
+              p.inbound_links ?? '',
+              '', '', '',
+            ]]
+      )
+      downloadCSV(
+        `audit-report-${site}-${date}.csv`,
+        ['URL', 'Status', 'Title', 'H1 Count', 'Word Count', 'Speed (ms)', 'Crawl Depth', 'Links In', 'Severity', 'Issue Type', 'Issue Message'],
+        issueRows,
+      )
     } finally {
       setDownloading(prev => { const n = new Set(prev); n.delete(job.id); return n })
     }

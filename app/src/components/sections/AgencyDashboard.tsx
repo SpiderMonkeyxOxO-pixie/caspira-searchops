@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import {
   TrendingUp, TrendingDown, CheckCircle2,
-  ChevronUp, ChevronDown, Search, Zap, Plus, Loader2, Trash2,
+  ChevronUp, ChevronDown, Search, Zap, Plus, Loader2, Trash2, RefreshCw,
 } from 'lucide-react'
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -140,81 +140,80 @@ export function AgencyDashboard() {
   const [deleting,    setDeleting]    = useState<Set<number>>(new Set())
   const [confirmId,   setConfirmId]   = useState<number | null>(null)
 
-  useEffect(() => {
+  const runEnrichment = useCallback(async () => {
     if (!orgId || storeSites.length === 0) return
     setEnriching(true)
-
-    ;(async () => {
-      try {
-        // 1. Latest completed crawl job per domain
-        const { data: jobs } = await supabase
-          .from('jarvis_crawl_jobs')
-          .select('site_url, issues, total_pages')
-          .eq('org_id', orgId)
-          .eq('status', 'completed')
-          .order('started_at', { ascending: false }) as {
-            data: { site_url: string; issues: number; total_pages: number }[] | null
-          }
-
-        const crawlMap = new Map<string, { issues: number; total_pages: number }>()
-        for (const j of jobs ?? []) {
-          const k = normDomain(j.site_url)
-          if (!crawlMap.has(k)) crawlMap.set(k, j)
+    try {
+      // 1. Latest completed crawl job per domain
+      const { data: jobs } = await supabase
+        .from('jarvis_crawl_jobs')
+        .select('site_url, issues, total_pages')
+        .eq('org_id', orgId)
+        .eq('status', 'completed')
+        .order('started_at', { ascending: false }) as {
+          data: { site_url: string; issues: number; total_pages: number }[] | null
         }
 
-        // 2. GSC available sites list
-        const { data: conn } = await supabase
-          .from('jarvis_gsc_connections')
-          .select('available_sites')
-          .eq('org_id', orgId)
-          .maybeSingle() as { data: { available_sites: string[] | null } | null }
+      const crawlMap = new Map<string, { issues: number; total_pages: number }>()
+      for (const j of jobs ?? []) {
+        const k = normDomain(j.site_url)
+        if (!crawlMap.has(k)) crawlMap.set(k, j)
+      }
 
-        const availableSites = conn?.available_sites ?? []
+      // 2. GSC available sites list
+      const { data: conn } = await supabase
+        .from('jarvis_gsc_connections')
+        .select('available_sites')
+        .eq('org_id', orgId)
+        .maybeSingle() as { data: { available_sites: string[] | null } | null }
 
-        // 3. GSC data per site (parallel)
-        const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
-        const endDate   = new Date().toISOString().slice(0, 10)
+      const availableSites = conn?.available_sites ?? []
 
-        const gscResults = await Promise.allSettled(
-          storeSites.map(site => {
-            const gscSite = matchGscSite(site.domain, availableSites)
-            if (!gscSite) return Promise.resolve(null)
-            return supabase.functions.invoke('gsc-proxy', {
-              body: { org_id: orgId, site_url: gscSite, endpoint: 'searchAnalytics',
-                params: { startDate, endDate, dimensions: ['query'], rowLimit: 100 } },
-            }).then(({ data }) => data).catch(() => null)
-          })
-        )
+      // 3. GSC data per site (parallel)
+      const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
+      const endDate   = new Date().toISOString().slice(0, 10)
 
-        // 4. Build enriched map
-        const map = new Map<string, EnrichedData>()
-        storeSites.forEach((site, i) => {
-          const crawl = crawlMap.get(normDomain(site.domain))
-          let score  = site.score
-          let issues = site.issues
-          if (crawl) {
-            issues = crawl.issues
-            const ratio = crawl.total_pages > 0 ? crawl.issues / crawl.total_pages : 0
-            score = Math.max(0, Math.round(100 - ratio * 30))
-          }
-          const status: 'good' | 'warning' | 'danger' = score >= 70 ? 'good' : score >= 50 ? 'warning' : 'danger'
-
-          type GSCRow = { keys: string[]; clicks: number; position: number }
-          const gscRes = gscResults[i]
-          const rows: GSCRow[] = (gscRes.status === 'fulfilled' && gscRes.value?.rows) ? gscRes.value.rows : []
-          const trafficRaw = rows.reduce((s, r) => s + r.clicks, 0)
-          const topKw = rows[0]?.keys[0] ?? '—'
-          const pos   = rows[0]?.position ? Math.round(rows[0].position * 10) / 10 : 0
-
-          map.set(site.domain, { score, issues, status, trafficRaw, topKw, pos })
+      const gscResults = await Promise.allSettled(
+        storeSites.map(site => {
+          const gscSite = matchGscSite(site.domain, availableSites)
+          if (!gscSite) return Promise.resolve(null)
+          return supabase.functions.invoke('gsc-proxy', {
+            body: { org_id: orgId, site_url: gscSite, endpoint: 'searchAnalytics',
+              params: { startDate, endDate, dimensions: ['query'], rowLimit: 100 } },
+          }).then(({ data }) => data).catch(() => null)
         })
+      )
 
-        setEnriched(map)
-        setLastUpdated(new Date())
-      } catch { /* best-effort */ }
-      setEnriching(false)
-    })()
-  }, [orgId, storeSites.length])
+      // 4. Build enriched map
+      const map = new Map<string, EnrichedData>()
+      storeSites.forEach((site, i) => {
+        const crawl = crawlMap.get(normDomain(site.domain))
+        let score  = site.score
+        let issues = site.issues
+        if (crawl) {
+          issues = crawl.issues
+          const ratio = crawl.total_pages > 0 ? crawl.issues / crawl.total_pages : 0
+          score = Math.max(0, Math.round(100 - ratio * 30))
+        }
+        const status: 'good' | 'warning' | 'danger' = score >= 70 ? 'good' : score >= 50 ? 'warning' : 'danger'
+
+        type GSCRow = { keys: string[]; clicks: number; position: number }
+        const gscRes = gscResults[i]
+        const rows: GSCRow[] = (gscRes.status === 'fulfilled' && gscRes.value?.rows) ? gscRes.value.rows : []
+        const trafficRaw = rows.reduce((s, r) => s + r.clicks, 0)
+        const topKw = rows[0]?.keys[0] ?? '—'
+        const pos   = rows[0]?.position ? Math.round(rows[0].position * 10) / 10 : 0
+
+        map.set(site.domain, { score, issues, status, trafficRaw, topKw, pos })
+      })
+
+      setEnriched(map)
+      setLastUpdated(new Date())
+    } catch { /* best-effort */ }
+    setEnriching(false)
+  }, [orgId, storeSites])
+
+  useEffect(() => { runEnrichment() }, [orgId, storeSites.length])
 
   const DISPLAY_SITES: AgencySite[] = storeSites.map(s => siteToAgency(s, enriched.get(s.domain)))
   const usingRealData = storeSites.length > 0
@@ -299,11 +298,18 @@ export function AgencyDashboard() {
           </div>
         ))}
         <div className="flex items-center gap-2 ml-auto text-[11px] text-muted font-mono-jarvis">
-          {enriching && <Loader2 size={11} className="animate-spin text-accent" />}
           {lastUpdated
             ? `Last updated: ${lastUpdated.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })} · ${lastUpdated.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })}`
-            : enriching ? 'Loading data…' : 'Not yet loaded'
+            : enriching ? 'Loading data…' : ''
           }
+          <button
+            onClick={runEnrichment}
+            disabled={enriching}
+            title="Refresh data"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg border border-border text-[11px] text-muted hover:border-accent hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors font-mono-jarvis">
+            <RefreshCw size={11} className={enriching ? 'animate-spin' : ''} />
+            {enriching ? 'Refreshing…' : 'Refresh'}
+          </button>
         </div>
       </div>
 

@@ -27,8 +27,6 @@ export const NAV: { label: string; items: NavItem[] }[] = [
     label: 'CORE',
     items: [
       { id: 'dashboard',    label: 'Command Center',    icon: LayoutDashboard },
-      { id: 'agency',       label: 'Agency View',       icon: Building2, disabled: true },
-      { id: 'sitesmanager', label: 'Site Manager',       icon: Globe,      disabled: true },
       { id: 'analyzer',     label: 'Site Audit',        icon: ScanSearch, badge: '9', badgeColor: 'bg-danger' },
       { id: 'competitors',  label: 'Competitors',        icon: Swords },
       { id: 'siteexplorer', label: 'Site Explorer',     icon: SearchCode, badge: 'NEW', badgeColor: 'bg-accent3' },
@@ -137,6 +135,13 @@ export const NAV: { label: string; items: NavItem[] }[] = [
       { id: 'shortcuts',     label: 'Keyboard Shortcuts', icon: Keyboard },
       { id: 'sharelinks',    label: 'Shareable Links',    icon: ExternalLink },
       { id: 'apiaccess',     label: 'API Access',         icon: Webhook },
+    ],
+  },
+  {
+    label: 'COMING SOON',
+    items: [
+      { id: 'agency',       label: 'Agency View',  icon: Building2, disabled: true },
+      { id: 'sitesmanager', label: 'Site Manager', icon: Globe,     disabled: true },
     ],
   },
 ]

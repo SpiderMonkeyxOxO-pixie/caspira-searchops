@@ -102,15 +102,18 @@ export function Sidebar() {
                   return (
                     <div
                       key={item.id}
-                      title={sidebarCollapsed ? item.label : undefined}
+                      title={sidebarCollapsed ? `${item.label} — Coming Soon` : undefined}
                       className={cn(
-                        'w-full flex items-center rounded-lg mb-0.5 border border-transparent opacity-35 blur-[0.6px] select-none pointer-events-none',
-                        sidebarCollapsed ? 'justify-center py-2.5' : 'gap-2.5 px-3 py-2 text-[12.5px]'
+                        'w-full flex items-center rounded-lg mb-0.5 border border-border/30 select-none pointer-events-none opacity-50',
+                        sidebarCollapsed ? 'justify-center py-2.5' : 'gap-2.5 px-3 py-2'
                       )}
                     >
                       <Icon size={14} className="shrink-0 text-muted" strokeWidth={1.75} />
                       {!sidebarCollapsed && (
-                        <span className="flex-1 truncate font-medium text-left text-muted">{item.label}</span>
+                        <>
+                          <span className="flex-1 truncate font-medium text-left text-muted text-[12.5px]">{item.label}</span>
+                          <span className="text-[8px] font-bold tracking-widest text-muted border border-border rounded px-1 py-0.5 font-mono-jarvis shrink-0">SOON</span>
+                        </>
                       )}
                     </div>
                   )

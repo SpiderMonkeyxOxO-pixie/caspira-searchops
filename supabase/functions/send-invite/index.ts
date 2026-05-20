@@ -12,8 +12,17 @@ serve(async (req) => {
 
   try {
     const { email, token, orgName, appUrl } = await req.json()
-    if (!email || !token || !appUrl) {
-      return new Response(JSON.stringify({ error: 'email, token, and appUrl are required' }), {
+    if (!email || !token) {
+      return new Response(JSON.stringify({ error: 'email and token are required' }), {
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // APP_URL secret takes priority — set it in Supabase Dashboard → Edge Functions → Secrets
+    // so invite emails always point to production even when admins are on localhost
+    const canonicalUrl = Deno.env.get('APP_URL') || appUrl
+    if (!canonicalUrl) {
+      return new Response(JSON.stringify({ error: 'APP_URL secret not set and appUrl not provided' }), {
         status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       })
     }
@@ -23,7 +32,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    const redirectTo = `${appUrl}?invite_token=${token}`
+    const redirectTo = `${canonicalUrl}?invite_token=${token}`
 
     const { error } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo,

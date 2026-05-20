@@ -494,6 +494,12 @@ function useAuth() {
         if (cancelled) return
         setSession(session)
         if (session) {
+          // Clean up #access_token hash that Supabase leaves after invite/magic-link redirects
+          if (window.location.hash.includes('access_token')) {
+            const inviteToken = new URLSearchParams(window.location.search).get('invite_token')
+            window.history.replaceState({}, '', window.location.pathname + (inviteToken ? `?invite_token=${inviteToken}` : ''))
+          }
+
           // Accept a pending invite if the user arrived via an invite link
           const inviteToken = new URLSearchParams(window.location.search).get('invite_token')
           if (inviteToken) {

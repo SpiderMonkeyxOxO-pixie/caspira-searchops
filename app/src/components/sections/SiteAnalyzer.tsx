@@ -267,16 +267,46 @@ export function SiteAnalyzer() {
     try {
       const { data: pageRows } = await supabase
         .from('jarvis_crawl_pages')
-        .select('url, issues')
-        .eq('job_id', job.id) as { data: { url: string; issues: Issue[] }[] | null }
-      const allIss = (pageRows ?? []).flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
+        .select('url, issues, status_code, title, title_len, h1_count, word_count, response_time, crawl_depth, inbound_links')
+        .eq('job_id', job.id) as { data: (Pick<CrawlPage, 'url' | 'issues' | 'status_code' | 'title' | 'title_len' | 'h1_count' | 'word_count' | 'response_time' | 'crawl_depth' | 'inbound_links'>)[] | null }
+      const rows = pageRows ?? []
+      const allIss = rows.flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
       const site = job.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '')
       const date = new Date(job.started_at).toISOString().slice(0, 10)
-      downloadCSV(
-        `audit-issues-${site}-${date}.csv`,
-        ['URL', 'Severity', 'Type', 'Message'],
-        allIss.map(i => [i.url, i.severity, i.type.replace(/_/g, ' '), i.message]),
-      )
+
+      // Build full markdown report
+      const highIss = allIss.filter(i => i.severity === 'high')
+      const medIss  = allIss.filter(i => i.severity === 'med')
+      const lowIss  = allIss.filter(i => i.severity === 'low')
+      const lines: string[] = [
+        `# Site Audit Report — ${job.site_url}`,
+        `Date: ${new Date(job.started_at).toLocaleString()}`,
+        `Pages crawled: ${job.total_pages}  |  Total issues: ${job.issues}`,
+        `High: ${highIss.length}  |  Medium: ${medIss.length}  |  Low: ${lowIss.length}`,
+        '',
+        '---',
+        '',
+        '## Issues',
+        '',
+        '| Severity | Type | Message | URL |',
+        '|----------|------|---------|-----|',
+        ...allIss.map(i => `| ${i.severity.toUpperCase()} | ${i.type.replace(/_/g, ' ')} | ${i.message} | ${i.url} |`),
+        '',
+        '---',
+        '',
+        '## Pages',
+        '',
+        '| URL | Status | Title | H1 | Words | Speed | Depth | Links In | Issues |',
+        '|-----|--------|-------|----|-------|-------|-------|----------|--------|',
+        ...rows.map(p => `| ${p.url} | ${p.status_code} | ${p.title ?? 'Missing'} | ${p.h1_count} | ${p.word_count} | ${p.response_time != null ? p.response_time + 'ms' : '—'} | ${p.crawl_depth ?? '—'} | ${p.inbound_links ?? '—'} | ${(p.issues ?? []).length} |`),
+      ]
+      const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+      const url  = URL.createObjectURL(blob)
+      const a    = Object.assign(document.createElement('a'), {
+        href: url, download: `audit-report-${site}-${date}.md`,
+      })
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     } finally {
       setDownloading(prev => { const n = new Set(prev); n.delete(job.id); return n })
     }
@@ -464,13 +494,13 @@ export function SiteAnalyzer() {
                                 j.status === 'completed' ? 'text-accent3' : j.status === 'failed' ? 'text-danger' : 'text-accent'
                               )}>{j.status}</span>
                             </td>
-                            {/* Download issues CSV */}
+                            {/* Download full report */}
                             <td className="py-3 pr-4">
-                              {j.status === 'completed' && j.issues > 0 ? (
+                              {j.status === 'completed' ? (
                                 <button onClick={() => downloadJobIssues(j)} disabled={isDownloading}
                                   className="flex items-center gap-1 text-[11px] text-accent hover:text-accent3 cursor-pointer font-mono-jarvis transition-colors disabled:opacity-50">
                                   {isDownloading ? <Loader2 size={11} className="animate-spin" /> : <Download size={11} />}
-                                  {isDownloading ? 'Saving…' : 'Download'}
+                                  {isDownloading ? 'Saving…' : 'Full Report'}
                                 </button>
                               ) : (
                                 <span className="text-[10px] text-muted font-mono-jarvis">—</span>

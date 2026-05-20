@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
   Target, Loader2, Link2, FileText, Calendar,
-  Zap, ChevronRight, Download, AlertCircle,
+  Zap, ChevronRight, Download, AlertCircle, History, Trash2,
 } from 'lucide-react'
 import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
@@ -13,9 +13,14 @@ import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const BLUEPRINT_STORAGE_KEY = 'jarvis_blueprint_history'
+const MAX_HISTORY = 20
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab      = 'blueprint' | 'content' | 'links' | 'onpage' | 'sprint'
+type Tab      = 'blueprint' | 'content' | 'links' | 'onpage' | 'sprint' | 'history'
 type Priority = 'HIGH' | 'MED' | 'LOW'
 
 interface ContentGap {
@@ -28,6 +33,11 @@ interface OnPageGap  { item: string; impact: Priority; effort: Priority; action:
 interface SprintTask {
   week: string; phase: '30-day' | '60-day' | '90-day'
   task: string; type: 'Content' | 'Links' | 'Technical' | 'Review'
+}
+interface BlueprintRecord {
+  id: string; savedAt: string; domain: string; market: string
+  competitor: string; keyword: string; blueprint: string
+  gaps: ContentGap[]; links: LinkGap[]; onpage: OnPageGap[]; sprint: SprintTask[]
 }
 
 // ─── Color maps ───────────────────────────────────────────────────────────────
@@ -42,13 +52,12 @@ const PHASE_COLOR: Record<string, string> = {
   '30-day': '#00d4ff', '60-day': '#7c3aed', '90-day': '#10b981',
 }
 
-// ─── Markets & competitors ────────────────────────────────────────────────────
+// ─── Markets ─────────────────────────────────────────────────────────────────
 
 const QUICK_MARKETS = [
   'India', 'Indonesia', 'Philippines', 'Malaysia',
   'Thailand', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'Brazil',
 ]
-
 
 function parseJSON<T>(raw: string, fallback: T): T {
   try {
@@ -56,6 +65,70 @@ function parseJSON<T>(raw: string, fallback: T): T {
     const match   = cleaned.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
     return match ? (JSON.parse(match[0]) as T) : fallback
   } catch { return fallback }
+}
+
+function fmtDate(iso: string) {
+  const d = new Date(iso)
+  const today = new Date()
+  const isToday = d.toDateString() === today.toDateString()
+  if (isToday) return `Today ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function downloadFullReport(r: BlueprintRecord) {
+  const lines: string[] = [
+    `# Outrank Blueprint — ${r.domain} vs ${r.competitor} · ${r.market}`,
+    `Generated: ${new Date(r.savedAt).toLocaleString()}`,
+    `Primary Keyword: ${r.keyword}`,
+    '',
+    '---',
+    '',
+    '## AI Blueprint',
+    '',
+    r.blueprint,
+    '',
+    '---',
+    '',
+    '## Content Gaps',
+    '',
+    '| Keyword | Volume | KD | Their Pos | Your Pos | Content Type | Priority |',
+    '|---------|--------|----|-----------|----------|--------------|----------|',
+    ...r.gaps.map(g =>
+      `| ${g.kw} | ${g.vol} | ${g.kd} | ${g.theirPos} | ${g.yourPos ?? '—'} | ${g.type} | ${g.priority} |`
+    ),
+    '',
+    '---',
+    '',
+    '## Link Opportunities',
+    '',
+    '| Domain | DA | Type | Outreach Angle |',
+    '|--------|----|------|----------------|',
+    ...r.links.map(l => `| ${l.domain} | ${l.da} | ${l.type} | ${l.angle} |`),
+    '',
+    '---',
+    '',
+    '## On-Page Quick Wins',
+    '',
+    '| Task | Impact | Effort | Action |',
+    '|------|--------|--------|--------|',
+    ...r.onpage.map(o => `| ${o.item} | ${o.impact} | ${o.effort} | ${o.action} |`),
+    '',
+    '---',
+    '',
+    '## 12-Week Sprint Plan',
+    '',
+    '| Week | Phase | Task | Type |',
+    '|------|-------|------|------|',
+    ...r.sprint.map(s => `| ${s.week} | ${s.phase} | ${s.task} | ${s.type} |`),
+  ]
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
+  const url  = URL.createObjectURL(blob)
+  const a    = Object.assign(document.createElement('a'), {
+    href: url,
+    download: `blueprint-${r.competitor.replace(/\W+/g, '-')}-${r.market.replace(/\W+/g, '-')}-${r.savedAt.slice(0, 10)}.md`,
+  })
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -75,6 +148,52 @@ export function OutrankBlueprint() {
   const [onpage,    setOnpage]    = useState<OnPageGap[]>([])
   const [sprint,    setSprint]    = useState<SprintTask[]>([])
 
+  // History
+  const [records, setRecords] = useState<BlueprintRecord[]>(() => {
+    try { return JSON.parse(localStorage.getItem(BLUEPRINT_STORAGE_KEY) ?? '[]') }
+    catch { return [] }
+  })
+
+  function saveRecord(bp: string, g: ContentGap[], l: LinkGap[], o: OnPageGap[], s: SprintTask[]) {
+    const rec: BlueprintRecord = {
+      id: Date.now().toString(),
+      savedAt: new Date().toISOString(),
+      domain: domain || 'yoursite.com',
+      market, competitor, keyword,
+      blueprint: bp, gaps: g, links: l, onpage: o, sprint: s,
+    }
+    setRecords(prev => {
+      const next = [rec, ...prev].slice(0, MAX_HISTORY)
+      localStorage.setItem(BLUEPRINT_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  function deleteRecord(id: string) {
+    setRecords(prev => {
+      const next = prev.filter(r => r.id !== id)
+      localStorage.setItem(BLUEPRINT_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  function clearAllRecords() {
+    setRecords([])
+    localStorage.removeItem(BLUEPRINT_STORAGE_KEY)
+  }
+
+  function loadRecord(r: BlueprintRecord) {
+    setMarket(r.market)
+    setCompetitor(r.competitor)
+    setKeyword(r.keyword)
+    setBlueprint(r.blueprint)
+    setGaps(r.gaps)
+    setLinks(r.links)
+    setOnpage(r.onpage)
+    setSprint(r.sprint)
+    setTab('blueprint')
+  }
+
   const highCount = gaps.filter(g => g.priority === 'HIGH').length
 
   function handleMarketChange(m: string) {
@@ -90,7 +209,6 @@ export function OutrankBlueprint() {
       const sys = `You are an elite iGaming SEO strategist with deep expertise in the ${market} online casino market. Be direct, specific, and actionable. Every recommendation must name exact keywords, content types, or publication targets. No generic advice.`
 
       const [bpRaw, dataRaw] = await Promise.allSettled([
-        // Call 1 — narrative blueprint
         callAI(sys,
           `Generate a competitor outrank blueprint.
 
@@ -117,7 +235,6 @@ Three specific on-page changes to implement immediately. Name the exact schema t
 At each milestone: expected ranking position for "${keyword}" and one measurable SEO metric to hit.`,
           1800),
 
-        // Call 2 — structured tab data
         callAI(sys,
           `Analyse ${domain || 'yoursite.com'} vs ${competitor} in ${market} for keyword "${keyword}".
 Return ONLY valid JSON (no markdown, no explanation):
@@ -155,11 +272,16 @@ Rules:
         contentGaps?: ContentGap[]; linkGaps?: LinkGap[]
         onPage?: OnPageGap[]; sprint?: SprintTask[]
       }>(data, {})
-      if (parsed.contentGaps?.length) setGaps(parsed.contentGaps)
-      if (parsed.linkGaps?.length)    setLinks(parsed.linkGaps)
-      if (parsed.onPage?.length)      setOnpage(parsed.onPage)
-      if (parsed.sprint?.length)      setSprint(parsed.sprint)
+      const g = parsed.contentGaps ?? []
+      const l = parsed.linkGaps    ?? []
+      const o = parsed.onPage      ?? []
+      const s = parsed.sprint      ?? []
+      if (g.length) setGaps(g)
+      if (l.length) setLinks(l)
+      if (o.length) setOnpage(o)
+      if (s.length) setSprint(s)
       setTab('blueprint')
+      if (bp) saveRecord(bp, g, l, o, s)
     },
   })
 
@@ -273,6 +395,7 @@ Rules:
           ['links',     `Link Gaps${links.length      ? ` (${links.length})`  : ''}`],
           ['onpage',    `On-Page${onpage.length       ? ` (${onpage.length})` : ''}`],
           ['sprint',    `12-Week Sprint${sprint.length ? ` (${sprint.length})` : ''}`],
+          ['history',   `History${records.length      ? ` (${records.length})` : ''}`],
         ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={cn(
@@ -609,6 +732,70 @@ Rules:
             </div>
           </Card>
         )
+      )}
+
+      {/* ── HISTORY ── */}
+      {tab === 'history' && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <CardTitle className="mb-0.5">Blueprint History</CardTitle>
+              <p className="text-[11px] text-muted">
+                Blueprints auto-save after each generation — up to {MAX_HISTORY} stored locally
+              </p>
+            </div>
+            {records.length > 0 && (
+              <button onClick={clearAllRecords}
+                className="text-[11px] text-danger hover:text-danger/80 cursor-pointer transition-colors font-mono-jarvis">
+                Clear all
+              </button>
+            )}
+          </div>
+
+          {records.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-14 text-center">
+              <History size={40} className="mb-3 text-muted opacity-30" strokeWidth={1.25} />
+              <div className="text-sm text-muted">No saved blueprints yet</div>
+              <div className="text-xs text-muted mt-1">Generate a blueprint above — it will appear here automatically</div>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {records.map(r => (
+                <div key={r.id}
+                  className="flex items-center gap-4 p-4 bg-surface border border-border rounded-xl hover:border-accent/40 transition-colors group">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-xs font-semibold text-tx truncate max-w-40">{r.competitor || '—'}</span>
+                      <Badge variant="accent">{r.market}</Badge>
+                      <span className="text-[10px] font-mono-jarvis text-muted">{r.domain}</span>
+                    </div>
+                    <div className="text-[11px] text-muted font-mono-jarvis truncate">{r.keyword}</div>
+                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted font-mono-jarvis">
+                      <span>{fmtDate(r.savedAt)}</span>
+                      {r.gaps.length > 0   && <span>{r.gaps.length} gaps</span>}
+                      {r.links.length > 0  && <span>{r.links.length} links</span>}
+                      {r.sprint.length > 0 && <span>{r.sprint.length} tasks</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => downloadFullReport(r)}
+                      className="flex items-center gap-1 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer font-mono-jarvis">
+                      <Download size={11} /> Download
+                    </button>
+                    <button onClick={() => loadRecord(r)}
+                      className="px-2.5 py-1 rounded-lg border border-accent/40 text-[11px] text-accent hover:bg-accent/10 cursor-pointer transition-colors font-mono-jarvis">
+                      Load
+                    </button>
+                    <button onClick={() => deleteRecord(r.id)}
+                      className="text-muted hover:text-danger cursor-pointer transition-colors p-1 rounded">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       )}
     </div>
   )

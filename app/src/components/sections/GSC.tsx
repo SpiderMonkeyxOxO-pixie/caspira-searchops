@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   BarChart2, Eye, MousePointer, Percent, Hash,
   RefreshCw, AlertCircle, Globe, Unplug, Plus, X, Search, ChevronDown, Download,
+  MapPin, Link2, FileText, CheckCircle2, XCircle, ExternalLink, AlertTriangle,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -21,17 +22,56 @@ interface GSCConn {
   selectedSite:   string | null
   availableSites: string[]
 }
-interface TrendRow  { date: string; clicks: number; impressions: number }
-interface QueryRow  { query: string; clicks: number; impressions: number; ctr: string; position: number }
-interface PageRow   { url: string; clicks: number; impressions: number; ctr: string; position: number }
-interface GSCData   {
-  trend:   TrendRow[]
-  queries: QueryRow[]
-  pages:   PageRow[]
-  kpis:    { clicks: number; impressions: number; ctr: string; position: string }
+interface TrendRow   { date: string; clicks: number; impressions: number }
+interface QueryRow   { query: string; clicks: number; impressions: number; ctr: string; position: number }
+interface PageRow    { url: string; clicks: number; impressions: number; ctr: string; position: number }
+interface CountryRow { country: string; clicks: number; impressions: number; ctr: string; position: number }
+interface SitemapContent { type: string; submitted: number; indexed: number }
+interface SitemapEntry {
+  path: string; type: string; lastSubmitted: string; lastDownloaded: string
+  errors: number; warnings: number; contents: SitemapContent[]
+}
+interface GSCData {
+  trend:     TrendRow[]
+  queries:   QueryRow[]
+  pages:     PageRow[]
+  countries: CountryRow[]
+  kpis:      { clicks: number; impressions: number; ctr: string; position: string }
 }
 
-type ContentTab = 'overview' | 'queries' | 'pages'
+type ContentTab = 'overview' | 'queries' | 'pages' | 'countries' | 'sitemaps' | 'indexing' | 'links'
+
+// ── Country helpers ───────────────────────────────────────────
+const COUNTRY_MAP: Record<string, { name: string; code2: string }> = {
+  ind: { name: 'India', code2: 'IN' }, usa: { name: 'United States', code2: 'US' },
+  bra: { name: 'Brazil', code2: 'BR' }, deu: { name: 'Germany', code2: 'DE' },
+  hkg: { name: 'Hong Kong', code2: 'HK' }, npl: { name: 'Nepal', code2: 'NP' },
+  gbr: { name: 'United Kingdom', code2: 'GB' }, can: { name: 'Canada', code2: 'CA' },
+  aus: { name: 'Australia', code2: 'AU' }, sgp: { name: 'Singapore', code2: 'SG' },
+  phl: { name: 'Philippines', code2: 'PH' }, mys: { name: 'Malaysia', code2: 'MY' },
+  tha: { name: 'Thailand', code2: 'TH' }, pak: { name: 'Pakistan', code2: 'PK' },
+  bgd: { name: 'Bangladesh', code2: 'BD' }, lka: { name: 'Sri Lanka', code2: 'LK' },
+  idn: { name: 'Indonesia', code2: 'ID' }, vnm: { name: 'Vietnam', code2: 'VN' },
+  fra: { name: 'France', code2: 'FR' }, esp: { name: 'Spain', code2: 'ES' },
+  ita: { name: 'Italy', code2: 'IT' }, nld: { name: 'Netherlands', code2: 'NL' },
+  jpn: { name: 'Japan', code2: 'JP' }, kor: { name: 'South Korea', code2: 'KR' },
+  chn: { name: 'China', code2: 'CN' }, mex: { name: 'Mexico', code2: 'MX' },
+  arg: { name: 'Argentina', code2: 'AR' }, col: { name: 'Colombia', code2: 'CO' },
+  are: { name: 'UAE', code2: 'AE' }, sau: { name: 'Saudi Arabia', code2: 'SA' },
+  zaf: { name: 'South Africa', code2: 'ZA' }, nga: { name: 'Nigeria', code2: 'NG' },
+  ken: { name: 'Kenya', code2: 'KE' }, mmr: { name: 'Myanmar', code2: 'MM' },
+  khm: { name: 'Cambodia', code2: 'KH' }, rus: { name: 'Russia', code2: 'RU' },
+  ukr: { name: 'Ukraine', code2: 'UA' }, pol: { name: 'Poland', code2: 'PL' },
+  tur: { name: 'Turkey', code2: 'TR' }, egy: { name: 'Egypt', code2: 'EG' },
+}
+function countryFlag(c3: string) {
+  const c2 = COUNTRY_MAP[c3.toLowerCase()]?.code2
+  if (!c2) return '🌐'
+  return c2.split('').map(ch => String.fromCodePoint(127397 + ch.charCodeAt(0))).join('')
+}
+function countryName(c3: string) {
+  return COUNTRY_MAP[c3.toLowerCase()]?.name ?? c3.toUpperCase()
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 const SCOPES = 'https://www.googleapis.com/auth/webmasters.readonly'
@@ -207,6 +247,11 @@ export function GSC() {
   const [showSwitcher,  setShowSwitcher]  = useState(false)
   const [showAddPicker, setShowAddPicker] = useState(false)
 
+  // ── Sitemaps state
+  const [sitemaps,        setSitemaps]        = useState<SitemapEntry[]>([])
+  const [sitemapsLoading, setSitemapsLoading] = useState(false)
+  const [sitemapsErr,     setSitemapsErr]     = useState<string | null>(null)
+
   // ── Fetch connection row ──────────────────────────────────
   const fetchConn = useCallback(async () => {
     if (!orgId) return
@@ -248,24 +293,28 @@ export function GSC() {
     try {
       const range    = dateRangeRef.current
       const rowLimit = trendRowLimit(datePreset, customStart, customEnd)
-      const [trendRes, queriesRes, pagesRes] = await Promise.all([
+      const [trendRes, queriesRes, pagesRes, countriesRes] = await Promise.all([
         supabase.functions.invoke('gsc-proxy', {
           body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
-            params: { ...range, dimensions: ['date'],  rowLimit } },
+            params: { ...range, dimensions: ['date'],    rowLimit } },
         }),
         supabase.functions.invoke('gsc-proxy', {
           body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
-            params: { ...range, dimensions: ['query'], rowLimit: 100 } },
+            params: { ...range, dimensions: ['query'],   rowLimit: 100 } },
         }),
         supabase.functions.invoke('gsc-proxy', {
           body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
-            params: { ...range, dimensions: ['page'],  rowLimit: 50 } },
+            params: { ...range, dimensions: ['page'],    rowLimit: 50 } },
+        }),
+        supabase.functions.invoke('gsc-proxy', {
+          body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
+            params: { ...range, dimensions: ['country'], rowLimit: 50 } },
         }),
       ])
 
-      if (trendRes.error)   throw new Error(trendRes.error.message)
-      if (queriesRes.error) throw new Error(queriesRes.error.message)
-      if (pagesRes.error)   throw new Error(pagesRes.error.message)
+      if (trendRes.error)     throw new Error(trendRes.error.message)
+      if (queriesRes.error)   throw new Error(queriesRes.error.message)
+      if (pagesRes.error)     throw new Error(pagesRes.error.message)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const trend: TrendRow[] = (trendRes.data?.rows ?? []).map((r: any) => ({
@@ -282,6 +331,12 @@ export function GSC() {
         try { url = new URL(url).pathname } catch { /* keep full URL */ }
         return { url, clicks: r.clicks, impressions: r.impressions, ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1) }
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const countries: CountryRow[] = (countriesRes.data?.rows ?? []).map((r: any) => ({
+        country: r.keys[0] as string,
+        clicks: r.clicks, impressions: r.impressions,
+        ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1),
+      }))
 
       const totalClicks = trend.reduce((s, r) => s + r.clicks, 0)
       const totalImpr   = trend.reduce((s, r) => s + r.impressions, 0)
@@ -289,7 +344,7 @@ export function GSC() {
       const avgPos      = queries.length > 0
         ? (queries.reduce((s, r) => s + r.position, 0) / queries.length).toFixed(1) : '—'
 
-      const result: GSCData = { trend, queries, pages, kpis: { clicks: totalClicks, impressions: totalImpr, ctr: avgCtr, position: avgPos } }
+      const result: GSCData = { trend, queries, pages, countries, kpis: { clicks: totalClicks, impressions: totalImpr, ctr: avgCtr, position: avgPos } }
 
       setDataCache(prev => new Map(prev).set(siteUrl, result))
       setActiveUrl(cur => {
@@ -302,6 +357,37 @@ export function GSC() {
       setDataLoading(false)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId])
+
+  // ── Fetch Sitemaps ────────────────────────────────────────
+  const fetchSitemaps = useCallback(async (siteUrl: string) => {
+    if (!orgId) return
+    setSitemapsLoading(true)
+    setSitemapsErr(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('gsc-proxy', {
+        body: { org_id: orgId, site_url: siteUrl, endpoint: 'sitemaps', params: {} },
+      })
+      if (error) throw new Error(error.message)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const list: SitemapEntry[] = (data?.sitemap ?? []).map((s: any) => ({
+        path:          s.path ?? '',
+        type:          s.type ?? 'sitemap',
+        lastSubmitted: s.lastSubmitted ?? s.submitted ?? '',
+        lastDownloaded:s.lastDownloaded ?? '',
+        errors:        parseInt(s.errors   ?? '0', 10),
+        warnings:      parseInt(s.warnings ?? '0', 10),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        contents: (s.contents ?? []).map((c: any) => ({
+          type: c.type, submitted: parseInt(c.submitted ?? '0', 10), indexed: parseInt(c.indexed ?? '0', 10),
+        })),
+      }))
+      setSitemaps(list)
+    } catch (e) {
+      setSitemapsErr(e instanceof Error ? e.message : 'Failed to fetch sitemaps')
+    } finally {
+      setSitemapsLoading(false)
+    }
   }, [orgId])
 
   // ── Initialise first tab when conn is loaded ──────────────
@@ -406,6 +492,13 @@ export function GSC() {
     setShowCustom(false)
     setDataCache(new Map())
     if (activeUrl) fetchData(activeUrl)
+  }
+
+  function switchContentTab(tab: ContentTab) {
+    setContentTab(tab)
+    if ((tab === 'sitemaps' || tab === 'indexing') && sitemaps.length === 0 && activeUrl) {
+      fetchSitemaps(activeUrl)
+    }
   }
 
   // ── Click-outside for More menu
@@ -768,13 +861,21 @@ export function GSC() {
       ) : null}
 
       {/* ── Content tabs ───────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 p-1 bg-surface border border-border rounded-xl w-fit">
-          {(['overview', 'queries', 'pages'] as ContentTab[]).map(t => (
-            <button key={t} onClick={() => setContentTab(t)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold font-mono-jarvis tracking-wide transition-all cursor-pointer capitalize
-                ${contentTab === t ? 'bg-accent text-black' : 'text-muted hover:text-tx'}`}>
-              {t}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-1 p-1 bg-surface border border-border rounded-xl w-fit flex-wrap">
+          {([
+            { id: 'overview',  label: 'Overview' },
+            { id: 'queries',   label: 'Queries' },
+            { id: 'pages',     label: 'Pages' },
+            { id: 'countries', label: 'Countries' },
+            { id: 'sitemaps',  label: 'Sitemaps' },
+            { id: 'indexing',  label: 'Indexing' },
+            { id: 'links',     label: 'Links' },
+          ] as { id: ContentTab; label: string }[]).map(({ id, label }) => (
+            <button key={id} onClick={() => switchContentTab(id)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold font-mono-jarvis tracking-wide transition-all cursor-pointer
+                ${contentTab === id ? 'bg-accent text-black' : 'text-muted hover:text-tx'}`}>
+              {label}
             </button>
           ))}
         </div>
@@ -889,7 +990,7 @@ export function GSC() {
       {/* ── Pages ──────────────────────────────────────────── */}
       {contentTab === 'pages' && (
         <Card>
-          <CardTitle className="mb-4">Top Pages</CardTitle>
+          <CardTitle className="mb-4 flex items-center gap-1.5">Your Content <InfoTooltip text="Top pages on your site ranked by clicks from Google Search. Optimise low-CTR pages by improving titles and meta descriptions." /></CardTitle>
           {dataLoading ? (
             <div className="py-10 text-center text-muted text-sm">Loading…</div>
           ) : (
@@ -924,6 +1025,278 @@ export function GSC() {
             </div>
           )}
         </Card>
+      )}
+
+      {/* ── Countries ──────────────────────────────────────── */}
+      {contentTab === 'countries' && (
+        <Card>
+          <CardTitle className="mb-4 flex items-center gap-1.5">
+            <MapPin size={14} className="text-accent" />
+            Top Countries
+            <InfoTooltip text="Countries where users clicked through to your site from Google Search. Useful for understanding your geographic audience and targeting strategy." />
+          </CardTitle>
+          {dataLoading ? (
+            <div className="py-10 text-center text-muted text-sm">Loading…</div>
+          ) : (data?.countries ?? []).length === 0 ? (
+            <div className="text-center py-8 text-muted text-sm">No country data</div>
+          ) : (
+            <div className="space-y-2">
+              {(() => {
+                const rows = data?.countries ?? []
+                const maxClicks = rows[0]?.clicks ?? 1
+                return rows.map((c, i) => {
+                  const pct = Math.round((c.clicks / maxClicks) * 100)
+                  return (
+                    <div key={i} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
+                      <span className="text-lg shrink-0 w-6 text-center">{countryFlag(c.country)}</span>
+                      <div className="w-32 shrink-0 text-xs text-tx">{countryName(c.country)}</div>
+                      <div className="flex-1">
+                        <div className="h-2 rounded-full bg-border overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-accent transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="w-16 text-right text-xs font-semibold text-tx shrink-0">{c.clicks.toLocaleString()}</div>
+                      <div className="w-16 text-right text-xs text-muted shrink-0">{c.impressions.toLocaleString()} impr.</div>
+                      <div className="w-12 text-right text-xs text-accent3 shrink-0">{c.ctr}</div>
+                      <div className="w-12 text-right shrink-0">
+                        <Badge variant={c.position <= 3 ? 'green' : c.position <= 10 ? 'amber' : 'muted'}>
+                          #{c.position}
+                        </Badge>
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* ── Sitemaps ───────────────────────────────────────── */}
+      {contentTab === 'sitemaps' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-1.5">
+              <FileText size={14} className="text-accent" />
+              Submitted Sitemaps
+              <InfoTooltip text="Sitemaps submitted to Google Search Console for this property. Shows how many pages were discovered vs indexed, and any errors Google found." />
+            </CardTitle>
+            <Button variant="ghost" onClick={() => fetchSitemaps(activeUrl)} disabled={sitemapsLoading}>
+              <RefreshCw size={11} className={sitemapsLoading ? 'animate-spin' : ''} /> Refresh
+            </Button>
+          </div>
+          {sitemapsErr && (
+            <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs text-danger">
+              <AlertCircle size={14} className="shrink-0" /> {sitemapsErr}
+            </div>
+          )}
+          {sitemapsLoading ? (
+            <div className="py-10 text-center text-muted text-sm">Loading sitemaps…</div>
+          ) : sitemaps.length === 0 ? (
+            <Card className="text-center py-8 text-muted text-sm">No sitemaps submitted for this property</Card>
+          ) : (
+            <div className="space-y-3">
+              {sitemaps.map((sm, i) => {
+                const totalSubmitted = sm.contents.reduce((s, c) => s + c.submitted, 0)
+                const totalIndexed   = sm.contents.reduce((s, c) => s + c.indexed,   0)
+                const hasError = sm.errors > 0
+                return (
+                  <Card key={i}>
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <FileText size={12} className="text-muted shrink-0" />
+                          <span className="text-xs font-mono-jarvis text-accent truncate">{sm.path}</span>
+                          {hasError && <span className="text-[10px] px-1.5 py-0.5 rounded bg-danger/20 text-danger shrink-0">{sm.errors} error{sm.errors !== 1 ? 's' : ''}</span>}
+                          {sm.warnings > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">{sm.warnings} warning{sm.warnings !== 1 ? 's' : ''}</span>}
+                        </div>
+                        <div className="flex items-center gap-4 text-[10px] text-muted">
+                          <span>Type: <span className="text-tx capitalize">{sm.type}</span></span>
+                          {sm.lastSubmitted && <span>Submitted: <span className="text-tx">{new Date(sm.lastSubmitted).toLocaleDateString()}</span></span>}
+                          {sm.lastDownloaded && <span>Last read: <span className="text-tx">{new Date(sm.lastDownloaded).toLocaleDateString()}</span></span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6 shrink-0 text-center">
+                        <div>
+                          <div className="text-lg font-bold text-tx">{totalSubmitted.toLocaleString()}</div>
+                          <div className="text-[10px] text-muted">Discovered</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-bold text-accent3">{totalIndexed.toLocaleString()}</div>
+                          <div className="text-[10px] text-muted">Indexed</div>
+                        </div>
+                      </div>
+                    </div>
+                    {totalSubmitted > 0 && (
+                      <div className="mt-3">
+                        <div className="flex justify-between text-[10px] text-muted mb-1">
+                          <span>Index coverage</span>
+                          <span>{totalSubmitted > 0 ? Math.round((totalIndexed / totalSubmitted) * 100) : 0}%</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-border overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-accent3 transition-all"
+                            style={{ width: `${totalSubmitted > 0 ? (totalIndexed / totalSubmitted) * 100 : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Indexing ───────────────────────────────────────── */}
+      {contentTab === 'indexing' && (
+        <div className="space-y-4">
+          <CardTitle className="flex items-center gap-1.5">
+            <CheckCircle2 size={14} className="text-accent3" />
+            Index Coverage
+            <InfoTooltip text="Shows how many pages from your submitted sitemaps have been indexed by Google. For the full breakdown of why pages aren't indexed, visit GSC → Index → Pages." />
+          </CardTitle>
+          {sitemapsLoading ? (
+            <div className="py-10 text-center text-muted text-sm">Loading indexing data…</div>
+          ) : sitemaps.length === 0 ? (
+            <Card className="text-center py-8 text-muted text-sm">No sitemap data — submit a sitemap in GSC first</Card>
+          ) : (
+            <>
+              {/* Indexed vs Not Indexed summary from sitemap data */}
+              {(() => {
+                const totalSubmitted = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.submitted, 0), 0)
+                const totalIndexed   = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.indexed,   0), 0)
+                const notIndexed     = Math.max(0, totalSubmitted - totalIndexed)
+                const pct = totalSubmitted > 0 ? Math.round((totalIndexed / totalSubmitted) * 100) : 0
+                return (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card className="border-accent3/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 size={16} className="text-accent3" />
+                        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">INDEXED</span>
+                      </div>
+                      <div className="text-3xl font-display font-black text-accent3">{totalIndexed.toLocaleString()}</div>
+                      <div className="text-xs text-muted mt-1">pages in Google's index</div>
+                    </Card>
+                    <Card className="border-danger/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <XCircle size={16} className="text-danger" />
+                        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">NOT INDEXED</span>
+                      </div>
+                      <div className="text-3xl font-display font-black text-danger">{notIndexed.toLocaleString()}</div>
+                      <div className="text-xs text-muted mt-1">of {totalSubmitted.toLocaleString()} discovered pages</div>
+                    </Card>
+                    <div className="col-span-2">
+                      <div className="flex justify-between text-xs text-muted mb-2">
+                        <span>Overall index rate</span>
+                        <span className="font-semibold text-tx">{pct}%</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-border overflow-hidden">
+                        <div className="h-full rounded-full bg-accent3 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Sitemap errors */}
+              {sitemaps.some(sm => sm.errors > 0) && (
+                <Card className="border-amber-500/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle size={14} className="text-amber-400" />
+                    <span className="text-xs font-semibold text-tx">Sitemap Errors Detected</span>
+                  </div>
+                  <div className="space-y-2">
+                    {sitemaps.filter(sm => sm.errors > 0).map((sm, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <span className="text-muted font-mono-jarvis truncate">{sm.path}</span>
+                        <span className="text-danger font-semibold shrink-0 ml-2">{sm.errors} error{sm.errors !== 1 ? 's' : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {/* Link to full GSC Coverage report */}
+              <Card className="border-border/50">
+                <div className="flex items-start gap-3">
+                  <ExternalLink size={14} className="text-accent shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-xs font-semibold text-tx mb-1">Full Indexing Breakdown</div>
+                    <div className="text-xs text-muted leading-relaxed">
+                      The "Why pages aren't indexed" breakdown (robots.txt blocks, 404s, canonical issues, etc.)
+                      is only available in GSC directly. Go to <strong className="text-accent">Google Search Console → Indexing → Pages</strong> to see the full report.
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Links ──────────────────────────────────────────── */}
+      {contentTab === 'links' && (
+        <div className="space-y-4">
+          <CardTitle className="flex items-center gap-1.5">
+            <Link2 size={14} className="text-accent" />
+            Links Report
+            <InfoTooltip text="External links show sites linking to you (backlinks) and what anchor text they use. Internal links show how your own pages link to each other. Both are key for PageRank distribution." />
+          </CardTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-border/50">
+              <div className="flex items-center gap-2 mb-4">
+                <ExternalLink size={14} className="text-accent" />
+                <span className="text-sm font-semibold text-tx">External Links</span>
+                <InfoTooltip text="Pages on other websites that link to your site. More high-quality external links improve your domain authority and rankings." />
+              </div>
+              <div className="space-y-3 text-xs text-muted">
+                <div className="p-3 bg-surface rounded-lg border border-border">
+                  <div className="font-semibold text-tx mb-1">Top Linked Pages</div>
+                  <div className="text-muted">Which of your pages receive the most external backlinks</div>
+                </div>
+                <div className="p-3 bg-surface rounded-lg border border-border">
+                  <div className="font-semibold text-tx mb-1">Top Linking Sites</div>
+                  <div className="text-muted">Domains that link to your site the most</div>
+                </div>
+                <div className="p-3 bg-surface rounded-lg border border-border">
+                  <div className="font-semibold text-tx mb-1">Top Linking Text</div>
+                  <div className="text-muted">Anchor text used in links pointing to your site</div>
+                </div>
+              </div>
+            </Card>
+            <Card className="border-border/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Link2 size={14} className="text-accent3" />
+                <span className="text-sm font-semibold text-tx">Internal Links</span>
+                <InfoTooltip text="How your own pages link to each other. Strong internal linking helps Google discover and rank your content, and distributes PageRank across your site." />
+              </div>
+              <div className="space-y-3 text-xs text-muted">
+                <div className="p-3 bg-surface rounded-lg border border-border">
+                  <div className="font-semibold text-tx mb-1">Top Linked Pages</div>
+                  <div className="text-muted">Your pages that receive the most internal links</div>
+                </div>
+              </div>
+            </Card>
+          </div>
+          <Card className="border-amber-500/30">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-semibold text-tx mb-1">Links data not available via GSC API</div>
+                <div className="text-xs text-muted leading-relaxed">
+                  Google Search Console's Links report is not exposed through the official API. To view your external and internal link data,
+                  go to <strong className="text-accent">Google Search Console → Links</strong> directly.
+                  For full backlink analysis, use the <strong className="text-tx">Competitors</strong> section (powered by DataForSEO).
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   )

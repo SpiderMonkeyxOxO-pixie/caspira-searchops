@@ -94,6 +94,8 @@ serve(async (req) => {
       bodyStr = JSON.stringify(params)
     } else if (endpoint === 'sites') {
       url = 'https://www.googleapis.com/webmasters/v3/sites'
+    } else if (endpoint === 'sitemaps') {
+      url = `https://www.googleapis.com/webmasters/v3/sites/${encodedSite}/sitemaps`
     } else {
       throw new Error('Unknown GSC endpoint: ' + endpoint)
     }

@@ -5,6 +5,7 @@ import {
   Clock, History, Globe, Eye, Trash2, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
@@ -597,18 +598,26 @@ export function SiteAnalyzer() {
         <>
           {/* Score + summary KPIs */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-            <Card className="flex items-center justify-center">
+            <Card className="flex flex-col items-center justify-center gap-1">
               <ScoreGauge score={healthScore ?? 0} label="Health Score" />
+              <InfoTooltip
+                text="Overall site health out of 100. Calculated from the ratio of pages with high, medium, and low severity issues. 70+ is good, 50–70 needs attention, below 50 is critical."
+                side="right"
+                width="w-64"
+              />
             </Card>
 
             <div className="lg:col-span-3 grid grid-cols-3 gap-4">
               {[
-                { label: 'HIGH PRIORITY', val: highCount,  color: 'text-danger',   bg: 'bg-danger/10',   border: 'border-danger/30',   icon: XCircle },
-                { label: 'MEDIUM',        val: medCount,   color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: AlertTriangle },
-                { label: 'LOW',           val: lowCount,   color: 'text-muted',    bg: 'bg-border',       border: 'border-border',      icon: CheckCircle },
-              ].map(({ label, val, color, bg, border }) => (
+                { label: 'HIGH PRIORITY', val: highCount,  color: 'text-danger',    bg: 'bg-danger/10',    border: 'border-danger/30',    tip: 'Critical issues that directly harm rankings — broken pages, missing titles, noindex on important pages, mixed content. Fix these first.' },
+                { label: 'MEDIUM',        val: medCount,   color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', tip: 'Issues that hurt SEO performance — title/meta too long or short, thin content, slow server response, large page size. Fix after high priority.' },
+                { label: 'LOW',           val: lowCount,   color: 'text-muted',     bg: 'bg-border',       border: 'border-border',       tip: 'Minor improvements — missing canonical tags, images without alt text, no schema markup, missing OG/Twitter tags. Good to fix but not urgent.' },
+              ].map(({ label, val, color, bg, border, tip }) => (
                 <Card key={label} className={`${bg} ${border}`}>
-                  <div className="text-[10px] font-mono-jarvis tracking-widest text-muted mb-2">{label} ISSUES</div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono-jarvis tracking-widest text-muted mb-2">
+                    {label} ISSUES
+                    <InfoTooltip text={tip} size={10} />
+                  </div>
                   <div className={`text-3xl font-display font-black ${color}`}>{val}</div>
                   <div className="text-[11px] text-muted mt-1">
                     across {pages.filter(p => p.issues.some(i =>
@@ -721,8 +730,23 @@ export function SiteAnalyzer() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border text-left">
-                      {['URL','Status','Title','H1','Words','Speed','Depth','Links In','Issues'].map(h => (
-                        <th key={h} className="pb-2 pr-4 font-mono-jarvis text-[10px] text-muted tracking-widest whitespace-nowrap">{h}</th>
+                      {([
+                        { label: 'URL',      tip: null },
+                        { label: 'Status',   tip: 'HTTP status code — 200 is healthy, 404 means broken page, 301/302 means redirect' },
+                        { label: 'Title',    tip: 'Page title tag shown in Google search results. Ideal length: 30–60 characters' },
+                        { label: 'H1',       tip: 'Main heading of the page. Every page should have exactly one H1 tag' },
+                        { label: 'Words',    tip: 'Visible word count. Pages under 300 words are flagged as thin content' },
+                        { label: 'Speed',    tip: 'Server response time — how long it took to receive the HTML. Under 800ms is ideal' },
+                        { label: 'Depth',    tip: 'Crawl depth — how many clicks from the homepage to reach this page. Lower is better for SEO' },
+                        { label: 'Links In', tip: 'Number of internal links pointing to this page from other pages on the site. Higher = more SEO authority passed to this page' },
+                        { label: 'Issues',   tip: 'Total SEO issues detected on this page. Red = high priority, amber = medium, grey = low' },
+                      ] as { label: string; tip: string | null }[]).map(({ label, tip }) => (
+                        <th key={label} className="pb-2 pr-4 font-mono-jarvis text-[10px] text-muted tracking-widest whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1">
+                            {label}
+                            {tip && <InfoTooltip text={tip} size={10} />}
+                          </span>
+                        </th>
                       ))}
                     </tr>
                   </thead>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { NAV } from '@/lib/nav'
@@ -175,9 +176,21 @@ export function ActivityLogs() {
             <span className="text-[#555]">jarvis stats --scope=activity --format=inline</span>
           </div>
           <div className="ml-4 flex items-center gap-8 text-xs">
-            <span><span className="text-[#444]">total_events  </span><span className="text-[#00ff41] font-bold text-sm">{logs.length}</span></span>
-            <span><span className="text-[#444]">active_users  </span><span className="text-accent font-bold text-sm">{uniqueUsers.length}</span></span>
-            <span><span className="text-[#444]">sections_hit  </span><span className="text-accent4 font-bold text-sm">{uniqueSections.length}</span></span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-[#444]">total_events  </span>
+              <span className="text-[#00ff41] font-bold text-sm">{logs.length}</span>
+              <InfoTooltip text="Total section visits logged in the last 48 hours across all users in your org." side="bottom" />
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-[#444]">active_users  </span>
+              <span className="text-accent font-bold text-sm">{uniqueUsers.length}</span>
+              <InfoTooltip text="Number of unique team members who have visited at least one section in the last 48 hours." side="bottom" />
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-[#444]">sections_hit  </span>
+              <span className="text-accent4 font-bold text-sm">{uniqueSections.length}</span>
+              <InfoTooltip text="Number of distinct sections visited. Helps you see which parts of the platform your team is actively using." side="bottom" />
+            </span>
             {grep && <span><span className="text-[#444]">grep_matches  </span><span className="text-[#a855f7] font-bold text-sm">{filtered.length}</span></span>}
           </div>
         </div>

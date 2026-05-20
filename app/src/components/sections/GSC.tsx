@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   BarChart2, Eye, MousePointer, Percent, Hash,
   RefreshCw, AlertCircle, Globe, Unplug, Plus, X, Search, ChevronDown, Download,
-  MapPin, Link2, FileText, CheckCircle2, ExternalLink, AlertTriangle,
+  MapPin, FileText, CheckCircle2, AlertTriangle,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -39,7 +39,7 @@ interface GSCData {
   kpis:      { clicks: number; impressions: number; ctr: string; position: string }
 }
 
-type ContentTab = 'overview' | 'queries' | 'pages' | 'countries' | 'sitemaps' | 'indexing' | 'links'
+type ContentTab = 'overview' | 'queries' | 'pages' | 'countries' | 'sitemaps' | 'indexing'
 
 // ── Country helpers ───────────────────────────────────────────
 const COUNTRY_MAP: Record<string, { name: string; code2: string }> = {
@@ -870,7 +870,6 @@ export function GSC() {
             { id: 'countries', label: 'Countries' },
             { id: 'sitemaps',  label: 'Sitemaps' },
             { id: 'indexing',  label: 'Indexing' },
-            { id: 'links',     label: 'Links' },
           ] as { id: ContentTab; label: string }[]).map(({ id, label }) => (
             <button key={id} onClick={() => switchContentTab(id)}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold font-mono-jarvis tracking-wide transition-all cursor-pointer
@@ -1166,145 +1165,105 @@ export function GSC() {
       {/* ── Indexing ───────────────────────────────────────── */}
       {contentTab === 'indexing' && (
         <div className="space-y-4">
-          <CardTitle className="flex items-center gap-1.5">
-            <CheckCircle2 size={14} className="text-accent3" />
-            Index Coverage
-            <InfoTooltip text="Combines search analytics signals with sitemap data to give you an accurate picture of your indexing status. 'Active pages' = pages confirmed in Google's index via clicks/impressions." />
-          </CardTitle>
-
-          {/* Cross-reference search analytics for a more accurate picture */}
+          {/* KPI summary */}
           {data && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="border-accent3/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 size={14} className="text-accent3" />
-                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">ACTIVE PAGES</span>
-                  <InfoTooltip text="Pages confirmed in Google's index — they received impressions in Search in the selected date range. This is the most reliable signal that a page is indexed." side="bottom" />
+                <div className="flex items-center gap-1.5 mb-2">
+                  <CheckCircle2 size={13} className="text-accent3" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">INDEXED PAGES</span>
+                  <InfoTooltip text="Pages confirmed in Google's index — they appeared in Search results during the selected date range. Any page with impressions is definitively indexed." side="bottom" />
                 </div>
-                <div className="text-3xl font-display font-black text-accent3">{data.pages.length.toLocaleString()}</div>
-                <div className="text-xs text-muted mt-1">pages with GSC impressions</div>
+                <div className="text-2xl font-display font-black text-accent3">{data.pages.length}</div>
+                <div className="text-[11px] text-muted mt-0.5">with GSC impressions</div>
               </Card>
               <Card>
-                <div className="flex items-center gap-2 mb-2">
-                  <Eye size={14} className="text-accent" />
-                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">TOTAL IMPRESSIONS</span>
-                  <InfoTooltip text="Total times your pages appeared in Google Search results. Only indexed pages can generate impressions." side="bottom" />
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Eye size={13} className="text-accent" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">IMPRESSIONS</span>
+                  <InfoTooltip text="Total times your indexed pages appeared in Google Search. Only pages in Google's index can generate impressions." side="bottom" />
                 </div>
-                <div className="text-3xl font-display font-black text-tx">{data.kpis.impressions.toLocaleString()}</div>
-                <div className="text-xs text-muted mt-1">in selected date range</div>
+                <div className="text-2xl font-display font-black text-tx">{data.kpis.impressions.toLocaleString()}</div>
+                <div className="text-[11px] text-muted mt-0.5">in date range</div>
               </Card>
               <Card>
-                <div className="flex items-center gap-2 mb-2">
-                  <MousePointer size={14} className="text-accent4" />
-                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">TOTAL CLICKS</span>
-                  <InfoTooltip text="Users clicked your indexed pages from Google Search results." side="bottom" />
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MousePointer size={13} className="text-accent4" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">CLICKS</span>
+                  <InfoTooltip text="Total clicks from Google Search to your indexed pages." side="bottom" />
                 </div>
-                <div className="text-3xl font-display font-black text-tx">{data.kpis.clicks.toLocaleString()}</div>
-                <div className="text-xs text-muted mt-1">from Google Search</div>
+                <div className="text-2xl font-display font-black text-tx">{data.kpis.clicks.toLocaleString()}</div>
+                <div className="text-[11px] text-muted mt-0.5">from Google Search</div>
               </Card>
+              {sitemaps.length > 0 && (() => {
+                const sm = sitemaps.reduce((s, x) => s + x.contents.reduce((a, c) => a + c.submitted, 0), 0)
+                return (
+                  <Card>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <FileText size={13} className="text-muted" />
+                      <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">SITEMAP URLS</span>
+                      <InfoTooltip text="Total URLs submitted in your sitemaps. Compare this to your Indexed Pages count — a big gap may mean many pages aren't in Google's index yet." side="bottom" />
+                    </div>
+                    <div className="text-2xl font-display font-black text-tx">{sm}</div>
+                    <div className="text-[11px] text-muted mt-0.5">submitted to Google</div>
+                  </Card>
+                )
+              })()}
             </div>
           )}
 
-          {/* Sitemap-based indexing */}
-          {sitemapsLoading ? (
-            <div className="py-6 text-center text-muted text-sm">Loading sitemap data…</div>
-          ) : sitemaps.length > 0 && (() => {
-            const totalSubmitted = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.submitted, 0), 0)
-            const totalIndexed   = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.indexed,   0), 0)
-            return (
-              <Card>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText size={13} className="text-muted" />
-                  <span className="text-xs font-semibold text-tx">Sitemap Submission</span>
-                  <InfoTooltip text="Pages discovered and indexed specifically via your submitted sitemaps. This is often lower than your actual indexed page count because Google also indexes pages it finds through other means." />
-                </div>
-                <div className="flex items-center gap-8 mb-3">
-                  <div>
-                    <div className="text-xl font-bold text-tx">{totalSubmitted.toLocaleString()}</div>
-                    <div className="text-[10px] text-muted">URLs in sitemap</div>
-                  </div>
-                  <div>
-                    <div className={`text-xl font-bold ${totalIndexed > 0 ? 'text-accent3' : 'text-muted'}`}>{totalIndexed.toLocaleString()}</div>
-                    <div className="text-[10px] text-muted">Indexed via sitemap</div>
-                  </div>
-                </div>
-                {totalSubmitted > 0 && (
-                  <div className="h-2 rounded-full bg-border overflow-hidden">
-                    <div className="h-full rounded-full bg-accent3 transition-all" style={{ width: totalIndexed > 0 ? `${(totalIndexed / totalSubmitted) * 100}%` : '0%' }} />
-                  </div>
-                )}
-              </Card>
-            )
-          })()}
-
-          {/* API notice */}
-          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-            <span>
-              The GSC API does not expose the full Coverage report (robots.txt blocks, 404s, canonical issues, etc.).
-              Your <strong>Active Pages</strong> count above uses Search Analytics impressions as a reliable proxy — any page with impressions is definitely indexed.
-              For the complete breakdown, go to <strong>Google Search Console → Indexing → Pages</strong>.
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* ── Links ──────────────────────────────────────────── */}
-      {contentTab === 'links' && (
-        <div className="space-y-4">
-          <CardTitle className="flex items-center gap-1.5">
-            <Link2 size={14} className="text-accent" />
-            Links Report
-            <InfoTooltip text="External links show sites linking to you (backlinks) and what anchor text they use. Internal links show how your own pages link to each other. Both are key for PageRank distribution." />
-          </CardTitle>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-border/50">
-              <div className="flex items-center gap-2 mb-4">
-                <ExternalLink size={14} className="text-accent" />
-                <span className="text-sm font-semibold text-tx">External Links</span>
-                <InfoTooltip text="Pages on other websites that link to your site. More high-quality external links improve your domain authority and rankings." />
-              </div>
-              <div className="space-y-3 text-xs text-muted">
-                <div className="p-3 bg-surface rounded-lg border border-border">
-                  <div className="font-semibold text-tx mb-1">Top Linked Pages</div>
-                  <div className="text-muted">Which of your pages receive the most external backlinks</div>
-                </div>
-                <div className="p-3 bg-surface rounded-lg border border-border">
-                  <div className="font-semibold text-tx mb-1">Top Linking Sites</div>
-                  <div className="text-muted">Domains that link to your site the most</div>
-                </div>
-                <div className="p-3 bg-surface rounded-lg border border-border">
-                  <div className="font-semibold text-tx mb-1">Top Linking Text</div>
-                  <div className="text-muted">Anchor text used in links pointing to your site</div>
+          {/* Full indexed pages table */}
+          <Card>
+            <CardTitle className="mb-4 flex items-center gap-1.5">
+              <CheckCircle2 size={13} className="text-accent3" />
+              Confirmed Indexed Pages
+              <InfoTooltip text="Every page that appeared in Google Search results during the selected date range — sorted by impressions. These pages are definitively in Google's index." />
+            </CardTitle>
+            {dataLoading ? (
+              <div className="py-8 text-center text-muted text-sm">Loading…</div>
+            ) : (data?.pages ?? []).length === 0 ? (
+              <div className="py-8 text-center text-muted text-sm">No indexed pages found for this date range</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {[
+                        { h: '#',           tip: '' },
+                        { h: 'Page URL',    tip: 'The indexed page URL as it appears in Google Search.' },
+                        { h: 'Impressions', tip: 'Times this page appeared in Google Search. Confirms it is indexed.' },
+                        { h: 'Clicks',      tip: 'Users who clicked this page from Google Search results.' },
+                        { h: 'CTR',         tip: 'Click-Through Rate — clicks ÷ impressions.' },
+                        { h: 'Position',    tip: 'Average ranking position in Google Search for this page.' },
+                      ].map(({ h, tip }) => (
+                        <th key={h} className="text-left text-[10px] text-muted font-mono-jarvis tracking-widest pb-2 pr-4">
+                          {tip ? <span className="inline-flex items-center gap-1">{h}<InfoTooltip text={tip} /></span> : h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data?.pages ?? []).map((p, i) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-surface transition-colors">
+                        <td className="py-2 pr-4 text-muted">{i + 1}</td>
+                        <td className="py-2 pr-4 font-mono-jarvis text-accent max-w-xs truncate">{p.url}</td>
+                        <td className="py-2 pr-4 text-tx font-semibold">{p.impressions.toLocaleString()}</td>
+                        <td className="py-2 pr-4 text-accent">{p.clicks.toLocaleString()}</td>
+                        <td className="py-2 pr-4 text-muted">{p.ctr}</td>
+                        <td className="py-2 pr-4">
+                          <Badge variant={p.position <= 3 ? 'green' : p.position <= 10 ? 'amber' : 'muted'}>
+                            #{p.position}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="mt-3 text-[10px] text-muted">
+                  Showing top {data?.pages.length ?? 0} pages by impressions · For the full "why pages aren't indexed" breakdown, go to <strong>GSC → Indexing → Pages</strong>
                 </div>
               </div>
-            </Card>
-            <Card className="border-border/50">
-              <div className="flex items-center gap-2 mb-4">
-                <Link2 size={14} className="text-accent3" />
-                <span className="text-sm font-semibold text-tx">Internal Links</span>
-                <InfoTooltip text="How your own pages link to each other. Strong internal linking helps Google discover and rank your content, and distributes PageRank across your site." />
-              </div>
-              <div className="space-y-3 text-xs text-muted">
-                <div className="p-3 bg-surface rounded-lg border border-border">
-                  <div className="font-semibold text-tx mb-1">Top Linked Pages</div>
-                  <div className="text-muted">Your pages that receive the most internal links</div>
-                </div>
-              </div>
-            </Card>
-          </div>
-          <Card className="border-amber-500/30">
-            <div className="flex items-start gap-3">
-              <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-xs font-semibold text-tx mb-1">Links data not available via GSC API</div>
-                <div className="text-xs text-muted leading-relaxed">
-                  Google Search Console's Links report is not exposed through the official API. To view your external and internal link data,
-                  go to <strong className="text-accent">Google Search Console → Links</strong> directly.
-                  For full backlink analysis, use the <strong className="text-tx">Competitors</strong> section (powered by DataForSEO).
-                </div>
-              </div>
-            </div>
+            )}
           </Card>
         </div>
       )}

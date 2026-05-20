@@ -270,7 +270,6 @@ export function SiteAnalyzer() {
         .select('url, issues, status_code, title, title_len, h1_count, word_count, response_time, crawl_depth, inbound_links')
         .eq('job_id', job.id) as { data: (Pick<CrawlPage, 'url' | 'issues' | 'status_code' | 'title' | 'title_len' | 'h1_count' | 'word_count' | 'response_time' | 'crawl_depth' | 'inbound_links'>)[] | null }
       const rows = pageRows ?? []
-      const allIss = rows.flatMap(p => (p.issues ?? []).map(i => ({ ...i, url: p.url })))
       const site = job.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '')
       const date = new Date(job.started_at).toISOString().slice(0, 10)
 

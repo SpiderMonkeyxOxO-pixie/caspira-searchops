@@ -142,10 +142,29 @@ serve(async (req) => {
       body: bodyStr,
     })
 
+    // Sitemaps: 404 or empty means no sitemaps submitted — return empty list gracefully
+    if (endpoint === 'sitemaps' && gscRes.status === 404) {
+      return new Response(JSON.stringify({ sitemap: [] }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
+
     const data = await gscRes.json()
 
+    // Sitemaps: API-level error → return empty list (e.g. domain property, no sitemaps)
+    if (endpoint === 'sitemaps' && data.error) {
+      console.warn('[gsc-proxy] sitemaps error (returning empty):', data.error.message)
+      return new Response(JSON.stringify({ sitemap: [] }), {
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (data.error) {
-      throw new Error(data.error.message ?? JSON.stringify(data.error))
+      const msg = data.error.message ?? JSON.stringify(data.error)
+      return new Response(
+        JSON.stringify({ error: msg }),
+        { headers: { ...cors, 'Content-Type': 'application/json' } },
+      )
     }
 
     // Cache searchAnalytics responses
@@ -161,7 +180,7 @@ serve(async (req) => {
     console.error('[gsc-proxy]', msg)
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: 400, headers: { ...cors, 'Content-Type': 'application/json' } },
+      { headers: { ...cors, 'Content-Type': 'application/json' } },
     )
   }
 })

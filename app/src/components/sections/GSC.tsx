@@ -250,7 +250,7 @@ export function GSC() {
   // ── Sitemaps state
   const [sitemaps,        setSitemaps]        = useState<SitemapEntry[]>([])
   const [sitemapsLoading, setSitemapsLoading] = useState(false)
-  const [sitemapsErr,     setSitemapsErr]     = useState<string | null>(null)
+  const [sitemapsErr] = useState<string | null>(null)
 
   // ── Fetch connection row ──────────────────────────────────
   const fetchConn = useCallback(async () => {
@@ -312,9 +312,12 @@ export function GSC() {
         }),
       ])
 
-      if (trendRes.error)     throw new Error(trendRes.error.message)
-      if (queriesRes.error)   throw new Error(queriesRes.error.message)
-      if (pagesRes.error)     throw new Error(pagesRes.error.message)
+      if (trendRes.error)         throw new Error(trendRes.error.message)
+      if (trendRes.data?.error)   throw new Error(trendRes.data.error)
+      if (queriesRes.error)       throw new Error(queriesRes.error.message)
+      if (queriesRes.data?.error) throw new Error(queriesRes.data.error)
+      if (pagesRes.error)         throw new Error(pagesRes.error.message)
+      if (pagesRes.data?.error)   throw new Error(pagesRes.data.error)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const trend: TrendRow[] = (trendRes.data?.rows ?? []).map((r: any) => ({
@@ -368,7 +371,8 @@ export function GSC() {
       const { data, error } = await supabase.functions.invoke('gsc-proxy', {
         body: { org_id: orgId, site_url: siteUrl, endpoint: 'sitemaps', params: {} },
       })
-      if (error) throw new Error(error.message)
+      // Treat any invocation error or API-level error as empty sitemaps (not a blocking failure)
+      if (error || data?.error) { setSitemaps([]); return }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const list: SitemapEntry[] = (data?.sitemap ?? []).map((s: any) => ({
         path:          s.path ?? '',
@@ -383,8 +387,8 @@ export function GSC() {
         })),
       }))
       setSitemaps(list)
-    } catch (e) {
-      setSitemapsErr(e instanceof Error ? e.message : 'Failed to fetch sitemaps')
+    } catch {
+      setSitemaps([])
     } finally {
       setSitemapsLoading(false)
     }

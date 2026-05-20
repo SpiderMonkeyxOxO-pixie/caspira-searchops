@@ -9,6 +9,7 @@ import {
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
@@ -195,24 +196,30 @@ export function Dashboard() {
   type KpiCard = {
     label: string; value: string; color: string
     icon: React.ElementType; loading: boolean
-    subtitle: React.ReactNode
+    subtitle: React.ReactNode; tooltip: string
   }
 
   const KPI_CARDS: KpiCard[] = [
     { label: 'TOTAL CLICKS',    value: kpis?.clicks.toLocaleString()      ?? '—', color: 'var(--color-accent3)', icon: MousePointer, loading: gscLoading,
-      subtitle: kpis ? 'Last 28 days' : <button onClick={() => setSection('gsc')} className="text-accent hover:underline cursor-pointer">Connect GSC →</button> },
+      subtitle: kpis ? 'Last 28 days' : <button onClick={() => setSection('gsc')} className="text-accent hover:underline cursor-pointer">Connect GSC →</button>,
+      tooltip: 'Total number of times users clicked through to your site from Google Search results in the last 28 days. Higher clicks = more organic traffic.' },
     { label: 'IMPRESSIONS',     value: kpis?.impressions.toLocaleString()  ?? '—', color: 'var(--color-accent)',  icon: Eye,          loading: gscLoading,
-      subtitle: kpis ? 'Last 28 days' : '' },
+      subtitle: kpis ? 'Last 28 days' : '',
+      tooltip: 'How many times your pages appeared in Google Search results over the last 28 days, regardless of whether users clicked. High impressions with low clicks signals a CTR optimisation opportunity.' },
     { label: 'AVG. CTR',        value: kpis?.ctr                           ?? '—', color: '#a78bfa',              icon: Percent,      loading: gscLoading,
-      subtitle: kpis ? 'Last 28 days' : '' },
+      subtitle: kpis ? 'Last 28 days' : '',
+      tooltip: 'Click-Through Rate — the percentage of impressions that resulted in a click. Industry average for iGaming is 2–5%. Below 2% suggests your title tags and meta descriptions need improvement.' },
     { label: 'AVG. POSITION',   value: kpis ? `#${kpis.position}`          : '—', color: 'var(--color-accent4)', icon: Hash,         loading: gscLoading,
-      subtitle: kpis ? 'Last 28 days' : '' },
+      subtitle: kpis ? 'Last 28 days' : '',
+      tooltip: 'Your site\'s average ranking position across all keywords in Google Search. Position 1–3 captures ~60% of clicks. Lower numbers are better — aim to push averages below 10 (page 1).' },
     { label: 'KEYWORDS',        value: kpis?.queryCount.toLocaleString()   ?? '—', color: 'var(--color-accent)',  icon: TrendingUp,   loading: gscLoading,
-      subtitle: kpis ? 'Last 28 days' : '' },
+      subtitle: kpis ? 'Last 28 days' : '',
+      tooltip: 'Total number of unique search queries your site appeared for in Google Search over the last 28 days. A growing keyword count indicates expanding topical authority.' },
     { label: 'CRITICAL ISSUES', value: auditSummary ? String(auditSummary.criticalIssues) : '—', color: 'var(--color-danger)', icon: AlertTriangle, loading: gscLoading,
       subtitle: auditSummary
         ? <button onClick={() => setSection('analyzer')} className="text-danger hover:underline cursor-pointer">View audit →</button>
-        : <button onClick={() => setSection('analyzer')} className="text-accent hover:underline cursor-pointer">Run audit →</button> },
+        : <button onClick={() => setSection('analyzer')} className="text-accent hover:underline cursor-pointer">Run audit →</button>,
+      tooltip: 'Number of high-severity technical SEO issues found in your latest site crawl, such as broken links, missing meta tags, duplicate content, or crawl errors. Fix these first for maximum ranking impact.' },
   ]
 
   return (
@@ -224,7 +231,10 @@ export function Dashboard() {
           return (
             <Card key={m.label} className="hover:border-accent transition-colors">
               <div className="flex items-center justify-between mb-2">
-                <div className="text-[10px] tracking-widest text-muted font-mono-jarvis">{m.label}</div>
+                <div className="flex items-center gap-1 text-[10px] tracking-widest text-muted font-mono-jarvis">
+                  {m.label}
+                  <InfoTooltip text={m.tooltip} />
+                </div>
                 <span className="w-1.5 h-1.5 rounded-full bg-accent3 animate-pulse" />
               </div>
 
@@ -248,7 +258,10 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
-            <CardTitle>Clicks &amp; Impressions (28d)</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle>Clicks &amp; Impressions (28d)</CardTitle>
+              <InfoTooltip text="Daily trend of organic clicks and impressions from Google Search Console over the past 28 days. Diverging lines (high impressions, low clicks) indicate CTR issues worth investigating." />
+            </div>
             {gscSite && (
               <span className="text-[10px] font-mono-jarvis text-muted truncate max-w-55">{gscSite}</span>
             )}
@@ -295,7 +308,10 @@ export function Dashboard() {
         {/* Top Queries */}
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <CardTitle>Top Queries</CardTitle>
+            <div className="flex items-center gap-1.5">
+              <CardTitle>Top Queries</CardTitle>
+              <InfoTooltip text="The search queries driving the most clicks to your site from Google. Sorted by clicks. Use these to identify your highest-value keywords and prioritise content updates or internal linking." />
+            </div>
             {topQueries.length > 0 && (
               <button onClick={() => setSection('gsc')} className="text-[10px] text-accent hover:underline cursor-pointer font-mono-jarvis">
                 View all →
@@ -313,8 +329,14 @@ export function Dashboard() {
                 <div key={q.query} className="flex items-center justify-between gap-2 py-2 border-b border-border last:border-0">
                   <span className="text-xs text-tx truncate flex-1">{q.query}</span>
                   <div className="flex items-center gap-2 shrink-0 text-[11px] font-mono-jarvis">
-                    <span className="text-accent3">{q.clicks} clk</span>
-                    <span className="text-muted">#{q.position}</span>
+                    <span className="text-accent3 flex items-center gap-0.5">
+                      {q.clicks} clk
+                      <InfoTooltip text="Clicks: how many times users clicked this query's result in the last 28 days." size={10} />
+                    </span>
+                    <span className="text-muted flex items-center gap-0.5">
+                      #{q.position}
+                      <InfoTooltip text="Average Google ranking position for this query. Position 1 = top result. Positions 11+ are on page 2 or lower." size={10} />
+                    </span>
                   </div>
                 </div>
               ))}
@@ -329,7 +351,10 @@ export function Dashboard() {
 
       {/* ── Quick Wins ── */}
       <Card>
-        <CardTitle className="mb-1">Quick Wins</CardTitle>
+        <div className="flex items-center gap-1.5 mb-1">
+          <CardTitle>Quick Wins</CardTitle>
+          <InfoTooltip text="AI-generated SEO opportunities ranked by potential impact, derived from your live GSC data. Each win includes step-by-step implementation guidance. HIGH impact actions should be addressed first." />
+        </div>
         <div className="text-[11px] text-muted mb-4">Highest-impact SEO actions this week — click any card to see how to implement it</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {quickWins.map((w, i) => (
@@ -367,10 +392,16 @@ export function Dashboard() {
         <Card className="lg:col-span-2 flex items-center gap-6">
           <div>
             <div className="text-3xl font-display font-black text-accent">{pending}</div>
-            <div className="text-xs text-muted">pending tasks</div>
+            <div className="text-xs text-muted flex items-center gap-1">
+              pending tasks
+              <InfoTooltip text="Number of SEO tasks in your tracker that are not yet marked as complete. Staying on top of these drives consistent ranking improvements." side="right" />
+            </div>
           </div>
           <div className="flex-1">
-            <div className="text-sm font-semibold mb-1">Next priority</div>
+            <div className="text-sm font-semibold mb-1 flex items-center gap-1">
+              Next priority
+              <InfoTooltip text="The highest-priority incomplete task in your SEO tracker. Tackle critical tasks first to unblock ranking growth." side="right" />
+            </div>
             <div className="text-xs text-muted">
               {tasks.find(t => !t.done && t.priority === 'critical')?.title
                 ?? tasks.find(t => !t.done)?.title

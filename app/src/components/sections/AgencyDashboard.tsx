@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import type { Site } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -272,13 +273,20 @@ export function AgencyDashboard() {
       {/* KPI row */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label:'TOTAL SITES',      val: DISPLAY_SITES.length,                    sub: 'Your portfolio',  color:'var(--color-accent)' },
-          { label:'TOTAL TRAFFIC',    val: totalTraffic > 0 ? (totalTraffic/1000000).toFixed(2)+'M' : '—', sub: 'Combined organic', color:'#a78bfa' },
-          { label:'AVG HEALTH SCORE', val: avgScore || '—',                          sub: `${aboveScore70} sites above 70`,  color: scoreColor(avgScore) },
-          { label:'CRITICAL ALERTS',  val: totalAlerts,                              sub: `${criticalCount} sites in danger`, color:'var(--color-danger)' },
+          { label:'TOTAL SITES',      val: DISPLAY_SITES.length,                    sub: 'Your portfolio',  color:'var(--color-accent)',
+            tooltip: 'Total number of sites currently tracked in your agency portfolio. Each site gets its own health score, traffic data, and SEO issue count.' },
+          { label:'TOTAL TRAFFIC',    val: totalTraffic > 0 ? (totalTraffic/1000000).toFixed(2)+'M' : '—', sub: 'Combined organic', color:'#a78bfa',
+            tooltip: 'Combined organic clicks across all portfolio sites from Google Search Console over the last 28 days. Reflects total reach of your iGaming network.' },
+          { label:'AVG HEALTH SCORE', val: avgScore || '—',                          sub: `${aboveScore70} sites above 70`,  color: scoreColor(avgScore),
+            tooltip: 'Average SEO health score across all sites (0–100). Calculated from crawl data: issues vs. total pages. 70+ is healthy, 50–69 needs attention, below 50 is critical.' },
+          { label:'CRITICAL ALERTS',  val: totalAlerts,                              sub: `${criticalCount} sites in danger`, color:'var(--color-danger)',
+            tooltip: 'Number of active alerts triggered by severe SEO degradation across your portfolio — e.g. traffic drops, crawl failures, or score falling below 50.' },
         ].map(k => (
           <Card key={k.label}>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-2">{k.label}</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-2">
+              {k.label}
+              <InfoTooltip text={k.tooltip} />
+            </div>
             <div className="font-display font-black text-2xl mb-1" style={{ color: k.color }}>{k.val}</div>
             <div className="text-[11px] text-muted">{k.sub}</div>
           </Card>
@@ -329,7 +337,10 @@ export function AgencyDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Portfolio traffic by market */}
             <Card className="lg:col-span-2">
-              <CardTitle className="mb-1">Traffic by Market</CardTitle>
+              <div className="flex items-center gap-1.5 mb-1">
+                <CardTitle>Traffic by Market</CardTitle>
+                <InfoTooltip text="Organic click volume broken down by the country/market set on each site. Helps you identify which markets are performing best and where to focus link-building or content efforts." />
+              </div>
               <p className="text-[11px] text-muted mb-4">Organic traffic split across all your markets</p>
               {trafficByCountry.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>
@@ -358,7 +369,10 @@ export function AgencyDashboard() {
 
             {/* Health summary */}
             <Card>
-              <CardTitle className="mb-4">Portfolio Health</CardTitle>
+              <div className="flex items-center gap-1.5 mb-4">
+                <CardTitle>Portfolio Health</CardTitle>
+                <InfoTooltip text="Distribution of site health scores across your portfolio. Health score is derived from crawl issues vs. total pages. Keep as many sites as possible in the Healthy (70+) band." />
+              </div>
               <div className="space-y-3 mb-5">
                 {[
                   { label:'Healthy (70+)',  count:DISPLAY_SITES.filter(s=>s.score>=70).length,  color:'#10b981' },
@@ -392,7 +406,10 @@ export function AgencyDashboard() {
 
           {/* Sites needing attention */}
           <Card>
-            <CardTitle className="mb-4">Sites Needing Immediate Attention</CardTitle>
+            <div className="flex items-center gap-1.5 mb-4">
+              <CardTitle>Sites Needing Immediate Attention</CardTitle>
+              <InfoTooltip text="Sites with a Critical health score (below 50) sorted by number of SEO issues. These sites are at risk of ranking drops and should be audited and fixed as a priority." />
+            </div>
             <div className="space-y-2">
               {dangerSites.map(s => (
                 <div key={s.id} className="flex items-center gap-4 p-3 bg-surface border border-danger/30 rounded-xl">
@@ -421,7 +438,10 @@ export function AgencyDashboard() {
 
           {/* Top movers */}
           <Card>
-            <CardTitle className="mb-4">Top Traffic Movers This Month</CardTitle>
+            <div className="flex items-center gap-1.5 mb-4">
+              <CardTitle>Top Traffic Movers This Month</CardTitle>
+              <InfoTooltip text="Sites with the highest absolute organic traffic in your portfolio this month. These are your best-performing assets — study what's working and replicate it across other sites." />
+            </div>
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {topMovers.map(s => (
                 <div key={s.id} className="p-3 bg-surface border border-[#10b98130] rounded-xl">
@@ -482,23 +502,53 @@ export function AgencyDashboard() {
                   <tr className="border-b border-border">
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">SITE</th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
-                      <div className="flex items-center gap-1">SCORE <SortBtn col="score" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('score')} /></div>
+                      <div className="flex items-center gap-1">
+                        SCORE
+                        <InfoTooltip text="SEO health score (0–100) based on crawl issues vs. total pages. 70+ = healthy, 50–69 = warning, below 50 = critical." />
+                        <SortBtn col="score" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('score')} />
+                      </div>
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
-                      <div className="flex items-center gap-1">TRAFFIC <SortBtn col="traffic" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('traffic')} /></div>
+                      <div className="flex items-center gap-1">
+                        TRAFFIC
+                        <InfoTooltip text="Organic clicks from Google Search over the last 28 days, sourced from Google Search Console." />
+                        <SortBtn col="traffic" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('traffic')} />
+                      </div>
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
-                      <div className="flex items-center gap-1">DR <SortBtn col="dr" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('dr')} /></div>
+                      <div className="flex items-center gap-1">
+                        DR
+                        <InfoTooltip text="Domain Rating — a measure of a site's backlink authority on a 0–100 scale. Higher DR generally correlates with stronger ranking potential." />
+                        <SortBtn col="dr" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('dr')} />
+                      </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">TOP KEYWORD</th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
-                      <div className="flex items-center gap-1">POS <SortBtn col="pos" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('pos')} /></div>
+                      <div className="flex items-center gap-1">
+                        TOP KEYWORD
+                        <InfoTooltip text="The search query that generated the most clicks for this site in the last 28 days, based on GSC data." />
+                      </div>
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
-                      <div className="flex items-center gap-1">ISSUES <SortBtn col="issues" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('issues')} /></div>
+                      <div className="flex items-center gap-1">
+                        POS
+                        <InfoTooltip text="Average Google ranking position for the site's top keyword. Lower is better — position 1–3 captures the majority of clicks." />
+                        <SortBtn col="pos" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('pos')} />
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
+                      <div className="flex items-center gap-1">
+                        ISSUES
+                        <InfoTooltip text="Number of technical SEO issues found in the latest crawl. Includes broken links, missing tags, duplicate content, redirect chains, and more." />
+                        <SortBtn col="issues" sortBy={sortBy} sortDir={sortDir} onClick={() => toggleSort('issues')} />
+                      </div>
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">CLIENT</th>
-                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">STATUS</th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
+                      <div className="flex items-center gap-1">
+                        STATUS
+                        <InfoTooltip text="Overall site status derived from health score: Good (70+), Warning (50–69), Critical (below 50)." />
+                      </div>
+                    </th>
                     <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>

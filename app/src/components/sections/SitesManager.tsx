@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/authStore'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { cn } from '@/lib/utils'
 import type { Site } from '@/types'
 
@@ -186,14 +187,21 @@ export function SitesManager() {
       {/* KPI row */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'TOTAL SITES',      val: sites.length, color: 'var(--color-accent)' },
-          { label: 'HEALTHY',          val: good,          color: '#10b981' },
-          { label: 'NEEDS ATTENTION',  val: warning,       color: '#f59e0b' },
-          { label: 'CRITICAL',         val: danger,        color: '#ef4444' },
+          { label: 'TOTAL SITES',     val: sites.length, color: 'var(--color-accent)',
+            tooltip: 'Total number of domains you are currently tracking in Jarvis. Each site can be assigned a client, market, and health status.' },
+          { label: 'HEALTHY',         val: good,          color: '#10b981',
+            tooltip: 'Sites with a health score of 70 or above, indicating few or no significant SEO issues detected in the latest crawl.' },
+          { label: 'NEEDS ATTENTION', val: warning,       color: '#f59e0b',
+            tooltip: 'Sites with a health score between 50 and 69. These have moderate SEO issues that should be addressed to prevent ranking drops.' },
+          { label: 'CRITICAL',        val: danger,        color: '#ef4444',
+            tooltip: 'Sites with a health score below 50. High issue count relative to total pages — at risk of significant ranking loss. Audit immediately.' },
         ].map(k => (
           <Card key={k.label} className="text-center py-4">
             <div className="text-3xl font-display font-black mb-1" style={{ color: k.color }}>{k.val}</div>
-            <div className="text-[10px] tracking-widest text-muted font-mono-jarvis">{k.label}</div>
+            <div className="flex items-center justify-center gap-1 text-[10px] tracking-widest text-muted font-mono-jarvis">
+              {k.label}
+              <InfoTooltip text={k.tooltip} />
+            </div>
           </Card>
         ))}
       </div>
@@ -293,8 +301,20 @@ export function SitesManager() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border">
-                  {['Name', 'Domain', 'Country', 'Client', 'Status', 'Score', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">{h}</th>
+                  {[
+                    { h: 'Name',    tip: null },
+                    { h: 'Domain',  tip: null },
+                    { h: 'Country', tip: 'The market/country this site targets. Used to segment traffic in the Agency Dashboard by market and helps track geo-specific SEO performance.' },
+                    { h: 'Client',  tip: 'The client or internal team this site belongs to. Used for filtering and portfolio organisation across multiple clients.' },
+                    { h: 'Status',  tip: 'Current SEO health status: Good (score 70+), Warning (50–69), or Critical (below 50). Updated after each crawl.' },
+                    { h: 'Score',   tip: 'SEO health score from 0–100. Calculated from the ratio of crawl issues to total pages. Run a crawl in Site Analyzer to populate this.' },
+                    { h: 'Actions', tip: null },
+                  ].map(({ h, tip }) => (
+                    <th key={h} className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">
+                      {tip ? (
+                        <div className="flex items-center gap-1">{h}<InfoTooltip text={tip} /></div>
+                      ) : h}
+                    </th>
                   ))}
                 </tr>
               </thead>
@@ -371,27 +391,39 @@ export function SitesManager() {
         <CardTitle className="mb-4">Add Single Site</CardTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">DOMAIN <span className="text-danger">*</span></div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
+              DOMAIN <span className="text-danger">*</span>
+              <InfoTooltip text="Enter the root domain (e.g. casinoindian.in). HTTP/HTTPS and www are stripped automatically. This is used to match GSC data and crawl results." side="right" />
+            </div>
             <input value={newDomain} onChange={e => setNewDomain(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="casinoindian.in"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SITE NAME</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
+              SITE NAME
+              <InfoTooltip text="A human-readable label for this site. If left blank, a name is auto-generated from the domain. Used throughout the dashboard for easy identification." side="right" />
+            </div>
             <input value={newName} onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               placeholder="Auto-generated from domain"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors" />
           </div>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">MARKET / COUNTRY</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
+              MARKET / COUNTRY
+              <InfoTooltip text="The primary geographic market this site targets (e.g. India, Indonesia). Used to group sites in the Traffic by Market chart in the Agency Dashboard." side="right" />
+            </div>
             <input value={newCountry} onChange={e => setNewCountry(e.target.value)}
               placeholder="India, Indonesia…"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors" />
           </div>
           <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">CLIENT / TAG</div>
+            <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
+              CLIENT / TAG
+              <InfoTooltip text="An optional label to group this site by client or category (e.g. Client A, Internal). Shown in the All Sites table for portfolio filtering." side="right" />
+            </div>
             <input value={newClient} onChange={e => setNewClient(e.target.value)}
               placeholder="Client A, Personal…"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors" />

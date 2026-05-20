@@ -47,7 +47,20 @@ const CHART_COLORS = ['#00d4ff', '#7c3aed', '#10b981', '#f59e0b', '#ec4899', '#f
 
 interface EnrichedData {
   score: number; issues: number; status: 'good' | 'warning' | 'danger'
-  trafficRaw: number; topKw: string; pos: number
+  trafficRaw: number; topKw: string; pos: number; dr: number
+}
+
+const ISO3_NAMES: Record<string, string> = {
+  ind: 'India',        idn: 'Indonesia',     usa: 'United States', gbr: 'United Kingdom',
+  can: 'Canada',       aus: 'Australia',      deu: 'Germany',       bra: 'Brazil',
+  phl: 'Philippines',  vnm: 'Vietnam',        sgp: 'Singapore',     mys: 'Malaysia',
+  tha: 'Thailand',     pak: 'Pakistan',       nld: 'Netherlands',   fra: 'France',
+  esp: 'Spain',        ita: 'Italy',          jpn: 'Japan',         kor: 'South Korea',
+  zaf: 'South Africa', nga: 'Nigeria',        ken: 'Kenya',         mex: 'Mexico',
+  arg: 'Argentina',    chn: 'China',          rus: 'Russia',        ukr: 'Ukraine',
+}
+function iso3toName(code: string): string {
+  return ISO3_NAMES[code?.toLowerCase()] ?? code?.toUpperCase() ?? 'Unknown'
 }
 
 function normDomain(d: string) {
@@ -109,7 +122,7 @@ function siteToAgency(s: Site, e?: EnrichedData): AgencySite {
     trafficChange: '—',
     changeUp: true,
     keys: s.keys,
-    dr: 0,
+    dr: e?.dr ?? 0,
     issues,
     status,
     country: s.country ?? '—',
@@ -124,7 +137,7 @@ function siteToAgency(s: Site, e?: EnrichedData): AgencySite {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function AgencyDashboard() {
-  const { sites: storeSites, setSection, removeSite } = useStore()
+  const { sites: storeSites, setSection, removeSite, openPageRankKey } = useStore()
   const { org } = useAuthStore()
   const orgId = org?.id ?? ''
 
@@ -135,11 +148,12 @@ export function AgencyDashboard() {
   const [sortBy,    setSortBy]    = useState<SortBy>('score')
   const [sortDir,   setSortDir]   = useState<'asc'|'desc'>('desc')
 
-  const [enriched,    setEnriched]    = useState<Map<string, EnrichedData>>(new Map())
-  const [enriching,   setEnriching]   = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [deleting,    setDeleting]    = useState<Set<number>>(new Set())
-  const [confirmId,   setConfirmId]   = useState<number | null>(null)
+  const [enriched,       setEnriched]       = useState<Map<string, EnrichedData>>(new Map())
+  const [countryTraffic, setCountryTraffic] = useState<Map<string, number>>(new Map())
+  const [enriching,      setEnriching]      = useState(false)
+  const [lastUpdated,    setLastUpdated]    = useState<Date | null>(null)
+  const [deleting,       setDeleting]       = useState<Set<number>>(new Set())
+  const [confirmId,      setConfirmId]      = useState<number | null>(null)
 
   const runEnrichment = useCallback(async () => {
     if (!orgId || storeSites.length === 0) return
@@ -161,7 +175,7 @@ export function AgencyDashboard() {
         if (!crawlMap.has(k)) crawlMap.set(k, j)
       }
 
-      // 2. GSC available sites list
+      // 2. GSC connection
       const { data: conn } = await supabase
         .from('jarvis_gsc_connections')
         .select('available_sites')
@@ -169,24 +183,40 @@ export function AgencyDashboard() {
         .maybeSingle() as { data: { available_sites: string[] | null } | null }
 
       const availableSites = conn?.available_sites ?? []
-
-      // 3. GSC data per site (parallel)
       const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
       const endDate   = new Date().toISOString().slice(0, 10)
 
-      const gscResults = await Promise.allSettled(
-        storeSites.map(site => {
+      // 3. Parallel: GSC queries, GSC countries, OPR DR
+      const [queryResults, countryResults, oprResults] = await Promise.all([
+        Promise.allSettled(storeSites.map(site => {
           const gscSite = matchGscSite(site.domain, availableSites)
           if (!gscSite) return Promise.resolve(null)
           return supabase.functions.invoke('gsc-proxy', {
             body: { org_id: orgId, site_url: gscSite, endpoint: 'searchAnalytics',
               params: { startDate, endDate, dimensions: ['query'], rowLimit: 100 } },
           }).then(({ data }) => data).catch(() => null)
-        })
-      )
+        })),
+        Promise.allSettled(storeSites.map(site => {
+          const gscSite = matchGscSite(site.domain, availableSites)
+          if (!gscSite) return Promise.resolve(null)
+          return supabase.functions.invoke('gsc-proxy', {
+            body: { org_id: orgId, site_url: gscSite, endpoint: 'searchAnalytics',
+              params: { startDate, endDate, dimensions: ['country'], rowLimit: 10 } },
+          }).then(({ data }) => data).catch(() => null)
+        })),
+        openPageRankKey
+          ? Promise.allSettled(storeSites.map(site =>
+              supabase.functions.invoke('opr-proxy', {
+                body: { domain: normDomain(site.domain), apiKey: openPageRankKey },
+              }).then(({ data }) => data).catch(() => null)
+            ))
+          : Promise.resolve(storeSites.map(() => ({ status: 'fulfilled' as const, value: null }))),
+      ])
 
-      // 4. Build enriched map
+      // 4. Build enriched map + aggregate country traffic
+      const countryAgg = new Map<string, number>()
       const map = new Map<string, EnrichedData>()
+
       storeSites.forEach((site, i) => {
         const crawl = crawlMap.get(normDomain(site.domain))
         let score  = site.score
@@ -199,20 +229,34 @@ export function AgencyDashboard() {
         const status: 'good' | 'warning' | 'danger' = score >= 70 ? 'good' : score >= 50 ? 'warning' : 'danger'
 
         type GSCRow = { keys: string[]; clicks: number; position: number }
-        const gscRes = gscResults[i]
-        const rows: GSCRow[] = (gscRes.status === 'fulfilled' && gscRes.value?.rows) ? gscRes.value.rows : []
-        const trafficRaw = rows.reduce((s, r) => s + r.clicks, 0)
-        const topKw = rows[0]?.keys[0] ?? '—'
-        const pos   = rows[0]?.position ? Math.round(rows[0].position * 10) / 10 : 0
+        const qRes   = queryResults[i]
+        const qRows: GSCRow[] = (qRes.status === 'fulfilled' && qRes.value?.rows) ? qRes.value.rows : []
+        const trafficRaw = qRows.reduce((s, r) => s + r.clicks, 0)
+        const topKw = qRows[0]?.keys[0] ?? '—'
+        const pos   = qRows[0]?.position ? Math.round(qRows[0].position * 10) / 10 : 0
 
-        map.set(site.domain, { score, issues, status, trafficRaw, topKw, pos })
+        // Country clicks → aggregate for Traffic by Market chart
+        const cRes   = countryResults[i]
+        const cRows: GSCRow[] = (cRes.status === 'fulfilled' && cRes.value?.rows) ? cRes.value.rows : []
+        cRows.forEach(r => {
+          const name = iso3toName(r.keys[0])
+          countryAgg.set(name, (countryAgg.get(name) ?? 0) + r.clicks)
+        })
+
+        // OPR → DR (scale 0-10 → 0-100)
+        const oprRes = oprResults[i]
+        const oprScore: number = (oprRes.status === 'fulfilled' && oprRes.value?.response?.[0]?.page_rank_decimal) ?? 0
+        const dr = oprScore > 0 ? Math.round(oprScore * 10) : 0
+
+        map.set(site.domain, { score, issues, status, trafficRaw, topKw, pos, dr })
       })
 
       setEnriched(map)
+      setCountryTraffic(countryAgg)
       setLastUpdated(new Date())
     } catch { /* best-effort */ }
     setEnriching(false)
-  }, [orgId, storeSites])
+  }, [orgId, storeSites, openPageRankKey])
 
   useEffect(() => { runEnrichment() }, [orgId, storeSites.length])
 
@@ -229,11 +273,12 @@ export function AgencyDashboard() {
 
   const uniqueCountries = [...new Set(DISPLAY_SITES.map(s => s.country).filter(c => c && c !== '—'))]
 
-  const trafficByCountry = uniqueCountries.map((c, i) => ({
-    country: c,
-    traffic: DISPLAY_SITES.filter(s => s.country === c).reduce((sum, s) => sum + s.trafficRaw, 0),
-    color: CHART_COLORS[i % CHART_COLORS.length],
-  }))
+  // Traffic by Market — from real GSC country data (not manually-set site country)
+  const trafficByCountry = [...countryTraffic.entries()]
+    .filter(([, v]) => v > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([country, traffic], i) => ({ country, traffic, color: CHART_COLORS[i % CHART_COLORS.length] }))
 
   const filtered = useMemo(() => {
     let list = [...DISPLAY_SITES]
@@ -275,7 +320,7 @@ export function AgencyDashboard() {
         {[
           { label:'TOTAL SITES',      val: DISPLAY_SITES.length,                    sub: 'Your portfolio',  color:'var(--color-accent)',
             tooltip: 'Total number of sites currently tracked in your agency portfolio. Each site gets its own health score, traffic data, and SEO issue count.' },
-          { label:'TOTAL TRAFFIC',    val: totalTraffic > 0 ? (totalTraffic/1000000).toFixed(2)+'M' : '—', sub: 'Combined organic', color:'#a78bfa',
+          { label:'TOTAL TRAFFIC',    val: totalTraffic > 0 ? formatTraffic(totalTraffic) : '—', sub: 'Combined organic', color:'#a78bfa',
             tooltip: 'Combined organic clicks across all portfolio sites from Google Search Console over the last 28 days. Reflects total reach of your iGaming network.' },
           { label:'AVG HEALTH SCORE', val: avgScore || '—',                          sub: `${aboveScore70} sites above 70`,  color: scoreColor(avgScore),
             tooltip: 'Average SEO health score across all sites (0–100). Calculated from crawl data: issues vs. total pages. 70+ is healthy, 50–69 needs attention, below 50 is critical.' },
@@ -681,7 +726,7 @@ export function AgencyDashboard() {
           {/* Summary row */}
           <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted pt-2">
             <Zap size={12} className="text-accent" />
-            <span>Combined portfolio: <span className="text-tx font-semibold">{(totalTraffic/1000000).toFixed(2)}M organic visits/mo</span></span>
+            <span>Combined portfolio: <span className="text-tx font-semibold">{formatTraffic(totalTraffic)} organic visits/mo</span></span>
             <span className="text-border">·</span>
             {DISPLAY_SITES.length > 0 && (<>
             <span>Healthiest: <span className="text-accent3 font-semibold">{DISPLAY_SITES.reduce((a,s) => s.score>a.score?s:a, DISPLAY_SITES[0]).name} ({DISPLAY_SITES.reduce((a,s) => s.score>a.score?s:a, DISPLAY_SITES[0]).score})</span></span>

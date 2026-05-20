@@ -7,8 +7,8 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const MAX_PAGES  = 150
-const BATCH_SIZE = 5
+const MAX_PAGES  = 500
+const BATCH_SIZE = 8
 const BOT_UA     = 'Jarvis-SEO-Crawler/1.0 (compatible; Googlebot)'
 
 // ── HTML extractors ───────────────────────────────────────────
@@ -226,7 +226,19 @@ async function getRobotsDisallowed(siteUrl: string): Promise<string[]> {
     })
     if (!res.ok) return []
     const text = await res.text()
-    return [...text.matchAll(/^Disallow:\s*(.+)/gim)].map(m => m[1].trim())
+    // Only apply Disallow rules under User-agent: * — ignore bot-specific blocks
+    const disallowed: string[] = []
+    let inWildcard = false
+    for (const raw of text.split('\n')) {
+      const line = raw.trim()
+      if (/^user-agent:/i.test(line)) {
+        inWildcard = line.replace(/^user-agent:\s*/i, '').trim() === '*'
+      } else if (inWildcard && /^disallow:/i.test(line)) {
+        const path = line.replace(/^disallow:\s*/i, '').trim()
+        if (path) disallowed.push(path)
+      }
+    }
+    return disallowed
   } catch { return [] }
 }
 function isDisallowed(path: string, disallowList: string[]): boolean {

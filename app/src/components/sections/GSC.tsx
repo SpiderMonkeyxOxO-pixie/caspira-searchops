@@ -941,7 +941,7 @@ export function GSC() {
                 </CardTitle>
                 <div className="space-y-2">
                   {(() => {
-                    const rows = data.countries
+                    const rows = data.countries.slice(0, 5)
                     const maxClicks = rows[0]?.clicks ?? 1
                     return rows.map((c, i) => {
                       const pct = Math.round((c.clicks / maxClicks) * 100)

@@ -39,7 +39,7 @@ interface GSCData {
   kpis:      { clicks: number; impressions: number; ctr: string; position: string }
 }
 
-type ContentTab = 'overview' | 'queries' | 'pages' | 'countries' | 'sitemaps' | 'indexing'
+type ContentTab = 'overview' | 'queries' | 'pages'
 
 // ── Country helpers ───────────────────────────────────────────
 const COUNTRY_MAP: Record<string, { name: string; code2: string }> = {
@@ -430,6 +430,12 @@ export function GSC() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conn?.selectedSite, orgId])
 
+  // ── Auto-fetch sitemaps whenever active site changes ─────
+  useEffect(() => {
+    if (activeUrl) { setSitemaps([]); fetchSitemaps(activeUrl) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUrl])
+
   // ── Switch to a tab ───────────────────────────────────────
   function switchTab(url: string) {
     setActiveUrl(url)
@@ -496,9 +502,6 @@ export function GSC() {
 
   function switchContentTab(tab: ContentTab) {
     setContentTab(tab)
-    if ((tab === 'sitemaps' || tab === 'indexing') && sitemaps.length === 0 && activeUrl) {
-      fetchSitemaps(activeUrl)
-    }
   }
 
   // ── Click-outside for More menu
@@ -864,12 +867,9 @@ export function GSC() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex gap-1 p-1 bg-surface border border-border rounded-xl w-fit flex-wrap">
           {([
-            { id: 'overview',  label: 'Overview' },
-            { id: 'queries',   label: 'Queries' },
-            { id: 'pages',     label: 'Pages' },
-            { id: 'countries', label: 'Countries' },
-            { id: 'sitemaps',  label: 'Sitemaps' },
-            { id: 'indexing',  label: 'Indexing' },
+            { id: 'overview', label: 'Overview' },
+            { id: 'queries',  label: 'Queries'  },
+            { id: 'pages',    label: 'Pages'    },
           ] as { id: ContentTab; label: string }[]).map(({ id, label }) => (
             <button key={id} onClick={() => switchContentTab(id)}
               className={`px-4 py-1.5 rounded-lg text-xs font-semibold font-mono-jarvis tracking-wide transition-all cursor-pointer
@@ -890,42 +890,187 @@ export function GSC() {
         dataLoading ? (
           <div className="text-center py-12 text-muted text-sm">Loading GSC data…</div>
         ) : data ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <Card className="lg:col-span-2">
-              <CardTitle className="mb-4 flex items-center gap-1.5">Clicks &amp; Impressions (28d)<InfoTooltip text="Daily trend of clicks (users visiting your site) vs impressions (times your site appeared in search results) over the selected period." /></CardTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={data.trend}>
-                  <defs>
-                    <linearGradient id="gClicks" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#00d4ff" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gImpressions" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#7c3aed" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize:10, fill:'var(--color-muted)' }} />
-                  <YAxis tick={{ fontSize:10, fill:'var(--color-muted)' }} />
-                  <Tooltip contentStyle={{ background:'var(--color-card)', border:'1px solid var(--color-border)', fontSize:11 }} />
-                  <Area type="monotone" dataKey="impressions" stroke="#7c3aed" fill="url(#gImpressions)" strokeWidth={2} name="Impressions" />
-                  <Area type="monotone" dataKey="clicks"      stroke="#00d4ff" fill="url(#gClicks)"      strokeWidth={2} name="Clicks" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </Card>
+          <div className="space-y-5">
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              <Card className="lg:col-span-2">
+                <CardTitle className="mb-4 flex items-center gap-1.5">Clicks &amp; Impressions<InfoTooltip text="Daily trend of clicks (users visiting your site) vs impressions (times your site appeared in search results) over the selected period." /></CardTitle>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={data.trend}>
+                    <defs>
+                      <linearGradient id="gClicks" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#00d4ff" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="gImpressions" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%"  stopColor="#7c3aed" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize:10, fill:'var(--color-muted)' }} />
+                    <YAxis tick={{ fontSize:10, fill:'var(--color-muted)' }} />
+                    <Tooltip contentStyle={{ background:'var(--color-card)', border:'1px solid var(--color-border)', fontSize:11 }} />
+                    <Area type="monotone" dataKey="impressions" stroke="#7c3aed" fill="url(#gImpressions)" strokeWidth={2} name="Impressions" />
+                    <Area type="monotone" dataKey="clicks"      stroke="#00d4ff" fill="url(#gClicks)"      strokeWidth={2} name="Clicks" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </Card>
+              <Card>
+                <CardTitle className="mb-4 flex items-center gap-1.5">Position Distribution<InfoTooltip text="Shows how many of your ranking queries fall into each position band. More queries in 1–3 means stronger top-of-SERP visibility." /></CardTitle>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={posDist(data.queries)} layout="vertical">
+                    <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize:10, fill:'var(--color-muted)' }} />
+                    <YAxis dataKey="range" type="category" tick={{ fontSize:10, fill:'var(--color-muted)' }} width={36} />
+                    <Tooltip contentStyle={{ background:'var(--color-card)', border:'1px solid var(--color-border)', fontSize:11 }} />
+                    <Bar dataKey="pages" fill="#7c3aed" radius={[0,4,4,0]} name="Queries" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </div>
+
+            {/* Countries */}
+            {data.countries.length > 0 && (
+              <Card>
+                <CardTitle className="mb-4 flex items-center gap-1.5">
+                  <MapPin size={13} className="text-accent" />
+                  Top Countries
+                  <InfoTooltip text="Countries where users clicked through to your site from Google Search. Useful for understanding your geographic audience and targeting strategy." />
+                </CardTitle>
+                <div className="space-y-2">
+                  {(() => {
+                    const rows = data.countries
+                    const maxClicks = rows[0]?.clicks ?? 1
+                    return rows.map((c, i) => {
+                      const pct = Math.round((c.clicks / maxClicks) * 100)
+                      return (
+                        <div key={i} className="flex items-center gap-3 py-1.5 border-b border-border/50 last:border-0">
+                          <span className="text-base shrink-0 w-6 text-center">{countryFlag(c.country)}</span>
+                          <div className="w-28 shrink-0 text-xs text-tx">{countryName(c.country)}</div>
+                          <div className="flex-1">
+                            <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                              <div className="h-full rounded-full bg-accent" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                          <div className="w-14 text-right text-xs font-semibold text-tx shrink-0">{c.clicks.toLocaleString()}</div>
+                          <div className="w-20 text-right text-xs text-muted shrink-0">{c.impressions.toLocaleString()} impr.</div>
+                          <div className="w-10 text-right text-xs text-accent3 shrink-0">{c.ctr}</div>
+                          <div className="w-12 text-right shrink-0">
+                            <Badge variant={c.position <= 3 ? 'green' : c.position <= 10 ? 'amber' : 'muted'}>#{c.position}</Badge>
+                          </div>
+                        </div>
+                      )
+                    })
+                  })()}
+                </div>
+              </Card>
+            )}
+
+            {/* Sitemaps */}
+            <div>
+              <CardTitle className="mb-3 flex items-center gap-1.5">
+                <FileText size={13} className="text-accent" />
+                Submitted Sitemaps
+                <InfoTooltip text="Sitemaps submitted to GSC. 'Discovered' = URLs Google found in your sitemap. 'Indexed via sitemap' only counts pages Google confirmed through this specific submission — pages indexed via crawl won't show here." />
+                {sitemapsLoading && <span className="text-[10px] text-muted font-mono-jarvis animate-pulse ml-1">loading…</span>}
+              </CardTitle>
+              {sitemapsErr ? (
+                <div className="text-xs text-danger">{sitemapsErr}</div>
+              ) : sitemaps.length === 0 && !sitemapsLoading ? (
+                <div className="text-xs text-muted">No sitemaps submitted for this property</div>
+              ) : (
+                <div className="space-y-3">
+                  {sitemaps.map((sm, i) => {
+                    const totalSubmitted = sm.contents.reduce((s, c) => s + c.submitted, 0)
+                    const totalIndexed   = sm.contents.reduce((s, c) => s + c.indexed,   0)
+                    return (
+                      <Card key={i}>
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <FileText size={11} className="text-muted shrink-0" />
+                              <span className="text-xs font-mono-jarvis text-accent truncate">{sm.path}</span>
+                              {sm.errors > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-danger/20 text-danger shrink-0">{sm.errors} error{sm.errors !== 1 ? 's' : ''}</span>}
+                              {sm.warnings > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">{sm.warnings} warning{sm.warnings !== 1 ? 's' : ''}</span>}
+                            </div>
+                            <div className="flex items-center gap-4 text-[10px] text-muted">
+                              <span>Type: <span className="text-tx capitalize">{sm.type}</span></span>
+                              {sm.lastSubmitted && <span>Submitted: <span className="text-tx">{new Date(sm.lastSubmitted).toLocaleDateString()}</span></span>}
+                              {sm.lastDownloaded && <span>Last read: <span className="text-tx">{new Date(sm.lastDownloaded).toLocaleDateString()}</span></span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6 shrink-0 text-center">
+                            <div>
+                              <div className="text-lg font-bold text-tx">{totalSubmitted.toLocaleString()}</div>
+                              <div className="text-[10px] text-muted">Discovered</div>
+                            </div>
+                            <div>
+                              <div className={`text-lg font-bold ${totalIndexed > 0 ? 'text-accent3' : 'text-muted'}`}>{totalIndexed.toLocaleString()}</div>
+                              <div className="text-[10px] text-muted">Indexed via sitemap</div>
+                            </div>
+                          </div>
+                        </div>
+                        {totalSubmitted > 0 && totalIndexed > 0 && (
+                          <div className="mt-3">
+                            <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                              <div className="h-full rounded-full bg-accent3" style={{ width: `${(totalIndexed / totalSubmitted) * 100}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Indexing — confirmed indexed pages */}
             <Card>
-              <CardTitle className="mb-4 flex items-center gap-1.5">Position Distribution<InfoTooltip text="Shows how many of your ranking queries fall into each position band. More queries in 1–3 means stronger top-of-SERP visibility." /></CardTitle>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={posDist(data.queries)} layout="vertical">
-                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize:10, fill:'var(--color-muted)' }} />
-                  <YAxis dataKey="range" type="category" tick={{ fontSize:10, fill:'var(--color-muted)' }} width={36} />
-                  <Tooltip contentStyle={{ background:'var(--color-card)', border:'1px solid var(--color-border)', fontSize:11 }} />
-                  <Bar dataKey="pages" fill="#7c3aed" radius={[0,4,4,0]} name="Queries" />
-                </BarChart>
-              </ResponsiveContainer>
+              <CardTitle className="mb-4 flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-accent3" />
+                Confirmed Indexed Pages
+                <InfoTooltip text="Pages that appeared in Google Search results during the selected date range. Any page with impressions is definitively in Google's index." />
+              </CardTitle>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border">
+                      {[
+                        { h: '#',           tip: '' },
+                        { h: 'Page URL',    tip: 'The indexed page as it appears in Google Search.' },
+                        { h: 'Impressions', tip: 'Times this page appeared in Google Search — confirms it is indexed.' },
+                        { h: 'Clicks',      tip: 'Users who clicked through from Google.' },
+                        { h: 'CTR',         tip: 'Click-Through Rate — clicks ÷ impressions.' },
+                        { h: 'Position',    tip: 'Average ranking position in Google Search.' },
+                      ].map(({ h, tip }) => (
+                        <th key={h} className="text-left text-[10px] text-muted font-mono-jarvis tracking-widest pb-2 pr-4">
+                          {tip ? <span className="inline-flex items-center gap-1">{h}<InfoTooltip text={tip} /></span> : h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.pages.map((p, i) => (
+                      <tr key={i} className="border-b border-border/50 hover:bg-surface transition-colors">
+                        <td className="py-2 pr-4 text-muted">{i + 1}</td>
+                        <td className="py-2 pr-4 font-mono-jarvis text-accent max-w-xs truncate">{p.url}</td>
+                        <td className="py-2 pr-4 text-tx font-semibold">{p.impressions.toLocaleString()}</td>
+                        <td className="py-2 pr-4 text-accent">{p.clicks.toLocaleString()}</td>
+                        <td className="py-2 pr-4 text-muted">{p.ctr}</td>
+                        <td className="py-2 pr-4">
+                          <Badge variant={p.position <= 3 ? 'green' : p.position <= 10 ? 'amber' : 'muted'}>#{p.position}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {data.pages.length === 0 && <div className="py-8 text-center text-muted text-sm">No indexed pages found for this date range</div>}
+                <div className="mt-2 text-[10px] text-muted">Top {data.pages.length} pages by impressions · For full "why not indexed" breakdown: GSC → Indexing → Pages</div>
+              </div>
             </Card>
+
           </div>
         ) : null
       )}
@@ -1026,8 +1171,8 @@ export function GSC() {
         </Card>
       )}
 
-      {/* ── Countries ──────────────────────────────────────── */}
-      {contentTab === 'countries' && (
+      {/* old countries/sitemaps/indexing tabs removed — content moved to Overview */}
+      {false && (
         <Card>
           <CardTitle className="mb-4 flex items-center gap-1.5">
             <MapPin size={14} className="text-accent" />

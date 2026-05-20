@@ -1246,40 +1246,6 @@ export function GSC() {
               For the complete breakdown, go to <strong>Google Search Console → Indexing → Pages</strong>.
             </span>
           </div>
-
-              {/* Sitemap errors */}
-              {sitemaps.some(sm => sm.errors > 0) && (
-                <Card className="border-amber-500/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle size={14} className="text-amber-400" />
-                    <span className="text-xs font-semibold text-tx">Sitemap Errors Detected</span>
-                  </div>
-                  <div className="space-y-2">
-                    {sitemaps.filter(sm => sm.errors > 0).map((sm, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <span className="text-muted font-mono-jarvis truncate">{sm.path}</span>
-                        <span className="text-danger font-semibold shrink-0 ml-2">{sm.errors} error{sm.errors !== 1 ? 's' : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Link to full GSC Coverage report */}
-              <Card className="border-border/50">
-                <div className="flex items-start gap-3">
-                  <ExternalLink size={14} className="text-accent shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-semibold text-tx mb-1">Full Indexing Breakdown</div>
-                    <div className="text-xs text-muted leading-relaxed">
-                      The "Why pages aren't indexed" breakdown (robots.txt blocks, 404s, canonical issues, etc.)
-                      is only available in GSC directly. Go to <strong className="text-accent">Google Search Console → Indexing → Pages</strong> to see the full report.
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </>
-          )}
         </div>
       )}
 

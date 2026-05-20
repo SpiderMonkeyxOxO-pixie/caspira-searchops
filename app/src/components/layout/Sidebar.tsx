@@ -98,6 +98,23 @@ export function Sidebar() {
               {showItems && group.items.filter(item => canAccess(item.id)).map((item) => {
                 const Icon = item.icon
                 const isActive = activeSection === item.id
+                if (item.disabled) {
+                  return (
+                    <div
+                      key={item.id}
+                      title={sidebarCollapsed ? item.label : undefined}
+                      className={cn(
+                        'w-full flex items-center rounded-lg mb-0.5 border border-transparent opacity-35 blur-[0.6px] select-none pointer-events-none',
+                        sidebarCollapsed ? 'justify-center py-2.5' : 'gap-2.5 px-3 py-2 text-[12.5px]'
+                      )}
+                    >
+                      <Icon size={14} className="shrink-0 text-muted" strokeWidth={1.75} />
+                      {!sidebarCollapsed && (
+                        <span className="flex-1 truncate font-medium text-left text-muted">{item.label}</span>
+                      )}
+                    </div>
+                  )
+                }
                 return (
                   <button
                     key={item.id}
@@ -107,7 +124,7 @@ export function Sidebar() {
                       'w-full flex items-center rounded-lg mb-0.5 transition-all duration-200 cursor-pointer border',
                       sidebarCollapsed
                         ? 'justify-center py-2.5'
-                        : 'gap-2.5 px-3 py-2 text-[12.5px]',
+                        : 'gap-2.5 px-3 py-2 text--[12.5px]',
                       isActive
                         ? 'bg-linear-to-r from-[#00d4ff15] to-[#7c3aed15] text-accent border-accent/40 shadow-[0_0_20px_#00d4ff08]'
                         : 'text-muted border-transparent hover:bg-[#00d4ff08] hover:text-tx hover:border-border'

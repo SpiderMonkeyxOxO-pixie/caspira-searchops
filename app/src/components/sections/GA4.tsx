@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
 import { useAuthStore } from '@/store/authStore'
@@ -723,11 +724,11 @@ export function GA4() {
       {/* ── KPIs ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {([
-          { label: 'SESSIONS',        val: kpis ? kpis.sessions.toLocaleString()              : '—', color: '#00d4ff', icon: Activity         },
-          { label: 'PAGEVIEWS',       val: kpis ? kpis.pageviews.toLocaleString()             : '—', color: '#10b981', icon: MousePointerClick },
-          { label: 'ENGAGEMENT RATE', val: kpis ? (kpis.engagementRate * 100).toFixed(1) + '%' : '—', color: '#7c3aed', icon: TrendingUp       },
-          { label: 'AVG SESSION',     val: kpis ? fmtDuration(kpis.avgDuration)               : '—', color: '#f59e0b', icon: Clock             },
-        ] as const).map(({ label, val, color, icon: Icon }) => (
+          { label: 'SESSIONS',        val: kpis ? kpis.sessions.toLocaleString()              : '—', color: '#00d4ff', icon: Activity,          tip: 'A session is a group of user interactions with your site within a given time frame. A new session starts after 30 minutes of inactivity.' },
+          { label: 'PAGEVIEWS',       val: kpis ? kpis.pageviews.toLocaleString()             : '—', color: '#10b981', icon: MousePointerClick,  tip: 'Total number of pages viewed, including repeated views of a single page. High pageviews relative to sessions indicates good content depth.' },
+          { label: 'ENGAGEMENT RATE', val: kpis ? (kpis.engagementRate * 100).toFixed(1) + '%' : '—', color: '#7c3aed', icon: TrendingUp,        tip: 'Percentage of sessions that lasted longer than 10 seconds, had a conversion event, or had 2+ page views. The inverse of Bounce Rate in GA4.' },
+          { label: 'AVG SESSION',     val: kpis ? fmtDuration(kpis.avgDuration)               : '—', color: '#f59e0b', icon: Clock,              tip: 'Average duration of engaged sessions (minutes:seconds). Longer sessions typically signal higher content quality and user intent.' },
+        ] as const).map(({ label, val, color, icon: Icon, tip }) => (
           <Card key={label} className="py-4">
             <div className="flex items-center justify-between mb-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: color + '20' }}>
@@ -736,7 +737,10 @@ export function GA4() {
               {dataLoading && <Loader2 size={12} className="animate-spin text-muted" />}
             </div>
             <div className="text-2xl font-display font-black" style={{ color }}>{val}</div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mt-1">{label}</div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mt-1 flex items-center gap-1">
+              {label}
+              <InfoTooltip text={tip} />
+            </div>
           </Card>
         ))}
       </div>
@@ -750,7 +754,7 @@ export function GA4() {
       {/* ── Trend + Channels ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <Card className="lg:col-span-2">
-          <CardTitle className="mb-4">Sessions &amp; Pageviews ({DATE_RANGES.find(r => r.value === dateRange)?.label ?? '28d'})</CardTitle>
+          <CardTitle className="mb-4 flex items-center gap-1.5">Sessions &amp; Pageviews ({DATE_RANGES.find(r => r.value === dateRange)?.label ?? '28d'})<InfoTooltip text="Daily trend of sessions (visits) and pageviews over the selected date range. Diverging lines may indicate users visiting fewer pages per session." /></CardTitle>
           {dataLoading ? (
             <div className="h-52 flex items-center justify-center"><Loader2 size={22} className="animate-spin text-muted" /></div>
           ) : trend.length > 0 ? (
@@ -780,7 +784,7 @@ export function GA4() {
         </Card>
 
         <Card>
-          <CardTitle className="mb-4">Channel Breakdown</CardTitle>
+          <CardTitle className="mb-4 flex items-center gap-1.5">Channel Breakdown<InfoTooltip text="How sessions are distributed across traffic sources — Organic Search, Direct, Referral, Paid Search, Email, Social, etc." /></CardTitle>
           {dataLoading ? (
             <div className="h-52 flex items-center justify-center"><Loader2 size={22} className="animate-spin text-muted" /></div>
           ) : channels.length > 0 ? (
@@ -809,7 +813,7 @@ export function GA4() {
 
       {/* ── Top Pages ─────────────────────────────────────── */}
       <Card>
-        <CardTitle className="mb-4">Top Pages by Sessions</CardTitle>
+        <CardTitle className="mb-4 flex items-center gap-1.5">Top Pages by Sessions<InfoTooltip text="Pages ranked by the number of sessions they received. High-traffic pages with low engagement rates are candidates for content improvement." /></CardTitle>
         {dataLoading ? (
           <div className="h-32 flex items-center justify-center"><Loader2 size={20} className="animate-spin text-muted" /></div>
         ) : pages.length > 0 ? (
@@ -827,7 +831,7 @@ export function GA4() {
                 <div key={p.page} className="flex items-center justify-between gap-3 py-1 border-b border-border last:border-0">
                   <span className="text-xs font-mono-jarvis text-accent truncate flex-1">{p.page}</span>
                   <span className="text-[11px] font-mono-jarvis text-tx shrink-0">{p.sessions.toLocaleString()} sess</span>
-                  <span className="text-[11px] font-mono-jarvis text-muted shrink-0">eng {p.engagementRate}</span>
+                  <span className="text-[11px] font-mono-jarvis text-muted shrink-0 flex items-center gap-0.5">eng {p.engagementRate}<InfoTooltip text="Engagement Rate for this page — share of sessions that were engaged (10s+ active, conversion, or 2+ pages). Higher is better." side="left" /></span>
                 </div>
               ))}
             </div>

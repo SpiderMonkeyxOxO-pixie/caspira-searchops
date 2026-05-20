@@ -4,6 +4,7 @@ import { Loader2, Monitor, Smartphone, Zap, Brain, Wrench, Search, AlertCircle, 
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -275,7 +276,7 @@ Be direct and technical.`,
             {/* Score ring */}
             <Card className="lg:col-span-1 flex flex-col items-center justify-center gap-3 py-6">
               <ScoreRing score={result.metrics.score} />
-              <div className="text-sm font-semibold text-tx">Performance Score</div>
+              <div className="text-sm font-semibold text-tx flex items-center gap-1.5">Performance Score<InfoTooltip text="Google Lighthouse performance score (0–100). 90+ is Good, 50–89 Needs Improvement, below 50 is Poor. Scores below 70 can negatively impact Core Web Vitals rankings." side="right" /></div>
               <div className="text-[11px] text-muted font-mono-jarvis text-center">
                 {result.device} · {result.url.replace(/^https?:\/\//, '').split('/')[0]}<br />
                 <span className="opacity-60">audited {result.fetchedAt}</span>
@@ -286,15 +287,36 @@ Be direct and technical.`,
             <Card className="lg:col-span-2">
               <CardTitle className="mb-4 flex items-center gap-2">
                 <Zap size={15} className="text-accent" /> Core Web Vitals
+                <InfoTooltip text="Core Web Vitals (LCP, CLS, FID/TBT, FCP, SI) are Google's page experience signals used as ranking factors. Improving these metrics can directly boost organic rankings." />
               </CardTitle>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                <Metric label="LCP" val={result.metrics.lcp}  unit="s"  target={2.5} good={result.metrics.lcp  <= 2.5} />
-                <Metric label="TBT" val={result.metrics.tbt}  unit="ms" target={200} good={result.metrics.tbt  <= 200} />
-                <Metric label="CLS" val={result.metrics.cls}  unit=""   target={0.1} good={result.metrics.cls  <= 0.1} />
-                <Metric label="FCP" val={result.metrics.fcp}  unit="s"  target={1.8} good={result.metrics.fcp  <= 1.8} />
-                <Metric label="SI"  val={result.metrics.si}   unit="s"  target={3.4} good={result.metrics.si   <= 3.4} />
                 <div className="bg-surface border border-border rounded-xl p-3 text-center">
-                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1">PASSING</div>
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">LCP<InfoTooltip text="Largest Contentful Paint — time until the largest visible element (image or text block) loads. Good: ≤2.5s. Measures perceived load speed." /></div>
+                  <div className={cn('text-xl font-display font-black', result.metrics.lcp <= 2.5 ? 'text-accent3' : 'text-danger')}>{result.metrics.lcp}s</div>
+                  <div className="text-[10px] text-muted mt-0.5">target &lt;2.5s</div>
+                </div>
+                <div className="bg-surface border border-border rounded-xl p-3 text-center">
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">TBT<InfoTooltip text="Total Blocking Time — total time the main thread was blocked, preventing user input. Good: ≤200ms. High TBT makes pages feel unresponsive." /></div>
+                  <div className={cn('text-xl font-display font-black', result.metrics.tbt <= 200 ? 'text-accent3' : 'text-danger')}>{result.metrics.tbt}ms</div>
+                  <div className="text-[10px] text-muted mt-0.5">target &lt;200ms</div>
+                </div>
+                <div className="bg-surface border border-border rounded-xl p-3 text-center">
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">CLS<InfoTooltip text="Cumulative Layout Shift — measures unexpected layout shifts during page load. Good: ≤0.1. High CLS causes elements to jump around as the page loads." /></div>
+                  <div className={cn('text-xl font-display font-black', result.metrics.cls <= 0.1 ? 'text-accent3' : 'text-danger')}>{result.metrics.cls}</div>
+                  <div className="text-[10px] text-muted mt-0.5">target &lt;0.1</div>
+                </div>
+                <div className="bg-surface border border-border rounded-xl p-3 text-center">
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">FCP<InfoTooltip text="First Contentful Paint — time until the first text or image is painted on screen. Good: ≤1.8s. A fast FCP reassures users that the page is loading." /></div>
+                  <div className={cn('text-xl font-display font-black', result.metrics.fcp <= 1.8 ? 'text-accent3' : 'text-danger')}>{result.metrics.fcp}s</div>
+                  <div className="text-[10px] text-muted mt-0.5">target &lt;1.8s</div>
+                </div>
+                <div className="bg-surface border border-border rounded-xl p-3 text-center">
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">SI<InfoTooltip text="Speed Index — how quickly page content is visually populated. Good: ≤3.4s. Reflects the visual progression of page loading from the user's perspective." /></div>
+                  <div className={cn('text-xl font-display font-black', result.metrics.si <= 3.4 ? 'text-accent3' : 'text-danger')}>{result.metrics.si}s</div>
+                  <div className="text-[10px] text-muted mt-0.5">target &lt;3.4s</div>
+                </div>
+                <div className="bg-surface border border-border rounded-xl p-3 text-center">
+                  <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-1 flex items-center justify-center gap-1">PASSING<InfoTooltip text="Number of Core Web Vitals that meet Google's 'Good' thresholds. Google uses CWV as a ranking signal — aim for all 5 passing." /></div>
                   <div className="text-xl font-display font-black text-accent">{passing}/5</div>
                   <div className="text-[10px] text-muted mt-0.5">vitals</div>
                 </div>
@@ -324,6 +346,7 @@ Be direct and technical.`,
               {result.opportunities.length > 0 && (
                 <span className="text-xs text-muted font-normal">({result.opportunities.length} found)</span>
               )}
+              <InfoTooltip text="Lighthouse-detected optimisations that could reduce page load time. Each opportunity shows estimated time or byte savings — prioritise high-savings items first." />
             </CardTitle>
 
             {result.opportunities.length === 0 ? (

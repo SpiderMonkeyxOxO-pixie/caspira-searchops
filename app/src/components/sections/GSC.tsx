@@ -4,6 +4,7 @@ import {
   RefreshCw, AlertCircle, Globe, Unplug, Plus, X, Search, ChevronDown, Download,
 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
@@ -744,10 +745,10 @@ export function GSC() {
       ) : data ? (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'TOTAL CLICKS',  val: data.kpis.clicks.toLocaleString(),     icon: <MousePointer size={14} />, color: '#00d4ff' },
-            { label: 'IMPRESSIONS',   val: data.kpis.impressions.toLocaleString(), icon: <Eye size={14} />,          color: '#7c3aed' },
-            { label: 'AVG. CTR',      val: data.kpis.ctr,                          icon: <Percent size={14} />,      color: '#10b981' },
-            { label: 'AVG. POSITION', val: `#${data.kpis.position}`,              icon: <Hash size={14} />,         color: '#f59e0b' },
+            { label: 'TOTAL CLICKS',  val: data.kpis.clicks.toLocaleString(),     icon: <MousePointer size={14} />, color: '#00d4ff', tip: 'Total number of times users clicked through to your site from Google Search results in the selected date range.' },
+            { label: 'IMPRESSIONS',   val: data.kpis.impressions.toLocaleString(), icon: <Eye size={14} />,          color: '#7c3aed', tip: 'How many times any URL from your site appeared in Google Search results. Impressions count even if the result was not scrolled into view.' },
+            { label: 'AVG. CTR',      val: data.kpis.ctr,                          icon: <Percent size={14} />,      color: '#10b981', tip: 'Click-Through Rate — the percentage of impressions that resulted in a click. Higher CTR indicates compelling titles and meta descriptions.' },
+            { label: 'AVG. POSITION', val: `#${data.kpis.position}`,              icon: <Hash size={14} />,         color: '#f59e0b', tip: 'Average ranking position across all queries. Position 1 is the top result. Lower numbers are better — aim for top 10 (page 1).' },
           ].map(k => (
             <Card key={k.label}>
               <div className="flex items-center gap-2 mb-2">
@@ -755,7 +756,10 @@ export function GSC() {
                   style={{ background: k.color + '20', color: k.color }}>
                   {k.icon}
                 </div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest">{k.label}</div>
+                <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest">
+                  {k.label}
+                  <InfoTooltip text={k.tip} />
+                </div>
               </div>
               <div className="font-display font-black text-2xl text-tx">{k.val}</div>
             </Card>
@@ -788,7 +792,7 @@ export function GSC() {
         ) : data ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <Card className="lg:col-span-2">
-              <CardTitle className="mb-4">Clicks &amp; Impressions (28d)</CardTitle>
+              <CardTitle className="mb-4 flex items-center gap-1.5">Clicks &amp; Impressions (28d)<InfoTooltip text="Daily trend of clicks (users visiting your site) vs impressions (times your site appeared in search results) over the selected period." /></CardTitle>
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={data.trend}>
                   <defs>
@@ -811,7 +815,7 @@ export function GSC() {
               </ResponsiveContainer>
             </Card>
             <Card>
-              <CardTitle className="mb-4">Position Distribution</CardTitle>
+              <CardTitle className="mb-4 flex items-center gap-1.5">Position Distribution<InfoTooltip text="Shows how many of your ranking queries fall into each position band. More queries in 1–3 means stronger top-of-SERP visibility." /></CardTitle>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={posDist(data.queries)} layout="vertical">
                   <CartesianGrid stroke="var(--color-border)" strokeDasharray="3 3" horizontal={false} />
@@ -845,8 +849,16 @@ export function GSC() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
-                    {['Query', 'Clicks', 'Impressions', 'CTR', 'Position'].map(h => (
-                      <th key={h} className="text-left text-[10px] text-muted font-mono-jarvis tracking-widest pb-2 pr-4">{h}</th>
+                    {([
+                      { h: 'Query',       tip: 'The search term users typed into Google that triggered an impression of your site.' },
+                      { h: 'Clicks',      tip: 'Number of clicks this query drove to your site from Google Search.' },
+                      { h: 'Impressions', tip: 'How many times your site appeared in results for this query, whether or not it was clicked.' },
+                      { h: 'CTR',         tip: 'Click-Through Rate for this query — clicks divided by impressions, shown as a percentage.' },
+                      { h: 'Position',    tip: 'Average ranking position for this query. Position 1 is the highest. Lower numbers mean better visibility.' },
+                    ] as const).map(({ h, tip }) => (
+                      <th key={h} className="text-left text-[10px] text-muted font-mono-jarvis tracking-widest pb-2 pr-4">
+                        <span className="inline-flex items-center gap-1">{h}<InfoTooltip text={tip} /></span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -890,15 +902,15 @@ export function GSC() {
                   <div className="flex items-center gap-4 shrink-0 text-[11px]">
                     <div className="text-right">
                       <div className="text-tx font-semibold">{p.clicks.toLocaleString()}</div>
-                      <div className="text-muted">clicks</div>
+                      <div className="text-muted flex items-center gap-0.5 justify-end">clicks<InfoTooltip text="Total clicks from Google Search to this page in the selected period." /></div>
                     </div>
                     <div className="text-right">
                       <div className="text-muted">{p.impressions.toLocaleString()}</div>
-                      <div className="text-muted">impr.</div>
+                      <div className="text-muted flex items-center gap-0.5 justify-end">impr.<InfoTooltip text="Times this page URL appeared in Google Search results." /></div>
                     </div>
                     <div className="text-right">
                       <div className="text-accent3 font-semibold">{p.ctr}</div>
-                      <div className="text-muted">CTR</div>
+                      <div className="text-muted flex items-center gap-0.5 justify-end">CTR<InfoTooltip text="Click-Through Rate — percentage of impressions that resulted in a click on this page." /></div>
                     </div>
                     <Badge variant={p.position <= 3 ? 'green' : p.position <= 10 ? 'amber' : 'muted'}>
                       #{p.position}

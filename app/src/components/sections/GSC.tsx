@@ -1082,12 +1082,23 @@ export function GSC() {
             <CardTitle className="flex items-center gap-1.5">
               <FileText size={14} className="text-accent" />
               Submitted Sitemaps
-              <InfoTooltip text="Sitemaps submitted to Google Search Console for this property. Shows how many pages were discovered vs indexed, and any errors Google found." />
+              <InfoTooltip text="Sitemaps you've submitted to Google Search Console. 'Discovered' = URLs Google found in your sitemap. 'Indexed via sitemap' = pages Google confirmed it indexed specifically through this sitemap — pages crawled via other means won't count here." />
             </CardTitle>
             <Button variant="ghost" onClick={() => fetchSitemaps(activeUrl)} disabled={sitemapsLoading}>
               <RefreshCw size={11} className={sitemapsLoading ? 'animate-spin' : ''} /> Refresh
             </Button>
           </div>
+
+          {/* API limitation notice */}
+          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+            <span>
+              <strong>Note:</strong> The GSC API only reports pages indexed <em>via this specific sitemap submission</em>.
+              Pages Google discovered through direct crawling, backlinks, or other sitemaps won't appear in the "Indexed" count here —
+              even if they're fully indexed and ranking. For the authoritative number, check <strong>GSC → Indexing → Pages</strong>.
+            </span>
+          </div>
+
           {sitemapsErr && (
             <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs text-danger">
               <AlertCircle size={14} className="shrink-0" /> {sitemapsErr}
@@ -1125,21 +1136,21 @@ export function GSC() {
                           <div className="text-[10px] text-muted">Discovered</div>
                         </div>
                         <div>
-                          <div className="text-lg font-bold text-accent3">{totalIndexed.toLocaleString()}</div>
-                          <div className="text-[10px] text-muted">Indexed</div>
+                          <div className={`text-lg font-bold ${totalIndexed > 0 ? 'text-accent3' : 'text-muted'}`}>{totalIndexed.toLocaleString()}</div>
+                          <div className="text-[10px] text-muted">Indexed via sitemap</div>
                         </div>
                       </div>
                     </div>
-                    {totalSubmitted > 0 && (
+                    {totalSubmitted > 0 && totalIndexed > 0 && (
                       <div className="mt-3">
                         <div className="flex justify-between text-[10px] text-muted mb-1">
-                          <span>Index coverage</span>
-                          <span>{totalSubmitted > 0 ? Math.round((totalIndexed / totalSubmitted) * 100) : 0}%</span>
+                          <span>Sitemap index rate</span>
+                          <span>{Math.round((totalIndexed / totalSubmitted) * 100)}%</span>
                         </div>
                         <div className="h-2 rounded-full bg-border overflow-hidden">
                           <div
                             className="h-full rounded-full bg-accent3 transition-all"
-                            style={{ width: `${totalSubmitted > 0 ? (totalIndexed / totalSubmitted) * 100 : 0}%` }}
+                            style={{ width: `${(totalIndexed / totalSubmitted) * 100}%` }}
                           />
                         </div>
                       </div>
@@ -1158,50 +1169,83 @@ export function GSC() {
           <CardTitle className="flex items-center gap-1.5">
             <CheckCircle2 size={14} className="text-accent3" />
             Index Coverage
-            <InfoTooltip text="Shows how many pages from your submitted sitemaps have been indexed by Google. For the full breakdown of why pages aren't indexed, visit GSC → Index → Pages." />
+            <InfoTooltip text="Combines search analytics signals with sitemap data to give you an accurate picture of your indexing status. 'Active pages' = pages confirmed in Google's index via clicks/impressions." />
           </CardTitle>
+
+          {/* Cross-reference search analytics for a more accurate picture */}
+          {data && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Card className="border-accent3/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={14} className="text-accent3" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">ACTIVE PAGES</span>
+                  <InfoTooltip text="Pages confirmed in Google's index — they received impressions in Search in the selected date range. This is the most reliable signal that a page is indexed." side="bottom" />
+                </div>
+                <div className="text-3xl font-display font-black text-accent3">{data.pages.length.toLocaleString()}</div>
+                <div className="text-xs text-muted mt-1">pages with GSC impressions</div>
+              </Card>
+              <Card>
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye size={14} className="text-accent" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">TOTAL IMPRESSIONS</span>
+                  <InfoTooltip text="Total times your pages appeared in Google Search results. Only indexed pages can generate impressions." side="bottom" />
+                </div>
+                <div className="text-3xl font-display font-black text-tx">{data.kpis.impressions.toLocaleString()}</div>
+                <div className="text-xs text-muted mt-1">in selected date range</div>
+              </Card>
+              <Card>
+                <div className="flex items-center gap-2 mb-2">
+                  <MousePointer size={14} className="text-accent4" />
+                  <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">TOTAL CLICKS</span>
+                  <InfoTooltip text="Users clicked your indexed pages from Google Search results." side="bottom" />
+                </div>
+                <div className="text-3xl font-display font-black text-tx">{data.kpis.clicks.toLocaleString()}</div>
+                <div className="text-xs text-muted mt-1">from Google Search</div>
+              </Card>
+            </div>
+          )}
+
+          {/* Sitemap-based indexing */}
           {sitemapsLoading ? (
-            <div className="py-10 text-center text-muted text-sm">Loading indexing data…</div>
-          ) : sitemaps.length === 0 ? (
-            <Card className="text-center py-8 text-muted text-sm">No sitemap data — submit a sitemap in GSC first</Card>
-          ) : (
-            <>
-              {/* Indexed vs Not Indexed summary from sitemap data */}
-              {(() => {
-                const totalSubmitted = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.submitted, 0), 0)
-                const totalIndexed   = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.indexed,   0), 0)
-                const notIndexed     = Math.max(0, totalSubmitted - totalIndexed)
-                const pct = totalSubmitted > 0 ? Math.round((totalIndexed / totalSubmitted) * 100) : 0
-                return (
-                  <div className="grid grid-cols-2 gap-4">
-                    <Card className="border-accent3/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle2 size={16} className="text-accent3" />
-                        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">INDEXED</span>
-                      </div>
-                      <div className="text-3xl font-display font-black text-accent3">{totalIndexed.toLocaleString()}</div>
-                      <div className="text-xs text-muted mt-1">pages in Google's index</div>
-                    </Card>
-                    <Card className="border-danger/30">
-                      <div className="flex items-center gap-2 mb-3">
-                        <XCircle size={16} className="text-danger" />
-                        <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">NOT INDEXED</span>
-                      </div>
-                      <div className="text-3xl font-display font-black text-danger">{notIndexed.toLocaleString()}</div>
-                      <div className="text-xs text-muted mt-1">of {totalSubmitted.toLocaleString()} discovered pages</div>
-                    </Card>
-                    <div className="col-span-2">
-                      <div className="flex justify-between text-xs text-muted mb-2">
-                        <span>Overall index rate</span>
-                        <span className="font-semibold text-tx">{pct}%</span>
-                      </div>
-                      <div className="h-3 rounded-full bg-border overflow-hidden">
-                        <div className="h-full rounded-full bg-accent3 transition-all" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
+            <div className="py-6 text-center text-muted text-sm">Loading sitemap data…</div>
+          ) : sitemaps.length > 0 && (() => {
+            const totalSubmitted = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.submitted, 0), 0)
+            const totalIndexed   = sitemaps.reduce((s, sm) => s + sm.contents.reduce((a, c) => a + c.indexed,   0), 0)
+            return (
+              <Card>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText size={13} className="text-muted" />
+                  <span className="text-xs font-semibold text-tx">Sitemap Submission</span>
+                  <InfoTooltip text="Pages discovered and indexed specifically via your submitted sitemaps. This is often lower than your actual indexed page count because Google also indexes pages it finds through other means." />
+                </div>
+                <div className="flex items-center gap-8 mb-3">
+                  <div>
+                    <div className="text-xl font-bold text-tx">{totalSubmitted.toLocaleString()}</div>
+                    <div className="text-[10px] text-muted">URLs in sitemap</div>
                   </div>
-                )
-              })()}
+                  <div>
+                    <div className={`text-xl font-bold ${totalIndexed > 0 ? 'text-accent3' : 'text-muted'}`}>{totalIndexed.toLocaleString()}</div>
+                    <div className="text-[10px] text-muted">Indexed via sitemap</div>
+                  </div>
+                </div>
+                {totalSubmitted > 0 && (
+                  <div className="h-2 rounded-full bg-border overflow-hidden">
+                    <div className="h-full rounded-full bg-accent3 transition-all" style={{ width: totalIndexed > 0 ? `${(totalIndexed / totalSubmitted) * 100}%` : '0%' }} />
+                  </div>
+                )}
+              </Card>
+            )
+          })()}
+
+          {/* API notice */}
+          <div className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+            <span>
+              The GSC API does not expose the full Coverage report (robots.txt blocks, 404s, canonical issues, etc.).
+              Your <strong>Active Pages</strong> count above uses Search Analytics impressions as a reliable proxy — any page with impressions is definitely indexed.
+              For the complete breakdown, go to <strong>Google Search Console → Indexing → Pages</strong>.
+            </span>
+          </div>
 
               {/* Sitemap errors */}
               {sitemaps.some(sm => sm.errors > 0) && (

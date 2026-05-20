@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import {
   TrendingUp, TrendingDown, CheckCircle2,
-  ChevronUp, ChevronDown, Search, Zap, Plus, Loader2,
+  ChevronUp, ChevronDown, Search, Zap, Plus, Loader2, Trash2,
 } from 'lucide-react'
 import {
   BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -123,7 +123,7 @@ function siteToAgency(s: Site, e?: EnrichedData): AgencySite {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function AgencyDashboard() {
-  const { sites: storeSites, setSection } = useStore()
+  const { sites: storeSites, setSection, removeSite } = useStore()
   const { org } = useAuthStore()
   const orgId = org?.id ?? ''
 
@@ -134,9 +134,11 @@ export function AgencyDashboard() {
   const [sortBy,    setSortBy]    = useState<SortBy>('score')
   const [sortDir,   setSortDir]   = useState<'asc'|'desc'>('desc')
 
-  const [enriched,   setEnriched]   = useState<Map<string, EnrichedData>>(new Map())
-  const [enriching,  setEnriching]  = useState(false)
+  const [enriched,    setEnriched]    = useState<Map<string, EnrichedData>>(new Map())
+  const [enriching,   setEnriching]   = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [deleting,    setDeleting]    = useState<Set<number>>(new Set())
+  const [confirmId,   setConfirmId]   = useState<number | null>(null)
 
   useEffect(() => {
     if (!orgId || storeSites.length === 0) return
@@ -491,11 +493,15 @@ export function AgencyDashboard() {
                     </th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">CLIENT</th>
                     <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal">STATUS</th>
+                    <th className="px-4 py-3 w-10" />
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(s => (
-                    <tr key={s.id} className="border-b border-border hover:bg-surface transition-colors">
+                  {filtered.map(s => {
+                    const isDeleting  = deleting.has(s.id)
+                    const isConfirming = confirmId === s.id
+                    return (
+                    <tr key={s.id} className="group border-b border-border hover:bg-surface transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-tx">{s.name}</div>
                         <div className="text-[10px] text-muted font-mono-jarvis">{s.domain}</div>
@@ -514,12 +520,14 @@ export function AgencyDashboard() {
                           {s.changeUp ? <TrendingUp size={9} /> : <TrendingDown size={9} />} {s.trafficChange}
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono-jarvis font-bold text-tx">{s.dr}</td>
+                      <td className="px-4 py-3 font-mono-jarvis font-bold text-tx">{s.dr || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="text-muted font-mono-jarvis truncate max-w-36">{s.topKw}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`font-mono-jarvis font-bold ${s.pos<=3 ? 'text-accent3' : s.pos<=10 ? 'text-accent4' : 'text-muted'}`}>#{s.pos}</span>
+                        <span className={`font-mono-jarvis font-bold ${s.pos<=3 ? 'text-accent3' : s.pos<=10 ? 'text-accent4' : 'text-muted'}`}>
+                          {s.pos > 0 ? `#${s.pos}` : '—'}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         {s.issues > 0 ? (
@@ -532,8 +540,40 @@ export function AgencyDashboard() {
                           {s.status}
                         </Badge>
                       </td>
+                      {/* Delete */}
+                      <td className="px-3 py-3">
+                        {isDeleting ? (
+                          <Loader2 size={13} className="animate-spin text-muted" />
+                        ) : isConfirming ? (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={async () => {
+                                setConfirmId(null)
+                                setDeleting(prev => new Set(prev).add(s.id))
+                                await removeSite(s.id, orgId)
+                                setDeleting(prev => { const n = new Set(prev); n.delete(s.id); return n })
+                                setEnriched(prev => { const n = new Map(prev); n.delete(s.domain); return n })
+                              }}
+                              className="text-[10px] font-semibold text-danger border border-danger/40 rounded px-1.5 py-0.5 hover:bg-danger/10 cursor-pointer transition-colors">
+                              Yes
+                            </button>
+                            <button
+                              onClick={() => setConfirmId(null)}
+                              className="text-[10px] text-muted border border-border rounded px-1.5 py-0.5 hover:border-accent cursor-pointer transition-colors">
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmId(s.id)}
+                            className="text-muted hover:text-danger transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

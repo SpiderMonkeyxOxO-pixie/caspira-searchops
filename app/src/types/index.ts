@@ -88,3 +88,4 @@ export type NavSection =
   | 'aivisibility'
   | 'team'
   | 'seonews'
+  | 'activitylogs'

@@ -80,6 +80,7 @@ const IntentAnalyzer     = load(() => import('@/components/sections/IntentAnalyz
 const AIVisibility       = load(() => import('@/components/sections/AIVisibility'))
 const TeamManagement     = load(() => import('@/components/sections/TeamManagement'))
 const SEONews            = load(() => import('@/components/sections/SEONews'))
+const ActivityLogs       = load(() => import('@/components/sections/ActivityLogs'))
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -146,6 +147,7 @@ const SECTION_MAP: Partial<Record<NavSection, React.LazyExoticComponent<React.Co
   aivisibility:   AIVisibility,
   team:           TeamManagement,
   seonews:        SEONews,
+  activitylogs:   ActivityLogs,
 }
 
 // ── Error boundary — catches any section crash, resets on nav ─
@@ -314,6 +316,25 @@ function AppLayout() {
       <JarvisWidget />
     </div>
   )
+}
+
+function useActivityLogger() {
+  const { activeSection } = useStore()
+  const { session, org } = useAuthStore()
+  const lastSection = useRef<string>('')
+
+  useEffect(() => {
+    if (!session?.user || !org || activeSection === lastSection.current) return
+    lastSection.current = activeSection
+    supabase.from('jarvis_activity_logs').insert({
+      org_id: org.id,
+      user_id: session.user.id,
+      user_email: session.user.email ?? null,
+      section: activeSection,
+    }).then(({ error }) => {
+      if (error) console.warn('[ActivityLog]', error.message)
+    })
+  }, [activeSection, session, org])
 }
 
 function useGSCPopup() {
@@ -607,6 +628,7 @@ export default function App() {
   useAuth()
   useGSCPopup()
   useGA4Popup()
+  useActivityLogger()
 
   const { session, org, user, loading, orgLoading } = useAuthStore()
 

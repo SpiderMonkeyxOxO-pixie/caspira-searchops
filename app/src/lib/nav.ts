@@ -9,7 +9,7 @@ import {
   Shuffle, ScrollText, Globe, Bot, Map, FileCode2,
   CalendarDays, Share2, Palette, GitBranch, ScanLine,
   SunMoon, Keyboard, ExternalLink, ListChecks, Webhook, Rss, Building2, Target,
-  SearchCode, Hash, BookOpen, Zap, Sparkles, Eye,
+  SearchCode, Hash, BookOpen, Zap, Sparkles, Eye, ClipboardList,
 } from 'lucide-react'
 import type { NavSection } from '@/types'
 
@@ -129,6 +129,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: 'PLATFORM',
     items: [
+      { id: 'activitylogs',  label: 'Activity Logs',      icon: ClipboardList },
       { id: 'team',          label: 'Team Management',    icon: Users2, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'onboarding',    label: 'Onboarding',         icon: ListChecks, badge: 'START', badgeColor: 'bg-accent4' },
       { id: 'themesettings', label: 'Theme & Display',    icon: SunMoon },

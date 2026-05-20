@@ -72,7 +72,8 @@ export function CursorPresence() {
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         if (key === myId) return
-        const p = newPresences[0] as { email: string; x: number; y: number; section: string } | undefined
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const p = newPresences[0] as unknown as { email: string; x: number; y: number; section: string } | undefined
         if (!p) return
         setCursors(prev => new Map(prev).set(key, { user_id: key, email: p.email, x: p.x, y: p.y, section: p.section, color: colorFor(key) }))
       })

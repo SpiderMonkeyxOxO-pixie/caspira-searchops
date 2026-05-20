@@ -58,12 +58,10 @@ async function getAccessToken(
 
   if (error || !conn) throw new Error('GA4 not connected for this org')
 
-  // Token still valid (60s buffer)
   if (new Date(conn.token_expiry) > new Date(Date.now() + 60_000)) {
     return conn.access_token
   }
 
-  // Refresh
   const params = new URLSearchParams({
     client_id:     Deno.env.get('GOOGLE_CLIENT_ID')!,
     client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET')!,
@@ -90,9 +88,16 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
-    const { org_id, property_id, report } = await req.json()
-    if (!org_id || !property_id || !report) {
-      throw new Error('Missing required fields: org_id, property_id, report')
+    const { org_id, property_id, mode = 'runReport', report, reports } = await req.json()
+
+    if (!org_id || !property_id) {
+      throw new Error('Missing required fields: org_id, property_id')
+    }
+    if (mode === 'batchRunReports' && !Array.isArray(reports)) {
+      throw new Error('batchRunReports requires a reports array')
+    }
+    if (mode !== 'batchRunReports' && !report) {
+      throw new Error('Missing required field: report')
     }
 
     const supabase = createClient(
@@ -100,30 +105,47 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // Check cache before hitting GA4 API
-    const cacheKey = await makeCacheKey('ga4', org_id, property_id, report)
-    const cached   = await cacheGet<unknown>(cacheKey)
-    if (cached) {
-      return new Response(JSON.stringify(cached), {
-        headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
-      })
+    // Realtime data is never cached
+    const isRealtime = mode === 'runRealtimeReport'
+    const cacheKey = isRealtime
+      ? null
+      : await makeCacheKey('ga4', org_id, property_id, mode, mode === 'batchRunReports' ? reports : report)
+
+    if (cacheKey) {
+      const cached = await cacheGet<unknown>(cacheKey)
+      if (cached) {
+        return new Response(JSON.stringify(cached), {
+          headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'HIT' },
+        })
+      }
     }
 
     const accessToken = await getAccessToken(supabase, org_id)
 
-    const apiRes = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/${property_id}:runReport`,
-      {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify(report),
-      }
-    )
+    let apiUrl: string
+    let apiBody: unknown
+
+    if (mode === 'runRealtimeReport') {
+      apiUrl  = `https://analyticsdata.googleapis.com/v1beta/${property_id}:runRealtimeReport`
+      apiBody = report
+    } else if (mode === 'batchRunReports') {
+      apiUrl  = `https://analyticsdata.googleapis.com/v1beta/${property_id}:batchRunReports`
+      apiBody = { requests: reports }
+    } else {
+      apiUrl  = `https://analyticsdata.googleapis.com/v1beta/${property_id}:runReport`
+      apiBody = report
+    }
+
+    const apiRes = await fetch(apiUrl, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(apiBody),
+    })
 
     const data = await apiRes.json()
     if (data.error) throw new Error(`GA4 API: ${data.error.message ?? JSON.stringify(data.error)}`)
 
-    await cacheSet(cacheKey, data, GA4_TTL)
+    if (cacheKey) await cacheSet(cacheKey, data, GA4_TTL)
 
     return new Response(JSON.stringify(data), {
       headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'MISS' },

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Send, Brain, Zap, User, ShieldCheck, Shuffle, Skull, ImageIcon, X } from 'lucide-react'
+import { Send, Brain, Zap, User, ShieldCheck, Shuffle, Skull, ImageIcon, X, Copy, Check } from 'lucide-react'
 import { callAI, callAIWithImage, isAIReady, getActiveProvider, type ImageAttachment, type ImageMime } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Button } from '@/components/ui/Button'
@@ -155,8 +155,17 @@ export function JarvisAI() {
   ])
   const [input, setInput] = useState('')
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null)
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const fileRef    = useRef<HTMLInputElement>(null)
+
+  function copyMessage(text: string, idx: number) {
+    const plain = text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1')
+    navigator.clipboard.writeText(plain).then(() => {
+      setCopiedIdx(idx)
+      setTimeout(() => setCopiedIdx(null), 2000)
+    })
+  }
 
   useEffect(() => {
     if (messages.length > 1) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -295,7 +304,7 @@ export function JarvisAI() {
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin mb-4">
         {messages.map((m, i) => (
-          <div key={i} className={cn('flex gap-3', m.role === 'user' && 'flex-row-reverse')}>
+          <div key={i} className={cn('flex gap-3 group/msg', m.role === 'user' && 'flex-row-reverse')}>
             <div className={cn(
               'w-8 h-8 rounded-xl shrink-0 overflow-hidden flex items-center justify-center text-sm',
               m.role === 'assistant' ? '' : 'bg-surface border border-border'
@@ -305,21 +314,39 @@ export function JarvisAI() {
                 : <User size={14} className="text-muted" />}
             </div>
 
-            <div className={cn(
-              'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-              m.role === 'assistant'
-                ? 'bg-card border border-border text-tx'
-                : 'bg-linear-to-br from-accent2 to-[#9333ea] text-white'
-            )}>
-              {m.imageUrl && (
-                <img
-                  src={m.imageUrl}
-                  alt="attachment"
-                  className="max-w-full rounded-xl mb-2 max-h-64 object-contain"
-                />
+            <div className="relative max-w-[75%]">
+              <div className={cn(
+                'rounded-2xl px-4 py-3 text-sm leading-relaxed',
+                m.role === 'assistant'
+                  ? 'bg-card border border-border text-tx'
+                  : 'bg-linear-to-br from-accent2 to-[#9333ea] text-white'
+              )}>
+                {m.imageUrl && (
+                  <img
+                    src={m.imageUrl}
+                    alt="attachment"
+                    className="max-w-full rounded-xl mb-2 max-h-64 object-contain"
+                  />
+                )}
+                {m.content && <MessageContent content={m.content} />}
+                <div className="text-[10px] opacity-50 mt-1 font-mono-jarvis">{m.ts}</div>
+              </div>
+
+              {/* Copy button — assistant messages only */}
+              {m.role === 'assistant' && m.content && (
+                <button
+                  onClick={() => copyMessage(m.content, i)}
+                  title="Copy reply"
+                  className="absolute -bottom-2 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity
+                    flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
+                    text-[10px] text-muted hover:text-accent hover:border-accent cursor-pointer shadow-sm"
+                >
+                  {copiedIdx === i
+                    ? <><Check size={10} className="text-accent3" /><span className="font-mono-jarvis text-accent3">Copied</span></>
+                    : <><Copy size={10} /><span className="font-mono-jarvis">Copy</span></>
+                  }
+                </button>
               )}
-              {m.content && <MessageContent content={m.content} />}
-              <div className="text-[10px] opacity-50 mt-1 font-mono-jarvis">{m.ts}</div>
             </div>
           </div>
         ))}

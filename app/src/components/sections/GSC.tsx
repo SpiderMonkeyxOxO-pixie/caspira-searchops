@@ -366,7 +366,6 @@ export function GSC() {
   const fetchSitemaps = useCallback(async (siteUrl: string) => {
     if (!orgId) return
     setSitemapsLoading(true)
-    setSitemapsErr(null)
     try {
       const { data, error } = await supabase.functions.invoke('gsc-proxy', {
         body: { org_id: orgId, site_url: siteUrl, endpoint: 'sitemaps', params: {} },

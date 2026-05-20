@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface Kw { kw: string; vol: string; kd: number; intent: string; cpc: string; opportunity: 'HIGH'|'MED'|'LOW' }
 
@@ -120,14 +121,16 @@ Make them realistic, varied difficulty, mix of intents.`,
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label:'TOTAL KWs',    val: results.length,                         color:'var(--color-accent)' },
-          { label:'HIGH OPP.',    val: results.filter(k=>k.opportunity==='HIGH').length, color:'#10b981' },
-          { label:'AVG KD',       val: Math.round(results.reduce((a,k)=>a+k.kd,0)/results.length||0), color:'var(--color-accent4)' },
-          { label:'TRANSACTIONAL',val: results.filter(k=>k.intent==='Trans').length, color:'#a78bfa' },
+          { label:'TOTAL KWs',    val: results.length,                         color:'var(--color-accent)',  tip: 'Total number of keyword ideas generated' },
+          { label:'HIGH OPP.',    val: results.filter(k=>k.opportunity==='HIGH').length, color:'#10b981',   tip: 'Keywords with HIGH opportunity (KD ≤34) — the easiest to rank for' },
+          { label:'AVG KD',       val: Math.round(results.reduce((a,k)=>a+k.kd,0)/results.length||0), color:'var(--color-accent4)', tip: 'Average Keyword Difficulty across all results (0–100). Lower is easier.' },
+          { label:'TRANSACTIONAL',val: results.filter(k=>k.intent==='Trans').length, color:'#a78bfa',       tip: 'Keywords with Transactional intent — users ready to sign up or deposit' },
         ].map(s => (
           <Card key={s.label} className="text-center py-4">
             <div className="text-2xl font-display font-black" style={{ color: s.color }}>{s.val}</div>
-            <div className="text-[10px] tracking-widest text-muted mt-1 font-mono-jarvis">{s.label}</div>
+            <div className="text-[10px] tracking-widest text-muted mt-1 font-mono-jarvis inline-flex items-center gap-1 justify-center">
+              {s.label} <InfoTooltip text={s.tip} />
+            </div>
           </Card>
         ))}
       </div>
@@ -163,9 +166,22 @@ Make them realistic, varied difficulty, mix of intents.`,
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
-                {['KEYWORD','VOLUME','KD','INTENT','CPC','OPPORTUNITY'].map(h => (
-                  <th key={h} className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">{h}</th>
-                ))}
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">KEYWORD</th>
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">VOLUME <InfoTooltip text="Average monthly search volume for this keyword" /></span>
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">KD <InfoTooltip text="Keyword Difficulty (0–100). Lower = easier to rank for. Green ≤30, amber ≤50, red >50." /></span>
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">INTENT <InfoTooltip text="User search intent: Info (learning), Comm (comparing), Trans (buying), Nav (navigating to a site)" /></span>
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">CPC <InfoTooltip text="Cost Per Click — the average amount advertisers pay per ad click for this keyword" /></span>
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1">OPPORTUNITY <InfoTooltip text="Overall opportunity rating: HIGH (KD≤34), MED (KD 35–55), LOW (KD>55)" /></span>
+                </th>
               </tr>
             </thead>
             <tbody>

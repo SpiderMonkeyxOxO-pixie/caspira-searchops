@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button'
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type SiteTab = 'overview' | 'keywords' | 'backlinks' | 'competitors'
 
@@ -268,12 +269,12 @@ export function SiteExplorer() {
           {/* KPI row */}
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
             {([
-              { label: 'DOMAIN RATING',  val: profile.dr,         color: '#7c3aed', Icon: Star,      display: profile.dr !== null ? String(profile.dr) : '—',  src: 'OPR' },
-              { label: 'GLOBAL RANK',    val: null,               color: '#6b7280', Icon: Globe,     display: profile.rank ?? '—',                              src: 'OPR' },
-              { label: 'ORG. TRAFFIC',   val: profile.traffic,    color: '#10b981', Icon: TrendingUp, display: fmt(profile.traffic),                            src: 'DFS' },
-              { label: 'ORG. KEYWORDS',  val: profile.keywords,   color: '#00d4ff', Icon: SearchCode, display: fmt(profile.keywords),                           src: 'DFS' },
-              { label: 'BACKLINKS',      val: profile.backlinks,  color: '#f59e0b', Icon: Link2,      display: fmt(profile.backlinks),                          src: 'DFS' },
-              { label: 'REF. DOMAINS',   val: profile.refDomains, color: '#ef4444', Icon: Users,      display: fmt(profile.refDomains),                         src: 'DFS' },
+              { label: 'DOMAIN RATING',  val: profile.dr,         color: '#7c3aed', Icon: Star,       display: profile.dr !== null ? String(profile.dr) : '—', src: 'OPR', tip: 'Domain Rating (0–10 via OpenPageRank) — measures overall link authority. Higher = stronger domain.' },
+              { label: 'GLOBAL RANK',    val: null,               color: '#6b7280', Icon: Globe,      display: profile.rank ?? '—',                             src: 'OPR', tip: 'Global traffic rank — lower number means the site receives more traffic worldwide' },
+              { label: 'ORG. TRAFFIC',   val: profile.traffic,    color: '#10b981', Icon: TrendingUp, display: fmt(profile.traffic),                            src: 'DFS', tip: 'Estimated monthly organic visits driven by Google search results (via DataForSEO)' },
+              { label: 'ORG. KEYWORDS',  val: profile.keywords,   color: '#00d4ff', Icon: SearchCode, display: fmt(profile.keywords),                           src: 'DFS', tip: 'Total number of keywords this domain ranks for in Google organic results' },
+              { label: 'BACKLINKS',      val: profile.backlinks,  color: '#f59e0b', Icon: Link2,      display: fmt(profile.backlinks),                          src: 'DFS', tip: 'Total inbound links pointing to this domain — more links generally = stronger authority' },
+              { label: 'REF. DOMAINS',   val: profile.refDomains, color: '#ef4444', Icon: Users,      display: fmt(profile.refDomains),                         src: 'DFS', tip: 'Number of unique domains linking to this site. More unique referring domains = better link profile.' },
             ] as const).map(k => {
               const hasValue  = k.display !== '—'
               const missingKey = (k.src === 'DFS' && noDFS) || (k.src === 'OPR' && !openPageRankKey)
@@ -284,7 +285,9 @@ export function SiteExplorer() {
                     style={{ color: hasValue ? k.color : 'var(--color-muted)' }}>
                     {k.display}
                   </div>
-                  <div className="text-[9px] text-muted font-mono-jarvis tracking-widest">{k.label}</div>
+                  <div className="text-[9px] text-muted font-mono-jarvis tracking-widest inline-flex items-center gap-1 justify-center">
+                    {k.label} <InfoTooltip text={k.tip} size={9} />
+                  </div>
                   {missingKey && <div className="text-[9px] text-amber-400 mt-0.5 font-mono-jarvis">no key</div>}
                 </Card>
               )
@@ -374,9 +377,9 @@ export function SiteExplorer() {
                       <thead>
                         <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                           <th className="text-left pb-2 font-medium">KEYWORD</th>
-                          <th className="text-center pb-2 font-medium w-12">POS</th>
-                          <th className="text-right pb-2 font-medium">VOLUME</th>
-                          <th className="text-right pb-2 font-medium">EST. TRAFFIC</th>
+                          <th className="text-center pb-2 font-medium w-12"><span className="inline-flex items-center gap-1">POS <InfoTooltip text="Current Google ranking position for this keyword" /></span></th>
+                          <th className="text-right pb-2 font-medium"><span className="inline-flex items-center gap-1 justify-end">VOLUME <InfoTooltip text="Average monthly search volume for this keyword" /></span></th>
+                          <th className="text-right pb-2 font-medium"><span className="inline-flex items-center gap-1 justify-end">EST. TRAFFIC <InfoTooltip text="Estimated monthly clicks driven to this domain from this keyword based on position and volume" /></span></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -432,9 +435,9 @@ export function SiteExplorer() {
                       <thead>
                         <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                           <th className="text-left pb-2 font-medium">REFERRING DOMAIN</th>
-                          <th className="text-center pb-2 font-medium">RANK</th>
-                          <th className="text-left pb-2 font-medium pl-4">ANCHOR TEXT</th>
-                          <th className="text-center pb-2 font-medium">TYPE</th>
+                          <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">RANK <InfoTooltip text="Authority rank of the referring domain — higher rank = stronger backlink" /></span></th>
+                          <th className="text-left pb-2 font-medium pl-4"><span className="inline-flex items-center gap-1">ANCHOR TEXT <InfoTooltip text="The clickable text of the backlink. Keyword-rich anchors can boost relevance signals." /></span></th>
+                          <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">TYPE <InfoTooltip text="Dofollow links pass link equity (SEO value). Nofollow links do not pass equity directly." /></span></th>
                           <th className="text-right pb-2 font-medium">DATE</th>
                         </tr>
                       </thead>
@@ -480,9 +483,9 @@ export function SiteExplorer() {
                     <thead>
                       <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                         <th className="text-left pb-2 font-medium">COMPETITOR</th>
-                        <th className="text-right pb-2 font-medium">ORG. TRAFFIC</th>
-                        <th className="text-right pb-2 font-medium">ORG. KEYWORDS</th>
-                        <th className="text-right pb-2 font-medium">COMMON KW</th>
+                        <th className="text-right pb-2 font-medium"><span className="inline-flex items-center gap-1 justify-end">ORG. TRAFFIC <InfoTooltip text="Estimated monthly organic visits from Google for this competitor" /></span></th>
+                        <th className="text-right pb-2 font-medium"><span className="inline-flex items-center gap-1 justify-end">ORG. KEYWORDS <InfoTooltip text="Total keywords this competitor ranks for in Google" /></span></th>
+                        <th className="text-right pb-2 font-medium"><span className="inline-flex items-center gap-1 justify-end">COMMON KW <InfoTooltip text="Number of keywords both your domain and this competitor rank for — the keyword overlap" /></span></th>
                         <th className="text-center pb-2 font-medium">ACTION</th>
                       </tr>
                     </thead>

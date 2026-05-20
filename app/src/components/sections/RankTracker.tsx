@@ -7,6 +7,7 @@ import {
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { callSerper, isSerperReady } from '@/lib/serper'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
@@ -259,10 +260,10 @@ export function RankTracker() {
   })
 
   const KPI = [
-    { label: 'TOP 3',      val: withCurrent.filter(k => k.cur !== null && k.cur <= 3).length,                color: 'var(--color-accent)'  },
-    { label: 'TOP 10',     val: withCurrent.filter(k => k.cur !== null && k.cur <= 10).length,               color: 'var(--color-accent3)' },
-    { label: 'PAGE 2',     val: withCurrent.filter(k => k.cur !== null && k.cur > 10 && k.cur <= 20).length, color: 'var(--color-accent4)' },
-    { label: 'NOT RANKED', val: withCurrent.filter(k => k.cur === null).length,                              color: 'var(--color-danger)'  },
+    { label: 'TOP 3',      val: withCurrent.filter(k => k.cur !== null && k.cur <= 3).length,                color: 'var(--color-accent)',  tip: 'Keywords ranking in positions 1–3 on Google — prime organic real estate' },
+    { label: 'TOP 10',     val: withCurrent.filter(k => k.cur !== null && k.cur <= 10).length,               color: 'var(--color-accent3)', tip: 'Keywords on page 1 of Google (positions 1–10)' },
+    { label: 'PAGE 2',     val: withCurrent.filter(k => k.cur !== null && k.cur > 10 && k.cur <= 20).length, color: 'var(--color-accent4)', tip: 'Keywords ranked positions 11–20 (page 2) — close to page 1 with a push' },
+    { label: 'NOT RANKED', val: withCurrent.filter(k => k.cur === null).length,                              color: 'var(--color-danger)',  tip: 'Keywords not found in the top 30 Google results for your domain' },
   ]
 
   function exportCSV() {
@@ -398,7 +399,9 @@ export function RankTracker() {
             {KPI.map(k => (
               <Card key={k.label} className="text-center py-4">
                 <div className="text-3xl font-display font-black" style={{ color: k.color }}>{k.val}</div>
-                <div className="text-[10px] tracking-widest text-muted mt-1 font-mono-jarvis">{k.label}</div>
+                <div className="text-[10px] tracking-widest text-muted mt-1 font-mono-jarvis inline-flex items-center gap-1 justify-center">
+                  {k.label} <InfoTooltip text={k.tip} />
+                </div>
               </Card>
             ))}
           </div>
@@ -430,13 +433,25 @@ export function RankTracker() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
-                    {[
-                      'KEYWORD', 'POSITION',
-                      ...(hasCompetitor ? ['COMPETITOR'] : []),
-                      'CHANGE', 'TREND', 'VISIBILITY', '',
-                    ].map((h, i) => (
-                      <th key={i} className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">{h}</th>
-                    ))}
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">KEYWORD</th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">POSITION <InfoTooltip text="Current Google ranking position for this keyword on your domain" /></span>
+                    </th>
+                    {hasCompetitor && (
+                      <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">COMPETITOR <InfoTooltip text="Current Google ranking position for your competitor domain on this keyword" /></span>
+                      </th>
+                    )}
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">CHANGE <InfoTooltip text="Position change vs. previous check. Positive = moved up (gained ranks), negative = moved down." /></span>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">TREND <InfoTooltip text="14-day sparkline of ranking history. Rising line = improving position." /></span>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">VISIBILITY <InfoTooltip text="Estimated click-through visibility score (0–100) based on current position. Position 1 ≈ 72, position 10 ≈ 44." /></span>
+                    </th>
+                    <th className="px-4 py-3 text-left text-[10px] tracking-widest text-muted font-mono-jarvis font-normal whitespace-nowrap"></th>
                   </tr>
                 </thead>
                 <tbody>

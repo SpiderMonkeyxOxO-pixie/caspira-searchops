@@ -7,6 +7,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 interface CompetitorEntry {
   domain: string
@@ -203,13 +204,13 @@ Be direct, specific, and actionable.`,
                 <div className="grid grid-cols-2 gap-1.5">
                   {/* OPR metrics */}
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">DR</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">DR <InfoTooltip text="Domain Rating (0–10 scale via OpenPageRank) — measures overall link authority of the domain" size={9} /></div>
                     <div className="text-lg font-display font-bold text-tx">
                       {c.loading ? <Loader2 size={14} className="animate-spin text-muted" /> : (c.dr !== null ? c.dr : '—')}
                     </div>
                   </div>
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">GLOBAL RANK</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">GLOBAL RANK <InfoTooltip text="Alexa-style global traffic rank — lower number means more traffic" size={9} /></div>
                     <div className="text-xs font-display font-bold text-tx truncate">
                       {c.loading ? '…' : (c.rank ?? '—')}
                     </div>
@@ -217,25 +218,25 @@ Be direct, specific, and actionable.`,
 
                   {/* DFS metrics */}
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">ORG. KW</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">ORG. KW <InfoTooltip text="Number of organic keywords the domain ranks for in Google (via DataForSEO)" size={9} /></div>
                     <div className="text-sm font-display font-bold text-tx">
                       {c.loading ? '…' : hasDFS ? fmt(c.orgKw) : <span className="text-[9px] text-muted">no key</span>}
                     </div>
                   </div>
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">ORG. TRAFFIC</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">ORG. TRAFFIC <InfoTooltip text="Estimated monthly organic visits from Google search (via DataForSEO)" size={9} /></div>
                     <div className="text-sm font-display font-bold text-tx">
                       {c.loading ? '…' : hasDFS ? fmt(c.orgTraffic) : <span className="text-[9px] text-muted">no key</span>}
                     </div>
                   </div>
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">BACKLINKS</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">BACKLINKS <InfoTooltip text="Total number of inbound links pointing to this domain" size={9} /></div>
                     <div className="text-sm font-display font-bold text-tx">
                       {c.loading ? '…' : hasDFS ? fmt(c.backlinks) : <span className="text-[9px] text-muted">no key</span>}
                     </div>
                   </div>
                   <div className="bg-surface rounded-lg p-2">
-                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis">REF. DOMAINS</div>
+                    <div className="text-[9px] tracking-widest text-muted font-mono-jarvis inline-flex items-center gap-1">REF. DOMAINS <InfoTooltip text="Number of unique domains linking to this site — more unique domains = stronger authority" size={9} /></div>
                     <div className="text-sm font-display font-bold text-tx">
                       {c.loading ? '…' : hasDFS ? fmt(c.refDomains) : <span className="text-[9px] text-muted">no key</span>}
                     </div>
@@ -277,12 +278,12 @@ Be direct, specific, and actionable.`,
               <thead>
                 <tr className="border-b border-border text-[10px] text-muted font-mono-jarvis tracking-widest">
                   <th className="text-left pb-2 font-medium">DOMAIN</th>
-                  <th className="text-center pb-2 font-medium">DR</th>
-                  <th className="text-center pb-2 font-medium">GLOBAL RANK</th>
-                  <th className="text-center pb-2 font-medium">ORG. KW</th>
-                  <th className="text-center pb-2 font-medium">ORG. TRAFFIC</th>
-                  <th className="text-center pb-2 font-medium">BACKLINKS</th>
-                  <th className="text-center pb-2 font-medium">REF. DOMAINS</th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">DR <InfoTooltip text="Domain Rating (0–10 via OpenPageRank) — link authority score" /></span></th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">GLOBAL RANK <InfoTooltip text="Global traffic rank — lower number means higher traffic" /></span></th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">ORG. KW <InfoTooltip text="Total organic keywords this domain ranks for in Google" /></span></th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">ORG. TRAFFIC <InfoTooltip text="Estimated monthly organic visits from Google" /></span></th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">BACKLINKS <InfoTooltip text="Total inbound links pointing to this domain" /></span></th>
+                  <th className="text-center pb-2 font-medium"><span className="inline-flex items-center gap-1">REF. DOMAINS <InfoTooltip text="Number of unique linking domains — a key authority signal" /></span></th>
                 </tr>
               </thead>
               <tbody>

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Copy, Check, RotateCcw, Zap, Briefcase, MessageSquare } from 'lucide-react'
+import { Loader2, Copy, Check, RotateCcw, Zap, Briefcase, MessageSquare, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { cn } from '@/lib/utils'
 
 interface MetaRow {
@@ -19,11 +21,24 @@ interface MetaRow {
   copied: boolean
 }
 
+interface BulkMetaRecord {
+  id: string
+  savedAt: string
+  label: string
+  sublabel: string
+  input: string
+  tone: 'professional' | 'conversational' | 'aggressive'
+  rows: Omit<MetaRow, 'copied'>[]
+}
+
 export function BulkMeta() {
   const [input, setInput] = useState('')
   const [rows, setRows] = useState<MetaRow[]>([])
   const [tone, setTone] = useState<'professional' | 'conversational' | 'aggressive'>('professional')
   const [copiedAll, setCopiedAll] = useState(false)
+  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<BulkMetaRecord>('jarvis_bulkmeta_history')
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -50,7 +65,20 @@ Return JSON only:
       if (data) {
         try {
           const match = data.match(/\[[\s\S]*\]/)
-          if (match) setRows((JSON.parse(match[0]) as MetaRow[]).map(r => ({ ...r, copied: false })))
+          if (match) {
+            const parsed = (JSON.parse(match[0]) as MetaRow[]).map(r => ({ ...r, copied: false }))
+            setRows(parsed)
+            const lines = input.split('\n').filter(Boolean)
+            save({
+              id: crypto.randomUUID(),
+              savedAt: new Date().toISOString(),
+              label: `${lines.length} pages · ${tone}`,
+              sublabel: parsed.slice(0, 2).map(r => r.url).join(', ') + (parsed.length > 2 ? '…' : ''),
+              input,
+              tone,
+              rows: parsed.map(({ copied: _c, ...rest }) => rest),
+            })
+          }
         } catch { /* keep */ }
       }
     },
@@ -81,104 +109,128 @@ Return JSON only:
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <Card className="lg:col-span-1">
-          <CardTitle className="mb-3">Bulk Meta Writer</CardTitle>
-          <div className="text-[11px] text-muted mb-3 flex items-center gap-1">
-            Format: /url | Page Title | Target Keyword
-            <InfoTooltip text="Enter one page per line. Each line must follow the format: /url-path | Existing Page Title | Target Keyword. The AI uses all three values to write optimised meta tags." />
-          </div>
-
-          <div className="flex flex-col gap-1 mb-3">
-            {TONES.map(t => (
-              <button key={t.id} onClick={() => setTone(t.id)}
-                className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold text-left cursor-pointer transition-all',
-                  tone === t.id ? 'bg-accent text-black' : 'border border-border text-muted hover:border-accent'
-                )}
-              ><t.Icon size={11} />{t.label}</button>
-            ))}
-          </div>
-
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            rows={10}
-            className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin mb-3"
-          />
-          <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
-            {generate.isPending ? 'Writing…' : `Generate ${input.split('\n').filter(Boolean).length} Meta Tags`}
-          </Button>
-          {!isAIReady() && <div className="text-[10px] text-muted mt-2">Add an AI key in Onboarding.</div>}
-        </Card>
-
-        <div className="lg:col-span-2 space-y-3">
-          {rows.length > 0 && (
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-tx">{rows.length} pages written</div>
-              <div className="flex gap-2">
-                <Button variant="ghost" className="text-[11px]" onClick={() => setRows([])}>
-                  <RotateCcw size={11} /> Clear
-                </Button>
-                <Button variant="ghost" className="text-[11px]" onClick={copyAll}>
-                  {copiedAll ? <Check size={11} /> : <Copy size={11} />}
-                  {copiedAll ? 'Copied CSV!' : 'Export CSV'}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {rows.length > 0 ? rows.map((r, i) => (
-            <Card key={i} className="relative group">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div>
-                  <div className="font-mono-jarvis text-[11px] text-accent mb-1">{r.url}</div>
-                  {r.existingTitle && (
-                    <div className="text-[11px] text-muted line-through">{r.existingTitle}</div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="muted">{r.keyword}</Badge>
-                  <button onClick={() => copyRow(i)}
-                    className="p-1.5 rounded-lg border border-border text-muted hover:text-accent hover:border-accent transition-all cursor-pointer">
-                    {r.copied ? <Check size={12} /> : <Copy size={12} />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">TITLE <InfoTooltip text="Meta title shown in Google SERPs. Ideal length is 50–60 characters. Green = optimal, amber = near limit, red = truncated by Google." /></span>
-                    <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.titleLen, 60))}>
-                      {r.titleLen}/60
-                    </span>
-                  </div>
-                  <div className="bg-surface border border-border rounded-lg px-3 py-2 text-xs font-semibold text-tx">
-                    {r.title}
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">DESCRIPTION <InfoTooltip text="Meta description shown below the title in SERPs. Target 140–155 characters. Longer descriptions get cut off with an ellipsis." /></span>
-                    <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.descLen, 155))}>
-                      {r.descLen}/155
-                    </span>
-                  </div>
-                  <div className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-muted leading-relaxed">
-                    {r.description}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <Zap size={40} className="mb-3 text-muted" strokeWidth={1} />
-              <div className="text-sm text-muted">Add pages on the left and generate meta tags</div>
-            </div>
-          )}
-        </div>
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')}
+          className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          Bulk Meta
+        </button>
+        <button onClick={() => setTab('history')}
+          className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
       </div>
+
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setInput(r.input); setTone(r.tone); setRows(r.rows.map(row => ({ ...row, copied: false }))); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          emptyText="No bulk meta history yet. Generate tags to save results."
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <Card className="lg:col-span-1">
+            <CardTitle className="mb-3">Bulk Meta Writer</CardTitle>
+            <div className="text-[11px] text-muted mb-3 flex items-center gap-1">
+              Format: /url | Page Title | Target Keyword
+              <InfoTooltip text="Enter one page per line. Each line must follow the format: /url-path | Existing Page Title | Target Keyword. The AI uses all three values to write optimised meta tags." />
+            </div>
+
+            <div className="flex flex-col gap-1 mb-3">
+              {TONES.map(t => (
+                <button key={t.id} onClick={() => setTone(t.id)}
+                  className={cn('flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-semibold text-left cursor-pointer transition-all',
+                    tone === t.id ? 'bg-accent text-black' : 'border border-border text-muted hover:border-accent'
+                  )}
+                ><t.Icon size={11} />{t.label}</button>
+              ))}
+            </div>
+
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              rows={10}
+              className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin mb-3"
+            />
+            <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
+              {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+              {generate.isPending ? 'Writing…' : `Generate ${input.split('\n').filter(Boolean).length} Meta Tags`}
+            </Button>
+            {!isAIReady() && <div className="text-[10px] text-muted mt-2">Add an AI key in Onboarding.</div>}
+          </Card>
+
+          <div className="lg:col-span-2 space-y-3">
+            {rows.length > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-tx">{rows.length} pages written</div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" className="text-[11px]" onClick={() => setRows([])}>
+                    <RotateCcw size={11} /> Clear
+                  </Button>
+                  <Button variant="ghost" className="text-[11px]" onClick={copyAll}>
+                    {copiedAll ? <Check size={11} /> : <Copy size={11} />}
+                    {copiedAll ? 'Copied CSV!' : 'Export CSV'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {rows.length > 0 ? rows.map((r, i) => (
+              <Card key={i} className="relative group">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="font-mono-jarvis text-[11px] text-accent mb-1">{r.url}</div>
+                    {r.existingTitle && (
+                      <div className="text-[11px] text-muted line-through">{r.existingTitle}</div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge variant="muted">{r.keyword}</Badge>
+                    <button onClick={() => copyRow(i)}
+                      className="p-1.5 rounded-lg border border-border text-muted hover:text-accent hover:border-accent transition-all cursor-pointer">
+                      {r.copied ? <Check size={12} /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">TITLE <InfoTooltip text="Meta title shown in Google SERPs. Ideal length is 50–60 characters. Green = optimal, amber = near limit, red = truncated by Google." /></span>
+                      <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.titleLen, 60))}>
+                        {r.titleLen}/60
+                      </span>
+                    </div>
+                    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-xs font-semibold text-tx">
+                      {r.title}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[10px] text-muted font-mono-jarvis tracking-widest flex items-center gap-1">DESCRIPTION <InfoTooltip text="Meta description shown below the title in SERPs. Target 140–155 characters. Longer descriptions get cut off with an ellipsis." /></span>
+                      <span className={cn('text-[10px] font-mono-jarvis', lenColor(r.descLen, 155))}>
+                        {r.descLen}/155
+                      </span>
+                    </div>
+                    <div className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-muted leading-relaxed">
+                      {r.description}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <Zap size={40} className="mb-3 text-muted" strokeWidth={1} />
+                <div className="text-sm text-muted">Add pages on the left and generate meta tags</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

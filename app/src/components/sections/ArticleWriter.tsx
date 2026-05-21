@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { PenLine, Loader2, Copy, Check, RotateCcw, ChevronDown, ChevronUp, Rss, ExternalLink, CheckCircle2 } from 'lucide-react'
+import { PenLine, Loader2, Copy, Check, RotateCcw, ChevronDown, ChevronUp, Rss, ExternalLink, CheckCircle2, History, Download } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { cn } from '@/lib/utils'
 
 const WORD_COUNTS = [1500, 2000, 2500, 3000]
@@ -23,6 +25,20 @@ function readingTime(words: number) {
 
 interface PublishResult { success: boolean; url?: string; id?: number; error?: string }
 
+interface ArticleRecord {
+  id: string
+  savedAt: string
+  label: string
+  sublabel: string
+  topic: string
+  keyword: string
+  secKws: string
+  wordCount: number
+  tone: string
+  category: string
+  article: string
+}
+
 export function ArticleWriter() {
   const { wpSites, updateWPSite, setSection } = useStore()
 
@@ -35,6 +51,9 @@ export function ArticleWriter() {
   const [article,   setArticle]   = useState('')
   const [copied,    setCopied]    = useState(false)
   const [expanded,  setExpanded]  = useState(false)
+  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<ArticleRecord>('jarvis_articles_history')
 
   // WordPress publish state
   const [wpTitle,      setWpTitle]      = useState('')
@@ -105,13 +124,35 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
         4096,
       )
     },
-    onSuccess: (data) => { if (data) setArticle(data) },
+    onSuccess: (data) => {
+      if (data) {
+        setArticle(data)
+        save({
+          id: crypto.randomUUID(),
+          savedAt: new Date().toISOString(),
+          label: topic || 'Untitled article',
+          sublabel: `${keyword ? `"${keyword}" · ` : ''}${countWords(data).toLocaleString()} words · ${tone}`,
+          topic, keyword, secKws, wordCount,
+          tone, category,
+          article: data,
+        })
+      }
+    },
   })
 
   function handleCopy() {
     navigator.clipboard.writeText(article)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  function downloadArticle(r: ArticleRecord) {
+    const blob = new Blob([r.article], { type: 'text/markdown' })
+    const a    = document.createElement('a')
+    a.href     = URL.createObjectURL(blob)
+    a.download = `${r.topic.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'article'}.md`
+    a.click()
+    URL.revokeObjectURL(a.href)
   }
 
   const words   = article ? countWords(article) : 0
@@ -122,206 +163,247 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        {/* Brief form */}
-        <Card className="lg:col-span-1 space-y-4">
-          <CardTitle>Article Brief</CardTitle>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TOPIC / TITLE <InfoTooltip text="The article topic used as the H1 heading. Make it specific and descriptive — e.g. 'Best Casino Bonuses in India 2026'." /></div>
-            <input value={topic} onChange={e => setTopic(e.target.value)}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
-          </div>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">PRIMARY KEYWORD <InfoTooltip text="The main keyword to optimise for. It will be placed in the H1, first paragraph, and 2-3 subheadings." /></div>
-            <input value={keyword} onChange={e => setKeyword(e.target.value)}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
-          </div>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">SECONDARY KEYWORDS <InfoTooltip text="Supporting keywords to weave naturally into subheadings and body copy. Enter one per line or comma-separated." /></div>
-            <textarea value={secKws} onChange={e => setSecKws(e.target.value)} rows={2}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none" />
-          </div>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">WORD COUNT <InfoTooltip text="Target article length. iGaming review and guide content typically performs best at 2,000–3,000 words for E-E-A-T and YMYL compliance." /></div>
-            <div className="flex gap-1">
-              {WORD_COUNTS.map(w => (
-                <button key={w} onClick={() => setWordCount(w)}
-                  className={cn('flex-1 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border',
-                    wordCount === w ? 'bg-accent text-black border-accent' : 'border-border text-muted hover:border-accent'
-                  )}>{w}</button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TONE <InfoTooltip text="Writing style. 'Expert' suits review sites targeting Google's E-E-A-T; 'Conversational' works well for blog and guide content." /></div>
-            <div className="grid grid-cols-2 gap-1">
-              {TONES.map(t => (
-                <button key={t} onClick={() => setTone(t)}
-                  className={cn('py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border',
-                    tone === t ? 'bg-accent2 text-white border-accent2' : 'border-border text-muted hover:border-accent'
-                  )}>{t}</button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">CATEGORY <InfoTooltip text="Article type. Drives the content structure — e.g. Casino Review includes operator details, bonuses, and licensing sections." /></div>
-            <select value={category} onChange={e => setCategory(e.target.value as typeof CATEGORIES[number])}
-              className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
-            {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
-            {generate.isPending ? 'Writing article…' : `Generate ${wordCount}-Word Article`}
-          </Button>
-          {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding to generate articles.</div>}
-        </Card>
-
-        {/* Output */}
-        <Card className="lg:col-span-2">
-          {article ? (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Badge variant="green">{words.toLocaleString()} words</Badge>
-                  <InfoTooltip text="Actual word count of the generated article. Target range is shown by your selected Word Count option." side="bottom" />
-                  <Badge variant="accent">{minutes} min read</Badge>
-                  <InfoTooltip text="Estimated reading time at 200 words per minute — useful for gauging content depth." side="bottom" />
-                  <Badge variant="purple">{tone}</Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" className="text-[11px]" onClick={handleCopy}>
-                    {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
-                  </Button>
-                  <Button variant="ghost" className="text-[11px]" onClick={() => { setArticle(''); generate.reset() }}>
-                    <RotateCcw size={11} /> New
-                  </Button>
-                </div>
-              </div>
-
-              <div className="bg-code rounded-xl border border-border p-5 overflow-hidden">
-                <div className="prose prose-sm max-w-none">
-                  <div className="text-tx text-sm leading-relaxed font-sans whitespace-pre-wrap">
-                    {isLong && !expanded ? article.slice(0, PREVIEW_CUTOFF) + '…' : article}
-                  </div>
-                </div>
-                {isLong && (
-                  <button onClick={() => setExpanded(e => !e)}
-                    className="mt-4 flex items-center gap-1 text-xs text-accent hover:underline cursor-pointer">
-                    {expanded ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Read full article</>}
-                  </button>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-80 text-center">
-              <PenLine size={40} className="mb-3 text-muted" strokeWidth={1} />
-              <div className="text-sm text-muted mb-1">Fill in the brief and click Generate</div>
-              <div className="text-xs text-muted">Produces E-E-A-T compliant, YMYL-safe casino content</div>
-            </div>
-          )}
-        </Card>
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')}
+          className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          Article Writer
+        </button>
+        <button onClick={() => setTab('history')}
+          className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
       </div>
 
-      {/* WordPress publish panel — shown when article is ready */}
-      {article && wpSites.length === 0 && (
-        <Card className="border-[#00d4ff30] bg-[#00d4ff04]">
-          <div className="flex items-center gap-3">
-            <Rss size={16} className="text-accent shrink-0" />
-            <div className="flex-1 text-xs text-muted">
-              Connect your WordPress sites to publish this article directly from Jarvis
-            </div>
-            <Button variant="ghost" className="text-[11px] shrink-0" onClick={() => setSection('wordpress')}>
-              Add WordPress Site
-            </Button>
-          </div>
-        </Card>
-      )}
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => {
+            setTopic(r.topic); setKeyword(r.keyword); setSecKws(r.secKws)
+            setWordCount(r.wordCount); setTone(r.tone as typeof TONES[number])
+            setCategory(r.category as typeof CATEGORIES[number]); setArticle(r.article)
+            setExpanded(false); setTab('tool')
+          }}
+          onDelete={remove}
+          onClear={clear}
+          onDownload={downloadArticle}
+          emptyText="No article history yet. Generate an article to save it."
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Brief form */}
+            <Card className="lg:col-span-1 space-y-4">
+              <CardTitle>Article Brief</CardTitle>
 
-      {article && wpSites.length > 0 && (
-        <Card>
-          <div className="flex items-center justify-between mb-5">
-            <CardTitle>Publish to WordPress</CardTitle>
-            <Badge variant={publishResult?.success ? 'green' : 'accent'}>
-              {publishResult?.success
-                ? 'Published'
-                : `${wpSites.filter(s => s.status === 'connected').length} site${wpSites.filter(s => s.status === 'connected').length !== 1 ? 's' : ''} connected`}
-            </Badge>
-          </div>
-
-          {publishResult?.success ? (
-            <div className="flex items-center gap-3 p-4 bg-[#10b98115] border border-[#10b98130] rounded-xl">
-              <CheckCircle2 size={18} className="text-accent3 shrink-0" />
-              <div className="flex-1">
-                <div className="text-sm font-semibold text-tx">
-                  {wpStatus === 'draft' ? 'Saved as draft' : 'Published live'} — Post #{publishResult.id}
-                </div>
-                <div className="text-xs text-muted mt-0.5 font-mono-jarvis truncate">{publishResult.url}</div>
-              </div>
-              {publishResult.url && (
-                <a href={publishResult.url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="ghost" className="text-[11px]">
-                    <ExternalLink size={11} /> View
-                  </Button>
-                </a>
-              )}
-              <Button variant="ghost" className="text-[11px]" onClick={() => setPublishResult(null)}>
-                Publish Again
-              </Button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                <div className="lg:col-span-2">
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">POST TITLE</div>
-                  <input value={wpTitle} onChange={e => setWpTitle(e.target.value)}
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SLUG</div>
-                  <input value={wpSlug} onChange={e => setWpSlug(e.target.value)}
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
-                </div>
-                <div>
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TARGET SITE</div>
-                  <select value={selectedSite ?? ''} onChange={e => setSelectedSite(Number(e.target.value))}
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
-                    {wpSites.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TOPIC / TITLE <InfoTooltip text="The article topic used as the H1 heading. Make it specific and descriptive — e.g. 'Best Casino Bonuses in India 2026'." /></div>
+                <input value={topic} onChange={e => setTopic(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">PRIMARY KEYWORD <InfoTooltip text="The main keyword to optimise for. It will be placed in the H1, first paragraph, and 2-3 subheadings." /></div>
+                <input value={keyword} onChange={e => setKeyword(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+              </div>
+
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">SECONDARY KEYWORDS <InfoTooltip text="Supporting keywords to weave naturally into subheadings and body copy. Enter one per line or comma-separated." /></div>
+                <textarea value={secKws} onChange={e => setSecKws(e.target.value)} rows={2}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none" />
+              </div>
+
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">WORD COUNT <InfoTooltip text="Target article length. iGaming review and guide content typically performs best at 2,000–3,000 words for E-E-A-T and YMYL compliance." /></div>
                 <div className="flex gap-1">
-                  {(['draft', 'publish'] as const).map(s => (
-                    <button key={s} onClick={() => setWpStatus(s)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border capitalize',
-                        wpStatus === s ? 'bg-accent text-black border-accent' : 'border-border text-muted hover:border-accent'
-                      )}>{s === 'publish' ? 'Publish Now' : 'Save as Draft'}</button>
+                  {WORD_COUNTS.map(w => (
+                    <button key={w} onClick={() => setWordCount(w)}
+                      className={cn('flex-1 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border',
+                        wordCount === w ? 'bg-accent text-black border-accent' : 'border-border text-muted hover:border-accent'
+                      )}>{w}</button>
                   ))}
                 </div>
-                <Button variant="primary" onClick={publishToWP} disabled={!selectedSite || isPublishing}>
-                  {isPublishing ? <Loader2 size={13} className="animate-spin" /> : null}
-                  {isPublishing ? 'Publishing…' : 'Send to WordPress'}
-                </Button>
-                {publishResult?.success === false && (
-                  <div className="text-xs text-danger max-w-sm">{publishResult.error}</div>
-                )}
               </div>
-            </>
+
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TONE <InfoTooltip text="Writing style. 'Expert' suits review sites targeting Google's E-E-A-T; 'Conversational' works well for blog and guide content." /></div>
+                <div className="grid grid-cols-2 gap-1">
+                  {TONES.map(t => (
+                    <button key={t} onClick={() => setTone(t)}
+                      className={cn('py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border',
+                        tone === t ? 'bg-accent2 text-white border-accent2' : 'border-border text-muted hover:border-accent'
+                      )}>{t}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">CATEGORY <InfoTooltip text="Article type. Drives the content structure — e.g. Casino Review includes operator details, bonuses, and licensing sections." /></div>
+                <select value={category} onChange={e => setCategory(e.target.value as typeof CATEGORIES[number])}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
+                  {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <Button variant="primary" className="w-full justify-center" onClick={() => generate.mutate()} disabled={generate.isPending}>
+                {generate.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
+                {generate.isPending ? 'Writing article…' : `Generate ${wordCount}-Word Article`}
+              </Button>
+              {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding to generate articles.</div>}
+            </Card>
+
+            {/* Output */}
+            <Card className="lg:col-span-2">
+              {article ? (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="green">{words.toLocaleString()} words</Badge>
+                      <InfoTooltip text="Actual word count of the generated article. Target range is shown by your selected Word Count option." side="bottom" />
+                      <Badge variant="accent">{minutes} min read</Badge>
+                      <InfoTooltip text="Estimated reading time at 200 words per minute — useful for gauging content depth." side="bottom" />
+                      <Badge variant="purple">{tone}</Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" className="text-[11px]" onClick={() => {
+                        const blob = new Blob([article], { type: 'text/markdown' })
+                        const a = document.createElement('a')
+                        a.href = URL.createObjectURL(blob)
+                        a.download = `${topic.replace(/[^a-z0-9]+/gi, '-').toLowerCase() || 'article'}.md`
+                        a.click()
+                        URL.revokeObjectURL(a.href)
+                      }}>
+                        <Download size={11} /> .md
+                      </Button>
+                      <Button variant="ghost" className="text-[11px]" onClick={handleCopy}>
+                        {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
+                      </Button>
+                      <Button variant="ghost" className="text-[11px]" onClick={() => { setArticle(''); generate.reset() }}>
+                        <RotateCcw size={11} /> New
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-code rounded-xl border border-border p-5 overflow-hidden">
+                    <div className="prose prose-sm max-w-none">
+                      <div className="text-tx text-sm leading-relaxed font-sans whitespace-pre-wrap">
+                        {isLong && !expanded ? article.slice(0, PREVIEW_CUTOFF) + '…' : article}
+                      </div>
+                    </div>
+                    {isLong && (
+                      <button onClick={() => setExpanded(e => !e)}
+                        className="mt-4 flex items-center gap-1 text-xs text-accent hover:underline cursor-pointer">
+                        {expanded ? <><ChevronUp size={12} /> Show less</> : <><ChevronDown size={12} /> Read full article</>}
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-80 text-center">
+                  <PenLine size={40} className="mb-3 text-muted" strokeWidth={1} />
+                  <div className="text-sm text-muted mb-1">Fill in the brief and click Generate</div>
+                  <div className="text-xs text-muted">Produces E-E-A-T compliant, YMYL-safe casino content</div>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* WordPress publish panel */}
+          {article && wpSites.length === 0 && (
+            <Card className="border-[#00d4ff30] bg-[#00d4ff04]">
+              <div className="flex items-center gap-3">
+                <Rss size={16} className="text-accent shrink-0" />
+                <div className="flex-1 text-xs text-muted">
+                  Connect your WordPress sites to publish this article directly from Jarvis
+                </div>
+                <Button variant="ghost" className="text-[11px] shrink-0" onClick={() => setSection('wordpress')}>
+                  Add WordPress Site
+                </Button>
+              </div>
+            </Card>
           )}
-        </Card>
+
+          {article && wpSites.length > 0 && (
+            <Card>
+              <div className="flex items-center justify-between mb-5">
+                <CardTitle>Publish to WordPress</CardTitle>
+                <Badge variant={publishResult?.success ? 'green' : 'accent'}>
+                  {publishResult?.success
+                    ? 'Published'
+                    : `${wpSites.filter(s => s.status === 'connected').length} site${wpSites.filter(s => s.status === 'connected').length !== 1 ? 's' : ''} connected`}
+                </Badge>
+              </div>
+
+              {publishResult?.success ? (
+                <div className="flex items-center gap-3 p-4 bg-[#10b98115] border border-[#10b98130] rounded-xl">
+                  <CheckCircle2 size={18} className="text-accent3 shrink-0" />
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-tx">
+                      {wpStatus === 'draft' ? 'Saved as draft' : 'Published live'} — Post #{publishResult.id}
+                    </div>
+                    <div className="text-xs text-muted mt-0.5 font-mono-jarvis truncate">{publishResult.url}</div>
+                  </div>
+                  {publishResult.url && (
+                    <a href={publishResult.url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="ghost" className="text-[11px]">
+                        <ExternalLink size={11} /> View
+                      </Button>
+                    </a>
+                  )}
+                  <Button variant="ghost" className="text-[11px]" onClick={() => setPublishResult(null)}>
+                    Publish Again
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="lg:col-span-2">
+                      <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">POST TITLE</div>
+                      <input value={wpTitle} onChange={e => setWpTitle(e.target.value)}
+                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SLUG</div>
+                      <input value={wpSlug} onChange={e => setWpSlug(e.target.value)}
+                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TARGET SITE</div>
+                      <select value={selectedSite ?? ''} onChange={e => setSelectedSite(Number(e.target.value))}
+                        className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
+                        {wpSites.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex gap-1">
+                      {(['draft', 'publish'] as const).map(s => (
+                        <button key={s} onClick={() => setWpStatus(s)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all border capitalize',
+                            wpStatus === s ? 'bg-accent text-black border-accent' : 'border-border text-muted hover:border-accent'
+                          )}>{s === 'publish' ? 'Publish Now' : 'Save as Draft'}</button>
+                      ))}
+                    </div>
+                    <Button variant="primary" onClick={publishToWP} disabled={!selectedSite || isPublishing}>
+                      {isPublishing ? <Loader2 size={13} className="animate-spin" /> : null}
+                      {isPublishing ? 'Publishing…' : 'Send to WordPress'}
+                    </Button>
+                    {publishResult?.success === false && (
+                      <div className="text-xs text-danger max-w-sm">{publishResult.error}</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </Card>
+          )}
+        </>
       )}
     </div>
   )

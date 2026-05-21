@@ -43,10 +43,13 @@ export function Roaster() {
   const aiReady = isAIReady()
 
   const roast = useMutation({
-    mutationFn: () => callAI(
-      `You are a brutally honest iGaming SEO critic specialising in online casino affiliate sites. Intensity: ${intensity.toUpperCase()}.
+    mutationFn: () => {
+      setResult(null)
+      setRaw('')
+      return callAI(
+        `You are a brutally honest iGaming SEO critic specialising in online casino affiliate sites. Intensity: ${intensity.toUpperCase()}.
 ${intensity === 'savage' ? 'Be savage, funny, and painfully specific. Use sharp gambling analogies.' : intensity === 'medium' ? 'Be direct and honest with sharp iGaming observations.' : 'Be constructive but candid about casino SEO issues.'}`,
-      `Roast the SEO of this online casino/gambling affiliate site: ${url || domain || 'yoursite.com'}
+        `Roast the SEO of this online casino/gambling affiliate site: ${url || domain || 'yoursite.com'}
 
 Return a JSON object (no markdown):
 {
@@ -61,11 +64,13 @@ Return a JSON object (no markdown):
     {"title":"Schema Markup","rating":<1-10>,"roast":"<review/FAQ schema critique>","fix":"<specific fix>"}
   ]
 }`,
-      1200,
-    ),
+        1200,
+      )
+    },
     onSuccess: (data) => {
       try {
-        const match = data.match(/\{[\s\S]*\}/)
+        const cleaned = data.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+        const match   = cleaned.match(/\{[\s\S]*\}/)
         if (match) setResult(JSON.parse(match[0]) as RoastResult)
         else setRaw(data)
       } catch { setRaw(data) }
@@ -116,6 +121,18 @@ Return a JSON object (no markdown):
             <Button variant="ghost" className="text-xs shrink-0" onClick={() => setSection('onboarding')}>
               <Zap size={11} /> Add Key
             </Button>
+          </div>
+        )}
+
+        {roast.isError && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-danger/10 border border-danger/30">
+            <Flame size={14} className="text-danger shrink-0" />
+            <span className="text-xs text-danger flex-1">
+              {(roast.error as Error)?.message ?? 'AI call failed — check your API key and try again.'}
+            </span>
+            <button onClick={() => roast.reset()} className="text-[10px] text-danger hover:text-danger/70 cursor-pointer font-mono-jarvis underline shrink-0">
+              Dismiss
+            </button>
           </div>
         )}
       </Card>

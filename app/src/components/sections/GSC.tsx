@@ -211,6 +211,16 @@ function SitePicker({
   )
 }
 
+// ── GSC error helpers ─────────────────────────────────────────
+function isPermissionErr(msg: string) {
+  return /insufficient permission|does not have sufficient|403/i.test(msg)
+}
+function domainToUrlPrefix(siteUrl: string) {
+  if (!siteUrl.startsWith('sc-domain:')) return null
+  const domain = siteUrl.replace('sc-domain:', '').replace(/\/$/, '')
+  return `https://${domain}/`
+}
+
 // ── Main Component ─────────────────────────────────────────────
 export function GSC() {
   const orgId    = useAuthStore().org?.id ?? ''
@@ -829,11 +839,46 @@ export function GSC() {
 
       {/* ── Error banner ───────────────────────────────────── */}
       {dataErr && (
-        <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs text-danger">
-          <AlertCircle size={14} className="shrink-0" />
-          <span className="flex-1">{dataErr}</span>
-          <button onClick={() => fetchData(activeUrl)} className="underline cursor-pointer shrink-0">Retry</button>
-        </div>
+        isPermissionErr(dataErr) ? (
+          <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="text-danger shrink-0" />
+              <span className="text-xs font-semibold text-danger">Permission denied — {activeUrl}</span>
+            </div>
+            {activeUrl?.startsWith('sc-domain:') ? (
+              <p className="text-xs text-muted leading-relaxed">
+                <strong className="text-tx">Domain properties</strong> (<code className="font-mono-jarvis">sc-domain:</code>) require <strong className="text-tx">Owner</strong> access in Google Search Console — Full User access is not enough.
+              </p>
+            ) : (
+              <p className="text-xs text-muted">Your Google account does not have sufficient access to this Search Console property.</p>
+            )}
+            <div className="space-y-2">
+              {domainToUrlPrefix(activeUrl) && (
+                <div className="flex items-start gap-2 text-xs">
+                  <span className="text-accent3 font-mono-jarvis shrink-0 mt-0.5">→</span>
+                  <span className="text-muted leading-relaxed">
+                    <strong className="text-tx">Switch to the URL-prefix property:</strong> in Search Console, add{' '}
+                    <code className="font-mono-jarvis text-accent bg-surface px-1 py-0.5 rounded">{domainToUrlPrefix(activeUrl)}</code>{' '}
+                    as a property — URL-prefix properties work with Full User access. Then reconnect Jarvis with that property selected.
+                  </span>
+                </div>
+              )}
+              <div className="flex items-start gap-2 text-xs">
+                <span className="text-accent3 font-mono-jarvis shrink-0 mt-0.5">→</span>
+                <span className="text-muted leading-relaxed">
+                  <strong className="text-tx">Reconnect with an Owner account:</strong> disconnect below and reconnect using a Google account that has <strong className="text-tx">Owner</strong> access to this property in{' '}
+                  <a href="https://search.google.com/search-console/users" target="_blank" rel="noopener noreferrer" className="text-accent underline">Search Console → Settings → Users & permissions</a>.
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs text-danger">
+            <AlertCircle size={14} className="shrink-0" />
+            <span className="flex-1">{dataErr}</span>
+            <button onClick={() => fetchData(activeUrl)} className="underline cursor-pointer shrink-0">Retry</button>
+          </div>
+        )
       )}
 
       {/* ── KPI row ────────────────────────────────────────── */}

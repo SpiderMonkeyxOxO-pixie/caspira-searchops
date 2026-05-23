@@ -41,6 +41,7 @@ async function fetchBacklinkSummary(domain: string, creds: string): Promise<BlSu
     },
   })
   if (error) throw new Error(error.message ?? 'Proxy error')
+  if (data?._httpStatus && data._httpStatus !== 200) throw new Error(`DataForSEO HTTP ${data._httpStatus} — check your login:password credentials`)
   const task = data?.tasks?.[0]
   if (task?.status_message && task.status_message !== 'Ok.') throw new Error(task.status_message)
   const r = task?.result?.[0]
@@ -58,6 +59,7 @@ async function fetchBacklinkList(domain: string, creds: string): Promise<BlItem[
     },
   })
   if (error) throw new Error(error.message ?? 'Proxy error')
+  if (data?._httpStatus && data._httpStatus !== 200) throw new Error(`DataForSEO HTTP ${data._httpStatus} — check your login:password credentials`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items: any[] = data?.tasks?.[0]?.result?.[0]?.items ?? []
   return items.map(item => ({

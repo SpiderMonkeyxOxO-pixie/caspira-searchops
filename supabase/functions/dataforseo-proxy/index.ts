@@ -39,8 +39,10 @@ serve(async (req) => {
 
     const data = await res.json()
 
-    return new Response(JSON.stringify(data), {
-      status: res.ok ? 200 : res.status,
+    // Always return 200 so supabase.functions.invoke gives us the body.
+    // Callers inspect data.tasks[0].status_message for DataForSEO-level errors.
+    return new Response(JSON.stringify({ _httpStatus: res.status, ...data }), {
+      status: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
     })
   } catch (e) {

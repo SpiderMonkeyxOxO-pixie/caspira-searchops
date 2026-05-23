@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, AlertCircle } from 'lucide-react'
+import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, AlertCircle, Loader2 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,7 @@ import { callAI, isAIReady } from '@/lib/ai'
 import { callSerper, isSerperReady } from '@/lib/serper'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { useStore } from '@/store'
 
 type Intent = 'Info' | 'Comm' | 'Trans' | 'Nav'
 type KWTab  = 'all' | 'questions' | 'longtail' | 'commercial' | 'comparisons'
@@ -52,6 +53,57 @@ function inferTabs(kw: string, intent: Intent): KWTab[] {
   return tabs
 }
 
+function computeTrend(monthly: Array<{ search_volume: number }>): 'up' | 'down' | 'flat' {
+  if (monthly.length < 6) return 'flat'
+  const recent = monthly.slice(0, 3).reduce((s, m) => s + m.search_volume, 0) / 3
+  const older  = monthly.slice(3, 6).reduce((s, m) => s + m.search_volume, 0) / 3
+  if (older === 0) return 'flat'
+  const pct = (recent - older) / older
+  if (pct > 0.15) return 'up'
+  if (pct < -0.15) return 'down'
+  return 'flat'
+}
+
+type DFSMetrics = { vol: number; kd: number; cpc: number; trend: 'up' | 'down' | 'flat' }
+
+async function enrichWithDFS(keywords: string[], dfsKey: string): Promise<Map<string, DFSMetrics>> {
+  const [login, password] = dfsKey.split(':')
+  const auth    = btoa(`${login}:${password}`)
+  const headers = { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' }
+  const result  = new Map<string, DFSMetrics>()
+  keywords.forEach(kw => result.set(kw, { vol: 0, kd: 0, cpc: 0, trend: 'flat' }))
+
+  await Promise.allSettled([
+    // Search volume + CPC + trend
+    fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live', {
+      method: 'POST', headers,
+      body: JSON.stringify([{ keywords, location_code: 2356, language_code: 'en' }]),
+    }).then(r => r.json()).then(d => {
+      for (const item of (d?.tasks?.[0]?.result ?? [])) {
+        const prev = result.get(item.keyword) ?? { vol: 0, kd: 0, cpc: 0, trend: 'flat' as const }
+        result.set(item.keyword, {
+          ...prev,
+          vol:   item.search_volume ?? 0,
+          cpc:   item.cpc           ?? 0,
+          trend: computeTrend(item.monthly_searches ?? []),
+        })
+      }
+    }),
+    // Bulk keyword difficulty
+    fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/bulk_keyword_difficulty/live', {
+      method: 'POST', headers,
+      body: JSON.stringify([{ keywords, location_code: 2356, language_code: 'en' }]),
+    }).then(r => r.json()).then(d => {
+      for (const item of (d?.tasks?.[0]?.result?.[0]?.items ?? [])) {
+        const prev = result.get(item.keyword) ?? { vol: 0, kd: 0, cpc: 0, trend: 'flat' as const }
+        result.set(item.keyword, { ...prev, kd: item.keyword_difficulty ?? 0 })
+      }
+    }),
+  ])
+
+  return result
+}
+
 // Extract keyword ideas from Serper response
 function parseSerperKeywords(data: Record<string, unknown>, seed: string): KWRow[] {
   const rows: KWRow[] = []
@@ -87,8 +139,9 @@ function parseSerperKeywords(data: Record<string, unknown>, seed: string): KWRow
 }
 
 export function KeywordExplorer() {
-  const aiReady    = isAIReady()
+  const aiReady     = isAIReady()
   const serperReady = isSerperReady()
+  const { dataForSEOKey } = useStore()
 
   const [seed,         setSeed]         = useState('')
   const [activeTab,    setActiveTab]    = useState<KWTab>('all')
@@ -97,6 +150,7 @@ export function KeywordExplorer() {
   const [rows,         setRows]         = useState<KWRow[]>([])
   const [loading,      setLoading]      = useState(false)
   const [aiLoading,    setAiLoading]    = useState(false)
+  const [enriching,    setEnriching]    = useState(false)
   const [error,        setError]        = useState<string | null>(null)
   const [searched,     setSearched]     = useState(false)
 
@@ -115,13 +169,28 @@ export function KeywordExplorer() {
     setError(null)
     setSearched(true)
     try {
-      const data = await callSerper(seed.trim(), { num: 10, gl: 'in' })
+      const data  = await callSerper(seed.trim(), { num: 10, gl: 'in' })
       const found = parseSerperKeywords(data, seed.trim())
-      if (found.length === 0) setError('No related keywords found. Try a broader seed keyword.')
-      else setRows(prev => {
-        const existing = new Set(prev.map(r => r.kw))
-        return [...prev, ...found.filter(f => !existing.has(f.kw))]
-      })
+      if (found.length === 0) {
+        setError('No related keywords found. Try a broader seed keyword.')
+      } else {
+        setRows(prev => {
+          const existing = new Set(prev.map(r => r.kw))
+          return [...prev, ...found.filter(f => !existing.has(f.kw))]
+        })
+        if (dataForSEOKey) {
+          setEnriching(true)
+          try {
+            const newKws = found.map(f => f.kw)
+            const metrics = await enrichWithDFS(newKws, dataForSEOKey)
+            setRows(prev => prev.map(r => {
+              const m = metrics.get(r.kw)
+              return m ? { ...r, ...m } : r
+            }))
+          } catch { /* enrichment failure is non-fatal */ }
+          finally { setEnriching(false) }
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Serper search failed')
     } finally {
@@ -161,10 +230,25 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
         tabs:   inferTabs(r.kw, r.intent as Intent),
         src:    'ai' as const,
       }))
+      const deduped = newRows.filter(r => {
+        const existing = new Set(rows.map(x => x.kw))
+        return !existing.has(r.kw)
+      })
       setRows(prev => {
         const existing = new Set(prev.map(r => r.kw))
         return [...prev, ...newRows.filter(f => !existing.has(f.kw))]
       })
+      if (dataForSEOKey && deduped.length > 0) {
+        setEnriching(true)
+        try {
+          const metrics = await enrichWithDFS(deduped.map(r => r.kw), dataForSEOKey)
+          setRows(prev => prev.map(r => {
+            const m = metrics.get(r.kw)
+            return m ? { ...r, ...m } : r
+          }))
+        } catch { /* enrichment failure is non-fatal */ }
+        finally { setEnriching(false) }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'AI generation failed')
     } finally {
@@ -225,6 +309,11 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
           )}
         </div>
         {error && <div className="mt-2 text-[11px] text-danger flex items-center gap-1.5"><AlertCircle size={11} /> {error}</div>}
+        {enriching && (
+          <div className="mt-2 text-[11px] text-accent flex items-center gap-1.5">
+            <Loader2 size={11} className="animate-spin" /> Fetching Volume, KD &amp; CPC from DataForSEO…
+          </div>
+        )}
       </Card>
 
       {searched && rows.length > 0 && (

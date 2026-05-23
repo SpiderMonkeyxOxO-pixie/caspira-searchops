@@ -136,8 +136,10 @@ export function CrossView() {
     if (!googleClientId.trim()) { setSettingsOpen(true); return }
     setReconnecting(true)
     const url = buildGscOAuthUrl(googleClientId.trim())
-    const popup = window.open(url, '_blank', 'width=520,height=640,left=200,top=100')
-    if (!popup) window.location.href = url
+    // Open as a new tab — tabs are never blocked by popup blockers.
+    // window.opener is still set so supabase.ts IIFE can postMessage back and close the tab.
+    const tab = window.open(url, '_blank')
+    if (!tab) window.location.href = url
   }
 
   useEffect(() => {

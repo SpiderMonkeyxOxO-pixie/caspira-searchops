@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { GitMerge, BarChart2, Search, Unplug, Loader2, ArrowUpRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react'
+import { GitMerge, BarChart2, Search, Unplug, Loader2, ArrowUpRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Button } from '@/components/ui/Button'
@@ -355,13 +355,26 @@ export function CrossView() {
       </Card>
 
       {error && (() => {
-        const isPermErr = /insufficient permission|does not have sufficient|403/i.test(error)
-        const siteUrl   = gscConn?.selected_site ?? ''
-        const isDomain  = siteUrl.startsWith('sc-domain:')
-        const urlPrefix = isDomain ? `https://${siteUrl.replace('sc-domain:', '').replace(/\/$/, '')}/` : null
-        return isPermErr ? (
+        const isTokenErr = /token.*expired|expired.*token|token.*revoked|revoked.*token|refresh.*failed|Token refresh/i.test(error)
+        const isPermErr  = /insufficient permission|does not have sufficient|403/i.test(error)
+        const siteUrl    = gscConn?.selected_site ?? ''
+        const isDomain   = siteUrl.startsWith('sc-domain:')
+        const urlPrefix  = isDomain ? `https://${siteUrl.replace('sc-domain:', '').replace(/\/$/, '')}/` : null
+        if (isTokenErr) return (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="text-amber-400 shrink-0" />
+              <span className="text-xs font-semibold text-amber-300">GSC connection expired — re-authorisation required</span>
+            </div>
+            <p className="text-xs text-muted leading-relaxed">
+              Your Google OAuth token has been <strong className="text-tx">revoked or expired</strong>. Go to <strong className="text-tx">Search Console</strong> in the sidebar and click <strong className="text-tx">Reconnect Google Search Console</strong> to re-authorise.
+            </p>
+          </div>
+        )
+        if (isPermErr) return (
           <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl space-y-3">
             <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="text-danger shrink-0" />
               <span className="text-xs font-semibold text-danger">GSC permission denied — {siteUrl}</span>
             </div>
             {isDomain && (
@@ -384,9 +397,8 @@ export function CrossView() {
               </div>
             </div>
           </div>
-        ) : (
-          <div className="px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs">{error}</div>
         )
+        return <div className="px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs">{error}</div>
       })()}
 
       {loading && (

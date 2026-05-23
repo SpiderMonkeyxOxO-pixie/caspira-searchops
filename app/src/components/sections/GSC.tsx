@@ -215,6 +215,9 @@ function SitePicker({
 function isPermissionErr(msg: string) {
   return /insufficient permission|does not have sufficient|403/i.test(msg)
 }
+function isTokenExpiredErr(msg: string) {
+  return /token.*expired|expired.*token|token.*revoked|revoked.*token|refresh.*failed|Token refresh/i.test(msg)
+}
 function domainToUrlPrefix(siteUrl: string) {
   if (!siteUrl.startsWith('sc-domain:')) return null
   const domain = siteUrl.replace('sc-domain:', '').replace(/\/$/, '')
@@ -491,6 +494,15 @@ export function GSC() {
     localStorage.removeItem(`jarvis_gsc_tabs_${orgId}`)
     localStorage.removeItem(`jarvis_gsc_active_${orgId}`)
     setConn(null); setData(null); setSiteTabs([]); setActiveUrl(''); setDataCache(new Map())
+  }
+
+  async function handleReconnect() {
+    await handleDisconnect()
+    if (!clientId.trim()) return
+    setConnectError(null); setConnecting(true)
+    const authUrl = buildOAuthUrl(clientId.trim())
+    const popup = window.open(authUrl, 'gsc-oauth', 'width=520,height=640,left=200,top=100')
+    if (!popup) window.location.href = authUrl
   }
 
   function applyPreset(preset: DatePreset) {
@@ -839,7 +851,23 @@ export function GSC() {
 
       {/* ── Error banner ───────────────────────────────────── */}
       {dataErr && (
-        isPermissionErr(dataErr) ? (
+        isTokenExpiredErr(dataErr) ? (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="text-amber-400 shrink-0" />
+              <span className="text-xs font-semibold text-amber-300">GSC connection expired — re-authorisation required</span>
+            </div>
+            <p className="text-xs text-muted leading-relaxed">
+              Your Google OAuth token has been <strong className="text-tx">revoked or expired</strong>. This usually happens when the OAuth app is in <strong className="text-tx">Test mode</strong> (tokens expire after 7 days) or when access was manually revoked in your Google account.
+            </p>
+            <div className="flex items-center gap-3 pt-1">
+              <Button variant="primary" className="text-xs" onClick={handleReconnect} disabled={connecting || !clientId}>
+                {connecting ? 'Reconnecting…' : 'Reconnect Google Search Console'}
+              </Button>
+              <span className="text-[11px] text-muted">This will re-open the Google sign-in popup.</span>
+            </div>
+          </div>
+        ) : isPermissionErr(dataErr) ? (
           <div className="p-4 bg-danger/10 border border-danger/30 rounded-xl space-y-3">
             <div className="flex items-center gap-2">
               <AlertCircle size={14} className="text-danger shrink-0" />

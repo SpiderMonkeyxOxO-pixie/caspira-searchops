@@ -4,7 +4,7 @@
 
 # Jarvis — iGaming SEO Platform
 
-**Open-source, self-hosted SEO command centre for iGaming, casino affiliate, and sports betting marketers.**
+**A self-hosted SEO command centre purpose-built for casino affiliates, sportsbook operators, and iGaming marketers.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
@@ -21,109 +21,117 @@
 
 ## What is Jarvis?
 
-Jarvis is a full-featured SEO platform purpose-built for the iGaming vertical — casino affiliates, sportsbook operators, and performance marketers competing in regulated markets across South and Southeast Asia.
+Jarvis is an open-source SEO platform that brings all your tools into one place — keyword research, rank tracking, competitor analysis, technical audits, AI content generation, and Google Search Console / GA4 analytics — with a specific focus on the iGaming vertical (casino affiliates, sportsbook sites, and regulated markets across South and Southeast Asia).
 
-It aggregates Google Search Console, GA4, DataForSEO, Serper, and AI models into a single self-hosted dashboard. You own the data. You own the infrastructure. Your API keys never leave your browser.
+Instead of paying for five different SaaS tools, you self-host Jarvis once and connect your own API keys. **Your data stays in your own database. Your credentials never leave your browser.**
 
 **Who it's for:**
-- iGaming SEO agencies managing multiple casino / sportsbook domains
-- In-house SEO teams at tier-1 and tier-2 affiliates
-- Freelancers who want a professional platform without SaaS subscription fees
+- iGaming SEO agencies managing multiple casino or sportsbook domains
+- In-house SEO teams at affiliate publishers and tier-1 operators
+- Freelancers who want a professional-grade platform without monthly SaaS fees
 
 ---
 
 ## Features
 
-### Core Analytics
-| Section | Description |
-|---|---|
-| **Agency View** | Portfolio-level dashboard — all domains, health scores, traffic, issues at a glance |
-| **Command Center** | Per-site overview: traffic trend, keyword count, issue alerts, quick-action shortcuts |
-| **Site Audit** | Technical crawl — title tags, meta, H1s, canonicals, noindex, broken images, duplicate content |
-| **Search Console** | OAuth-connected GSC — clicks, impressions, CTR, position charts, keyword table, 7d/28d/3m filters |
-| **GA4 Analytics** | OAuth-connected GA4 — sessions, pageviews, bounce rate, top pages, 7d/28d/90d/6m date ranges |
-| **GSC × GA4 Cross-View** | Merge both data sources — identify high-impression / low-traffic pages instantly |
+### Analytics & Data
 
-### Competitive Intelligence
-| Section | Description |
+| Section | What it does |
 |---|---|
-| **Site Explorer** | Full domain analysis via DataForSEO — organic traffic, keyword universe, backlink profile |
-| **Keyword Explorer** | Search volume, KD, CPC, SERP breakdown, intent classification |
-| **Competitors** | Side-by-side domain comparison — DR, organic traffic, top keywords, backlink count |
-| **Answer the Public** | Question-based keyword discovery — who/what/where/when/why clusters |
-| **Intent Analyzer** | Bulk URL intent classification — informational, commercial, transactional, navigational |
+| **Dashboard** | Per-site overview — traffic trend, keyword count, open issues, and quick action shortcuts |
+| **Agency View** | Portfolio dashboard — all your domains in one table with health scores and issue counts |
+| **Google Search Console** | OAuth-connected GSC data — clicks, impressions, CTR, average position, keyword table, date range filters (7d / 28d / 3m) |
+| **GA4 Analytics** | OAuth-connected GA4 — sessions, pageviews, bounce rate, top pages, 7d / 28d / 90d / 6m ranges |
+| **GSC × GA4 Cross-View** | Combines both sources — surfaces pages with high impressions but low traffic so you can prioritise fixes |
+| **Keywords** | Your tracked keyword positions from Google Search Console |
 
-### Rank Tracking
-| Section | Description |
-|---|---|
-| **Rank Tracker** | Track keyword positions over time with visual trend charts |
-| **Update SERP** | Spot-check live SERP positions for any keyword |
-| **12-Month Roadmap** | Timeline view of SEO milestones, deadlines, and deliverables |
-| **SEO News** | Live feed from Google Search Central, Search Engine Land, SE Journal, Moz, Ahrefs, SEMrush — with browser notifications |
+### Keyword & Competitor Research
 
-### AI-Powered Tools
-| Section | Description |
+| Section | What it does |
 |---|---|
-| **Jarvis AI** | Full-screen AI assistant with iGaming SEO context, image analysis, floating widget available everywhere, White-hat / Gray-hat / Black-hat modes |
-| **Outrank Blueprint** | AI-generated competitor gap analysis — content gaps, link gaps, on-page fixes, 12-week sprint plan |
-| **Content Gap** | Surface missing content opportunities vs top competitors |
-| **Content Spy** | Analyse competitor content — structure, word count, keyword density |
-| **KW Clustering** | Semantic keyword grouping into topic clusters |
-| **Bulk Meta Writer** | AI-generated title tags and meta descriptions at scale |
-| **Site Roaster** | Brutally honest AI critique of your site's SEO |
-| **Auto-Refresh** | AI-powered content refresher for declining pages |
+| **Keyword Explorer** | Enter a seed keyword — pulls related queries via Serper, then enriches each result with search volume, keyword difficulty, and CPC from DataForSEO |
+| **Answer the Public** | Generates question-based keyword clusters (who / what / where / when / why) around any topic — powered by DataForSEO or AI |
+| **Intent Analyzer** | Paste a list of URLs or keywords and classify each as Informational, Commercial, Transactional, or Navigational |
+| **Clustering** | Groups a keyword list into semantic topic clusters — useful for silo planning |
+| **Content Gap** | Compares your site against up to three competitors and surfaces keywords they rank for that you don't |
+| **Content Spy** | Analyses a competitor's top-ranking pages — keyword density, structure, and estimated traffic |
+| **Site Explorer** | Full domain analysis via DataForSEO — organic traffic estimate, top keywords, backlink count, and traffic history chart |
+| **Competitors** | Side-by-side comparison of up to 5 domains — Domain Rating, organic traffic, keyword count, backlinks |
+| **Backlinks** | Backlink profile for any domain — total count, referring domains, anchor text breakdown (via DataForSEO) |
+| **Outrank Blueprint** | AI-generated gap analysis vs a target competitor — content gaps, link gaps, on-page fixes, and a 12-week action plan |
+| **Topical Map** | Builds a complete topical authority map for a niche — pillar topics, sub-topics, supporting pages |
 
-### AI Depth Tools
-| Section | Description |
-|---|---|
-| **Article Writer** | Long-form SEO article generator with outline control |
-| **Content Grader** | Score existing content against SEO best practices |
-| **Topical Map** | Build a complete topical authority map for any niche |
-| **SERP Simulator** | Preview how your title and meta appear in Google results |
-| **FAQ Generator** | Generate FAQ schema-ready Q&A blocks from any URL or keyword |
+### Rank Tracking & SERP
 
-### Content Management
-| Section | Description |
+| Section | What it does |
 |---|---|
-| **Content Plan** | Kanban-style content pipeline — ideas, writing, review, published |
-| **Content Calendar** | Month-view editorial calendar with deadline tracking |
-| **Content Pipeline** | Multi-stage workflow with team assignments |
-| **Social Snippets** | Auto-generate social posts from published URLs |
-| **Image Builder** | SEO-optimised image metadata generator |
-| **Link Suggester** | Internal linking recommendations based on topical relevance |
+| **Rank Tracker** | Tracks keyword positions over time with trend charts and location support |
+| **Update SERP** | Spot-checks live Google positions for a list of keywords against your domain |
+| **SERP Features** | Detects which SERP features your pages trigger (featured snippets, PAA, image packs, local packs) |
+| **SERP Simulator** | Previews exactly how your title tag and meta description appear in Google search results |
+
+### AI-Powered Content Tools
+
+| Section | What it does |
+|---|---|
+| **Jarvis AI** | Full-screen AI assistant with iGaming SEO context — supports Claude and OpenRouter models. Floating widget available from every section. Includes White-hat / Gray-hat / Black-hat strategy modes |
+| **Article Writer** | Generates long-form SEO articles with outline control — section headings, word count target, keyword density |
+| **Bulk Meta Writer** | Generates optimised title tags and meta descriptions for a list of URLs at once |
+| **Content Grader** | Scores existing content against SEO best practices and provides specific improvement suggestions |
+| **Content Plan** | AI-powered content brief generator — target audience, search intent, outline, internal links, CTA |
+| **Auto-Refresh** | Detects content on declining pages that is outdated and rewrites stale sections with current data |
+| **FAQ Generator** | Produces FAQ schema-ready Q&A blocks from a URL or keyword |
+| **Site Roaster** | Gives a brutally honest AI critique of your site's SEO — covers content, technical, UX, and trust signals |
 
 ### Technical SEO
-| Section | Description |
-|---|---|
-| **Technical SEO** | Core Web Vitals, PSI scores, crawlability checklist |
-| **Redirect Manager** | 301/302/410 rules, redirect chain detection, .htaccess / Nginx export |
-| **Log Analyzer** | Parse server logs — Googlebot crawl frequency, crawl budget waste |
-| **Hreflang Builder** | Generate and validate hreflang tags, export HTML or XML |
-| **Robots.txt Editor** | Live editor with syntax validation |
-| **Sitemap Generator** | XML sitemap builder with priority and change frequency controls |
-| **JS SEO Checker** | Identify JavaScript rendering issues that block indexation |
 
-### Strategy & Reporting
-| Section | Description |
+| Section | What it does |
 |---|---|
-| **E-E-A-T Audit** | Evaluate Experience, Expertise, Authoritativeness, Trust signals |
-| **Schema Builder** | JSON-LD generator — Article, FAQ, BreadcrumbList, Organization, LocalBusiness |
-| **SERP Features** | Target featured snippets, People Also Ask, image packs, local packs |
-| **Link Map** | Internal link topology — visualise pillar → cluster → orphan structure |
-| **Report Scheduler** | Automated PDF/email reports on a daily/weekly/monthly schedule |
-| **Case Study Builder** | Structured case study templates with before/after metric capture |
-| **AI Visibility** | Track how your brand appears in AI-generated answers (ChatGPT, Gemini, Perplexity) |
+| **Technical SEO** | Core Web Vitals scores, PageSpeed Insights audit, and a crawlability checklist via the PSI API |
+| **Site Audit** | Crawls your site and checks title tags, meta descriptions, H1s, canonicals, noindex tags, broken images, and duplicate content |
+| **JS SEO Checker** | Identifies JavaScript rendering issues that prevent Google from indexing your content |
+| **Log Analyzer** | Parses server access logs to show Googlebot crawl frequency and where your crawl budget is being wasted |
+| **Hreflang Builder** | Generates and validates hreflang tags for multilingual sites — exports as HTML snippet or XML sitemap |
+| **Redirect Manager** | Manages 301 / 302 / 410 redirect rules, detects redirect chains, and exports .htaccess or Nginx config |
+| **Robots.txt Editor** | Live editor with syntax validation for your robots.txt file |
+| **Sitemap Generator** | Builds XML sitemaps with configurable priority and change frequency |
 
-### Integrations & Platform
-| Section | Description |
+### Content & Strategy
+
+| Section | What it does |
 |---|---|
-| **GA4 Connector** | OAuth setup wizard for Google Analytics 4 |
-| **Ahrefs / Semrush Sync** | Import keyword and backlink data from Ahrefs or SEMrush exports |
-| **Crawl Import** | Import Screaming Frog or Sitebulb crawl CSV exports |
-| **WordPress Publisher** | Publish drafts directly to WordPress via Application Passwords |
-| **Team Management** | Multi-user workspace — invite by email, RBAC permissions matrix, owner/admin/specialist/viewer roles |
-| **API Access** | Programmatic access to your Jarvis data |
-| **Shareable Links** | Generate read-only dashboard links for clients |
+| **Content Calendar** | Month-view editorial calendar — plan publish dates, assign writers, track deadlines |
+| **Content Pipeline** | Multi-stage publishing workflow with status tracking (idea → draft → review → published) |
+| **Social Snippets** | Auto-generates social media posts from a published URL — Twitter/X, LinkedIn, Facebook |
+| **Image Builder** | Generates SEO-optimised image metadata (filenames, alt text, titles) and social share image previews |
+| **Link Suggester** | Recommends internal linking opportunities based on topical relevance between your pages |
+| **Link Map** | Visualises your internal link structure — identifies pillar pages, cluster pages, and orphan pages |
+| **Schema Builder** | JSON-LD generator for structured data — Article, FAQ, BreadcrumbList, Organization, LocalBusiness |
+| **E-E-A-T Audit** | Reviews your pages for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL/iGaming |
+| **SERP Features** | Shows which SERP features each page is triggering and what you'd need to win more |
+
+### Reporting & Roadmap
+
+| Section | What it does |
+|---|---|
+| **12-Month Roadmap** | Timeline view of SEO milestones, sprint goals, and deliverables |
+| **Report Scheduler** | Schedules automated PDF / email reports on a daily / weekly / monthly cadence |
+| **Case Study Builder** | Structured templates for client-facing case studies — before/after metrics, timeline, results |
+| **AI Visibility** | Tracks how your brand appears in AI-generated search answers (ChatGPT, Gemini, Perplexity) |
+| **SEO News** | Live feed from Google Search Central, Search Engine Land, Search Engine Journal, Moz, Ahrefs, SEMrush — with browser push notifications |
+| **ROI Calculator** | Calculates estimated traffic value, lead value, and conversion projections from rank improvements |
+
+### Platform & Integrations
+
+| Section | What it does |
+|---|---|
+| **Team Management** | Multi-user workspace — invite members by email, assign roles, configure per-role section access |
+| **WordPress Sites** | Publish content drafts directly to WordPress via Application Passwords |
+| **Crawl Import** | Import CSV exports from Screaming Frog or Sitebulb for offline analysis |
+| **API Sync** | Import keyword and backlink data from Ahrefs or SEMrush CSV exports |
+| **Index Now** | Submit URLs to Bing / IndexNow instantly after publishing |
+| **Shareable Links** | Generate read-only dashboard links to share with clients without giving them an account |
+| **Onboarding** | Step-by-step setup wizard for entering API keys and configuring your workspace |
 
 ---
 
@@ -139,64 +147,62 @@ cd jarvis
 # 2. Install dependencies
 cd app && npm install
 
-# 3. Configure environment (optional — can also be done via Settings UI)
-cp .env.example .env
-# Edit .env with your Supabase URL and anon key
-
-# 4. Start the dev server
+# 3. Start the dev server
 npm run dev
 ```
 
-Then open `http://localhost:5173`, complete the onboarding, and enter your API keys via **Settings**.
+Open `http://localhost:5173`, complete the onboarding, and enter your API keys via **Settings**.
 
-> **First time?** You need to create a Supabase project, run 11 SQL migrations, and deploy 8 Edge Functions. [SETUP.md](SETUP.md) walks through all of it — takes about 15–20 minutes.
+> **First time?** You'll need to create a free Supabase project, run 11 SQL migrations in the Supabase SQL Editor, and deploy 9 Edge Functions. [SETUP.md](SETUP.md) walks through every step — it takes about 15–20 minutes.
+
+**Minimum to get started:** Just the Supabase URL and Anon Key. All other API keys are optional — features gracefully degrade or fall back to AI estimates when a key isn't present.
 
 ---
 
 ## API Keys
 
-All keys are entered in the **Settings modal** inside the app and stored only in your browser's `localStorage`. Nothing is stored on any server.
+All keys are entered in the **Settings modal** inside the app and stored only in your browser's `localStorage`. Nothing is sent to any shared server.
 
-| Key | Required For | Free Tier | Get It |
+| Key | What it unlocks | Free tier? | Where to get it |
 |---|---|---|---|
-| Supabase URL + Anon Key | Auth, database, all proxies | Yes (generous) | [supabase.com](https://supabase.com) |
-| Google Client ID | GSC + GA4 OAuth | Yes | [Google Cloud Console](https://console.cloud.google.com) |
-| OpenRouter API Key | All AI features | Yes (free models) | [openrouter.ai](https://openrouter.ai/keys) |
-| Anthropic API Key | Claude AI features | No | [console.anthropic.com](https://console.anthropic.com) |
-| DataForSEO Credentials | Site Explorer, Backlinks, Competitors | ~$0.001/call | [dataforseo.com](https://dataforseo.com) |
-| Serper API Key | Rank Tracker, Keyword Explorer | 2,500 free/month | [serper.dev](https://serper.dev) |
-| Open PageRank Key | Domain Rating (DR) | Yes | [domcop.com/openpagerank](https://www.domcop.com/openpagerank) |
+| Supabase URL + Anon Key | Auth, database, all API proxies | Yes (generous) | [supabase.com](https://supabase.com) |
+| Google Client ID | GSC + GA4 OAuth sign-in | Yes | [Google Cloud Console](https://console.cloud.google.com) |
+| OpenRouter API Key | All AI features (recommended — many free models) | Yes | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| Anthropic API Key | Claude-specific AI features | No | [console.anthropic.com](https://console.anthropic.com) |
+| DataForSEO Credentials | Site Explorer, Backlinks, Competitors, Keyword Explorer enrichment | ~$0.001/call | [dataforseo.com](https://dataforseo.com) |
+| Serper API Key | Rank Tracker, Keyword Explorer (search results) | 2,500 free/month | [serper.dev](https://serper.dev) |
+| Open PageRank Key | Domain Rating (DR) scores | Yes | [domcop.com/openpagerank](https://www.domcop.com/openpagerank) |
 | PageSpeed Insights Key | Site Audit speed scores | Yes | [Google Cloud Console](https://console.cloud.google.com) |
-
-**Minimum to get started:** Supabase URL + Anon Key (everything else is optional — features gracefully degrade or use AI estimates).
 
 ---
 
 ## Architecture
 
 ```
-Browser (React + Zustand)
-    │
-    │  Direct API calls (Supabase auth, data)
-    ▼
-Supabase Project (your own)
-    ├── PostgreSQL Database  — sites, tasks, schedules, GSC tokens, GA4 tokens
-    ├── Auth                 — email/password sign-up, session management
-    └── Edge Functions       — CORS proxies for external APIs
-            ├── dataforseo-proxy  → DataForSEO REST API
-            ├── opr-proxy         → Open PageRank API
-            ├── gsc-auth          → Google OAuth token exchange
-            ├── gsc-proxy         → Google Search Console API
-            ├── ga4-auth          → Google OAuth token exchange
-            ├── ga4-proxy         → Google Analytics Data API
-            ├── site-crawl        → Site Audit crawler
-            ├── news-proxy        → RSS feeds (Google, SEL, SEJ, Moz, Ahrefs, SEMrush)
-            └── send-invite       → Team invite emails via Supabase Auth
+Your Browser (React + Zustand)
+       │
+       │  Direct calls (auth, database reads/writes)
+       ▼
+Your Supabase Project
+       ├── PostgreSQL Database
+       │     └── Sites, tasks, schedules, GSC tokens, GA4 tokens, crawl results
+       ├── Auth
+       │     └── Email/password sign-up, session management, team invites
+       └── Edge Functions  (small CORS proxy scripts — run in your project, not ours)
+             ├── dataforseo-proxy  → DataForSEO API
+             ├── opr-proxy         → Open PageRank API
+             ├── gsc-auth          → Google OAuth (Search Console)
+             ├── gsc-proxy         → Google Search Console Data API
+             ├── ga4-auth          → Google OAuth (Analytics)
+             ├── ga4-proxy         → Google Analytics Data API
+             ├── site-crawl        → Site Audit crawler
+             ├── news-proxy        → SEO news RSS feeds
+             └── send-invite       → Team invite emails
 ```
 
-**Why Edge Functions as proxies?**
+### Why is there a Supabase backend?
 
-External APIs don't allow direct browser calls (CORS). Rather than building a traditional backend that stores your API credentials server-side, Jarvis routes calls through Supabase Edge Functions that run in **your own Supabase project**. Your DataForSEO password, Serper key, and other credentials are read from your browser's `localStorage` and sent directly to your own Edge Function — they never touch any shared server.
+Browsers can't call most external APIs directly due to CORS restrictions. Instead of building a traditional server that stores your API credentials, Jarvis routes those calls through **Edge Functions that live inside your own Supabase project**. Your DataForSEO password, Serper key, and Google tokens are passed from your browser directly to your own function — they never touch any shared Jarvis server and are never logged or persisted.
 
 ---
 
@@ -207,12 +213,12 @@ External APIs don't allow direct browser calls (CORS). Rather than building a tr
 | Framework | [React 19](https://react.dev) + [Vite 8](https://vitejs.dev) |
 | Language | [TypeScript 6](https://www.typescriptlang.org) |
 | Styling | [Tailwind CSS v4](https://tailwindcss.com) |
-| State management | [Zustand 5](https://zustand-demo.pmnd.rs) (persisted to `localStorage`) |
+| State | [Zustand 5](https://zustand-demo.pmnd.rs) — persisted to `localStorage` |
 | Data fetching | [TanStack Query v5](https://tanstack.com/query) |
-| Backend / DB | [Supabase](https://supabase.com) (Postgres + Edge Functions) |
+| Backend / DB | [Supabase](https://supabase.com) — Postgres + Edge Functions (Deno) |
 | Charts | [Recharts 3](https://recharts.org) |
 | Icons | [Lucide React](https://lucide.dev) |
-| AI providers | Anthropic Claude, OpenRouter |
+| AI | Anthropic Claude, OpenRouter (any model) |
 | PDF export | [jsPDF](https://github.com/parallax/jsPDF) + [html-to-image](https://github.com/bubkoo/html-to-image) |
 
 ---
@@ -221,21 +227,21 @@ External APIs don't allow direct browser calls (CORS). Rather than building a tr
 
 ```
 jarvis/
-├── app/                        # React frontend (Vite)
+├── app/                          # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/         # Sidebar, TopBar, JarvisWidget, SettingsModal
-│   │   │   ├── sections/       # One file per dashboard section (63 sections)
-│   │   │   ├── auth/           # AuthPage, OrgCreateWizard
-│   │   │   └── ui/             # Shared primitives (Card, Button, Badge, etc.)
-│   │   ├── lib/                # supabase.ts, ai.ts, csv.ts, exportPDF.ts, utils.ts
-│   │   ├── store/              # Zustand store (index.ts, authStore.ts)
-│   │   └── types/              # TypeScript types (index.ts, supabase.ts)
-│   ├── public/                 # Static assets (jarvis-icon.png, fonts)
-│   └── .env.example            # Template for environment variables
+│   │   │   ├── layout/           # Sidebar, TopBar, SettingsModal, JarvisWidget
+│   │   │   ├── sections/         # One file per tool/section (~65 sections)
+│   │   │   ├── auth/             # Login page, org creation wizard
+│   │   │   └── ui/               # Reusable components (Card, Button, Badge, etc.)
+│   │   ├── lib/                  # supabase.ts, ai.ts, dataforseo.ts, csv.ts, utils.ts
+│   │   ├── store/                # Zustand store (API keys, settings, active section)
+│   │   └── types/                # TypeScript types
+│   ├── public/                   # Static assets
+│   └── .env.example
 │
 ├── supabase/
-│   ├── functions/              # 9 Deno Edge Functions
+│   ├── functions/                # 9 Deno Edge Functions (CORS proxies)
 │   │   ├── dataforseo-proxy/
 │   │   ├── opr-proxy/
 │   │   ├── gsc-auth/
@@ -245,7 +251,7 @@ jarvis/
 │   │   ├── site-crawl/
 │   │   ├── news-proxy/
 │   │   └── send-invite/
-│   ├── 001_jarvis_schema.sql
+│   ├── 001_jarvis_schema.sql     # Core tables + RLS policies
 │   ├── 002_fix_rls_recursion.sql
 │   ├── 003_confirm_user.sql
 │   ├── 004_create_org_rpc.sql
@@ -266,47 +272,47 @@ jarvis/
 
 ## Self-Hosting Philosophy
 
-Jarvis is designed to be completely self-hostable with no lock-in:
-
-- **No telemetry** — no phone-home, no analytics, no usage tracking
+- **No telemetry** — no phone-home, no analytics, no usage tracking of any kind
 - **No shared backend** — every deployment uses its own Supabase project
-- **No credential storage** — all API keys live in `localStorage` only, never on any server
-- **No subscription** — use it forever for free on Supabase's free tier (or upgrade for more resources)
-- **CORS proxies, not credential stores** — Edge Functions forward your credentials to external APIs on your behalf and return the result; they don't log or persist anything
+- **No credential storage on any server** — all API keys live in `localStorage` only
+- **No subscription fees** — runs forever on Supabase's free tier (upgrade only if you need more DB storage or Edge Function invocations)
+- **CORS proxies, not credential stores** — Edge Functions forward your requests to external APIs and return the response; they don't log, cache, or store anything
 
 ---
 
-## Roles & Permissions (RBAC)
+## Roles & Permissions
 
-| Role | Default Access |
+Jarvis supports multi-user workspaces with role-based access control (RBAC).
+
+| Role | Access level |
 |---|---|
-| **Owner** | Full access to everything — cannot be restricted |
-| **Admin** | Full access by default, configurable by owner |
+| **Owner** | Full access to everything — settings, billing, team management |
+| **Admin** | Full access by default, configurable by Owner |
 | **SEO Specialist** | Keyword research, AI tools, content, rank tracking, GSC |
-| **Technical** | Tech SEO, integrations, crawl tools, GSC/GA4 |
+| **Technical** | Technical SEO, integrations, site audits, crawl tools |
 | **Content Writer** | Article writer, content calendar, social snippets |
-| **Viewer** | Dashboard, roadmap, news — read only |
+| **Viewer** | Dashboard, roadmap, news feed — read only |
 
-Owners configure per-role section access via **Team Management → Permissions** — a checkbox matrix grouped by sidebar category. Changes are instant and persisted per organisation. The sidebar filters automatically for each logged-in member.
+Owners configure which sections each role can access via **Team Management → Permissions** — a checkbox matrix grouped by category. Changes apply instantly. The sidebar automatically shows only the sections each logged-in user has access to.
 
-Team invites are sent by email (Supabase auth + optional custom SMTP). A copy-able invite link is always shown as a fallback. Clicking an invite link automatically adds the user to the org on sign-in.
+Team invites are sent by email. A copyable invite link is always shown as a fallback after sending.
 
 ---
 
 ## Contributing
 
-Contributions are welcome. Please:
+Contributions are welcome. To contribute:
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature-name`
 3. Make your changes
-4. Run `npm run build` to confirm TypeScript compiles clean
-5. Open a pull request with a clear description of what you changed and why
+4. Run `npm run build` inside `app/` to confirm TypeScript compiles clean
+5. Open a pull request with a clear description of what changed and why
 
-For bugs, please open an issue with the browser console output and steps to reproduce.
+For bugs, please open an issue with the browser console output and the steps to reproduce.
 
 ---
 
 ## License
 
-[MIT](LICENSE) — use it, fork it, build on it, sell it. No attribution required.
+[MIT](LICENSE) — use it, fork it, build on it, sell services with it. No attribution required.

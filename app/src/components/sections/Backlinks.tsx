@@ -43,7 +43,10 @@ async function fetchBacklinkSummary(domain: string, creds: string): Promise<BlSu
   if (error) throw new Error(error.message ?? 'Proxy error')
   if (data?._httpStatus && data._httpStatus !== 200) throw new Error(`DataForSEO HTTP ${data._httpStatus} — check your login:password credentials`)
   const task = data?.tasks?.[0]
-  if (task?.status_message && task.status_message !== 'Ok.') throw new Error(task.status_message)
+  const taskCode = task?.status_code
+  const taskMsg  = task?.status_message ?? ''
+  if (taskCode && taskCode !== 20000) throw new Error(`DataForSEO task error ${taskCode}: ${taskMsg}`)
+  if (taskMsg && taskMsg !== 'Ok.') throw new Error(taskMsg)
   const r = task?.result?.[0]
   return { total: r?.backlinks ?? 0, refDomains: r?.referring_domains ?? 0, domainRank: r?.rank ?? 0 }
 }
@@ -188,6 +191,18 @@ Be specific and actionable for the regulated gambling industry.`,
           <div>
             <div className="text-xs font-semibold text-danger mb-1">DataForSEO error</div>
             <div className="text-[11px] text-muted font-mono-jarvis">{fetchError}</div>
+          </div>
+        </Card>
+      )}
+
+      {/* No data warning */}
+      {loaded && !fetchError && summary && summary.total === 0 && summary.refDomains === 0 && (
+        <Card className="flex items-start gap-3 p-4 border-amber-500/30 bg-amber-500/5">
+          <AlertCircle size={14} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-[11px] text-amber-400/90 leading-relaxed">
+            DataForSEO returned 0 backlinks for this domain. This usually means either:<br />
+            1. <strong>Your DataForSEO plan does not include the Backlinks API</strong> (it is a paid add-on separate from Labs) — check your plan at app.dataforseo.com<br />
+            2. DataForSEO has not crawled this domain yet
           </div>
         </Card>
       )}

@@ -273,7 +273,7 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
       <Card>
         <CardTitle className="mb-1">Keyword Explorer</CardTitle>
         <p className="text-sm text-muted mb-4">
-          Enter a seed keyword — search Google for related queries via Serper, or generate AI-powered keyword ideas.
+          Enter a seed keyword — pull related queries from Google via Serper, or generate AI-powered ideas. Volume, KD &amp; CPC are enriched automatically via DataForSEO.
         </p>
         <div className="flex gap-3 flex-wrap">
           <div className="relative flex-1 min-w-48">

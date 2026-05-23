@@ -32,40 +32,42 @@ function fmt(n: number | null | undefined): string {
   return String(n)
 }
 
-async function fetchBacklinkSummary(domain: string, creds: string): Promise<BlSummary | null> {
-  try {
-    const { data, error } = await supabase.functions.invoke('dataforseo-proxy', {
-      body: { credentials: creds, endpoint: 'backlinks/summary/live', body: [{ target: domain, limit: 1 }] },
-    })
-    if (error) return null
-    const r = data?.tasks?.[0]?.result?.[0]
-    if (!r) return null
-    return { total: r.backlinks ?? 0, refDomains: r.referring_domains ?? 0, domainRank: r.rank ?? 0 }
-  } catch { return null }
+async function fetchBacklinkSummary(domain: string, creds: string): Promise<BlSummary> {
+  const { data, error } = await supabase.functions.invoke('dataforseo-proxy', {
+    body: {
+      credentials: creds,
+      endpoint: 'backlinks/summary/live',
+      body: [{ target: domain, include_subdomains: true }],
+    },
+  })
+  if (error) throw new Error(error.message ?? 'Proxy error')
+  const task = data?.tasks?.[0]
+  if (task?.status_message && task.status_message !== 'Ok.') throw new Error(task.status_message)
+  const r = task?.result?.[0]
+  return { total: r?.backlinks ?? 0, refDomains: r?.referring_domains ?? 0, domainRank: r?.rank ?? 0 }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function fetchBacklinkList(domain: string, creds: string): Promise<BlItem[]> {
-  try {
-    const { data, error } = await supabase.functions.invoke('dataforseo-proxy', {
-      body: {
-        credentials: creds,
-        endpoint: 'backlinks/backlinks/live',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        body: [{ target: domain, limit: 100, order_by: ['rank,desc'], mode: 'as_is', include_subdomains: true }] as any,
-      },
-    })
-    if (error) return []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const items: any[] = data?.tasks?.[0]?.result?.[0]?.items ?? []
-    return items.map(item => ({
-      domain:   item.domain_from     ?? '',
-      url:      item.url_from        ?? '',
-      anchor:   item.anchor          ?? '',
-      dofollow: item.dofollow        ?? false,
-      rank:     item.domain_from_rank ?? 0,
-      date:     (item.first_seen as string)?.slice(0, 10) ?? '',
-    }))
-  } catch { return [] }
+  const { data, error } = await supabase.functions.invoke('dataforseo-proxy', {
+    body: {
+      credentials: creds,
+      endpoint: 'backlinks/backlinks/live',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      body: [{ target: domain, limit: 100, order_by: ['rank,desc'], mode: 'as_is', include_subdomains: true }] as any,
+    },
+  })
+  if (error) throw new Error(error.message ?? 'Proxy error')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const items: any[] = data?.tasks?.[0]?.result?.[0]?.items ?? []
+  return items.map(item => ({
+    domain:   item.domain_from      ?? '',
+    url:      item.url_from         ?? '',
+    anchor:   item.anchor           ?? '',
+    dofollow: item.dofollow         ?? false,
+    rank:     item.domain_from_rank ?? 0,
+    date:     (item.first_seen as string)?.slice(0, 10) ?? '',
+  }))
 }
 
 export function Backlinks() {
@@ -77,6 +79,7 @@ export function Backlinks() {
   const [backlinks,    setBacklinks]    = useState<BlItem[]>([])
   const [loading,      setLoading]      = useState(false)
   const [loaded,       setLoaded]       = useState(false)
+  const [fetchError,   setFetchError]   = useState<string | null>(null)
   const [aiStrategy,   setAiStrategy]   = useState('')
   const [filterType,   setFilterType]   = useState<'all' | 'dofollow' | 'nofollow'>('all')
 
@@ -85,12 +88,18 @@ export function Backlinks() {
     if (!d || !dataForSEOKey) return
     setLoading(true)
     setLoaded(false)
-    const [sum, list] = await Promise.all([
+    setFetchError(null)
+    const [sumResult, listResult] = await Promise.allSettled([
       fetchBacklinkSummary(d, dataForSEOKey),
       fetchBacklinkList(d, dataForSEOKey),
     ])
-    setSummary(sum)
-    setBacklinks(list)
+    setSummary(sumResult.status === 'fulfilled' ? sumResult.value : null)
+    setBacklinks(listResult.status === 'fulfilled' ? listResult.value : [])
+    if (sumResult.status === 'rejected') {
+      setFetchError(sumResult.reason?.message ?? 'Summary fetch failed')
+    } else if (listResult.status === 'rejected') {
+      setFetchError(listResult.reason?.message ?? 'Backlinks list fetch failed')
+    }
     setLoading(false)
     setLoaded(true)
   }
@@ -167,6 +176,17 @@ Be specific and actionable for the regulated gambling industry.`,
         <Card className="text-center py-10">
           <Loader2 size={24} className="animate-spin text-accent mx-auto mb-2" />
           <div className="text-sm text-muted">Fetching backlinks…</div>
+        </Card>
+      )}
+
+      {/* API error */}
+      {fetchError && !loading && (
+        <Card className="flex items-start gap-3 p-4 border-danger/30 bg-danger/5">
+          <AlertCircle size={14} className="text-danger shrink-0 mt-0.5" />
+          <div>
+            <div className="text-xs font-semibold text-danger mb-1">DataForSEO error</div>
+            <div className="text-[11px] text-muted font-mono-jarvis">{fetchError}</div>
+          </div>
         </Card>
       )}
 

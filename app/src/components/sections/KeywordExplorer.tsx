@@ -8,6 +8,7 @@ import { callSerper, isSerperReady } from '@/lib/serper'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { useStore } from '@/store'
+import { supabase } from '@/lib/supabase'
 
 type Intent = 'Info' | 'Comm' | 'Trans' | 'Nav'
 type KWTab  = 'all' | 'questions' | 'longtail' | 'commercial' | 'comparisons'
@@ -67,18 +68,18 @@ function computeTrend(monthly: Array<{ search_volume: number }>): 'up' | 'down' 
 type DFSMetrics = { vol: number; kd: number; cpc: number; trend: 'up' | 'down' | 'flat' }
 
 async function enrichWithDFS(keywords: string[], dfsKey: string): Promise<Map<string, DFSMetrics>> {
-  const [login, password] = dfsKey.split(':')
-  const auth    = btoa(`${login}:${password}`)
-  const headers = { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' }
-  const result  = new Map<string, DFSMetrics>()
+  const result = new Map<string, DFSMetrics>()
   keywords.forEach(kw => result.set(kw, { vol: 0, kd: 0, cpc: 0, trend: 'flat' }))
 
   await Promise.allSettled([
-    // Search volume + CPC + trend
-    fetch('https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live', {
-      method: 'POST', headers,
-      body: JSON.stringify([{ keywords, location_code: 2356, language_code: 'en' }]),
-    }).then(r => r.json()).then(d => {
+    // Search volume + CPC + trend (routed through Supabase proxy to avoid CORS)
+    supabase.functions.invoke('dataforseo-proxy', {
+      body: {
+        credentials: dfsKey,
+        endpoint:    'keywords_data/google_ads/search_volume/live',
+        body:        [{ keywords, location_code: 2356, language_code: 'en' }],
+      },
+    }).then(({ data: d }) => {
       for (const item of (d?.tasks?.[0]?.result ?? [])) {
         const prev = result.get(item.keyword) ?? { vol: 0, kd: 0, cpc: 0, trend: 'flat' as const }
         result.set(item.keyword, {
@@ -90,10 +91,13 @@ async function enrichWithDFS(keywords: string[], dfsKey: string): Promise<Map<st
       }
     }),
     // Bulk keyword difficulty
-    fetch('https://api.dataforseo.com/v3/dataforseo_labs/google/bulk_keyword_difficulty/live', {
-      method: 'POST', headers,
-      body: JSON.stringify([{ keywords, location_code: 2356, language_code: 'en' }]),
-    }).then(r => r.json()).then(d => {
+    supabase.functions.invoke('dataforseo-proxy', {
+      body: {
+        credentials: dfsKey,
+        endpoint:    'dataforseo_labs/google/bulk_keyword_difficulty/live',
+        body:        [{ keywords, location_code: 2356, language_code: 'en' }],
+      },
+    }).then(({ data: d }) => {
       for (const item of (d?.tasks?.[0]?.result?.[0]?.items ?? [])) {
         const prev = result.get(item.keyword) ?? { vol: 0, kd: 0, cpc: 0, trend: 'flat' as const }
         result.set(item.keyword, { ...prev, kd: item.keyword_difficulty ?? 0 })

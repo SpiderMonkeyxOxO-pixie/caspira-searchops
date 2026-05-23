@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Copy, Check, RefreshCw } from 'lucide-react'
+import { Loader2, Copy, Check, RefreshCw, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface SnippetRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  tone: string; articleExcerpt: string; snippets: Record<string, Snippet>
+}
 
 interface Platform {
   id: string; name: string; limit: number; color: string
@@ -63,6 +71,9 @@ export function SocialSnippets() {
   const [snippets,   setSnippets]   = useState<Record<string, Snippet>>({})
   const [copied,     setCopied]     = useState<string | null>(null)
   const [selected,   setSelected]   = useState<string>('linkedin')
+  const [tab,        setTab]        = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<SnippetRecord>('jarvis_socialsnippets_history')
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -90,7 +101,10 @@ Make each one platform-native and casino/iGaming appropriate.`,
       if (data) {
         try {
           const match = data.match(/\{[\s\S]*\}/)
-          if (match) setSnippets(JSON.parse(match[0]) as Record<string, Snippet>)
+          if (!match) return
+          const s = JSON.parse(match[0]) as Record<string, Snippet>
+          setSnippets(s)
+          save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: articleText.slice(0, 60).trim(), sublabel: `${tone} · ${Object.keys(s).length} platforms`, tone, articleExcerpt: articleText.slice(0, 500), snippets: s })
         } catch { /* keep */ }
       }
     },
@@ -111,6 +125,15 @@ Make each one platform-native and casino/iGaming appropriate.`,
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Social Snippets</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setSnippets(r.snippets); setTone(r.tone as typeof TONES[number]); setArticleText(r.articleExcerpt); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No snippets saved yet. Generate social snippets to save results." />
+      ) : (<>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Input */}
         <Card className="lg:col-span-2 space-y-4">
@@ -206,6 +229,7 @@ Make each one platform-native and casino/iGaming appropriate.`,
           </div>
         </div>
       </div>
+      </>)}
     </div>
   )
 }

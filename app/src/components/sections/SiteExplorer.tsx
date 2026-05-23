@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { SearchCode, Globe, TrendingUp, Link2, Star, ExternalLink, AlertCircle, KeyRound, Loader2, Download, Users } from 'lucide-react'
+import { SearchCode, Globe, TrendingUp, Link2, Star, ExternalLink, AlertCircle, KeyRound, Loader2, Download, Users, History } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { useStore } from '@/store'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
@@ -32,6 +34,11 @@ interface SiteProfile {
   kwLoaded:     boolean
   blLoaded:     boolean
   compLoaded:   boolean
+}
+
+interface SiteExplorerRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  domain: string; profile: SiteProfile
 }
 
 function fmt(n: number | null | undefined): string {
@@ -74,6 +81,9 @@ export function SiteExplorer() {
   const [loadingKw,   setLoadingKw]   = useState(false)
   const [loadingBl,   setLoadingBl]   = useState(false)
   const [loadingComp, setLoadingComp] = useState(false)
+  const [histTab,     setHistTab]     = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<SiteExplorerRecord>('jarvis_siteexplorer_history')
 
   async function explore(target?: string) {
     const d = (target ?? query).trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -115,7 +125,7 @@ export function SiteExplorer() {
       traffic: (h.metrics?.organic?.etv as number) ?? 0,
     })).filter((h: HistItem) => h.month)
 
-    setProfile({
+    const newProfile: SiteProfile = {
       domain:     d,
       dr:         opr?.dr                   ?? null,
       rank:       opr?.rank                 ?? null,
@@ -130,7 +140,11 @@ export function SiteExplorer() {
       kwLoaded:     false,
       blLoaded:     false,
       compLoaded:   false,
-    })
+    }
+    setProfile(newProfile)
+    save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+      label: d, sublabel: `traffic ${fmt(newProfile.traffic)} · ${fmt(newProfile.keywords)} kws`,
+      domain: d, profile: newProfile })
     setLoading(false)
   }
 
@@ -217,6 +231,21 @@ export function SiteExplorer() {
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setHistTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', histTab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Site Explorer</button>
+        <button onClick={() => setHistTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', histTab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {histTab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setQuery(r.domain); setProfile(r.profile); setTab('overview'); setHistTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          emptyText="No domain explorations saved yet. Explore a domain to save results."
+        />
+      ) : (<>
 
       {/* Search bar */}
       <Card>
@@ -528,7 +557,7 @@ export function SiteExplorer() {
           </div>
         </Card>
       )}
-
+      </>)}
     </div>
   )
 }

@@ -1,9 +1,16 @@
 import { useState } from 'react'
-import { Copy, Check, CheckCircle2 } from 'lucide-react'
+import { Copy, Check, CheckCircle2, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+
+interface SchemaRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  type: SchemaType; values: Record<string, string>; schema: string
+}
 
 type SchemaType = 'Article' | 'LocalBusiness' | 'Product' | 'FAQ' | 'BreadcrumbList' | 'Organization'
 
@@ -97,6 +104,9 @@ export function SchemaBuilder() {
   const [activeType, setActiveType] = useState<SchemaType>('Article')
   const [values, setValues] = useState<Record<string, string>>({})
   const [copied, setCopied] = useState(false)
+  const [tab,    setTab]    = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<SchemaRecord>('jarvis_schema_history')
 
   const schema = buildSchema(activeType, values)
 
@@ -106,8 +116,21 @@ export function SchemaBuilder() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  function saveSchema() {
+    save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: `${activeType} — ${values[Object.keys(values)[0]] || 'untitled'}`, sublabel: activeType, type: activeType, values, schema })
+  }
+
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Schema Builder</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setActiveType(r.type); setValues(r.values); setTab('tool') }} onDelete={remove} onClear={clear} onDownload={r => { const blob = new Blob([`<script type="application/ld+json">\n${r.schema}\n</script>`], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `schema-${r.type}-${r.savedAt.slice(0,10)}.txt`; a.click() }} emptyText="No schemas saved yet. Build and save a schema." />
+      ) : (<>
       {/* Type selector */}
       <div className="flex gap-2 flex-wrap items-center">
         {TYPES.map(t => (
@@ -150,10 +173,15 @@ export function SchemaBuilder() {
         <Card>
           <div className="flex items-center justify-between mb-3">
             <CardTitle>Generated Schema</CardTitle>
-            <Button variant="ghost" className="text-[11px]" onClick={copySchema}>
-              {copied ? <Check size={12}/> : <Copy size={12}/>}
-              {copied ? 'Copied!' : 'Copy Script Tag'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="text-[11px]" onClick={saveSchema}>
+                Save
+              </Button>
+              <Button variant="ghost" className="text-[11px]" onClick={copySchema}>
+                {copied ? <Check size={12}/> : <Copy size={12}/>}
+                {copied ? 'Copied!' : 'Copy Script Tag'}
+              </Button>
+            </div>
           </div>
           <pre className="bg-surface border border-border rounded-xl p-4 text-[11px] text-accent3 font-mono-jarvis overflow-x-auto scrollbar-thin leading-relaxed">
             {`<script type="application/ld+json">`}
@@ -165,6 +193,7 @@ export function SchemaBuilder() {
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   )
 }

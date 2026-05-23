@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Repeat2, Loader2, TrendingDown, ChevronDown, ChevronUp, CheckCircle2, ArrowDownRight, Plus, Trash2 } from 'lucide-react'
+import { Repeat2, Loader2, TrendingDown, ChevronDown, ChevronUp, CheckCircle2, ArrowDownRight, Plus, Trash2, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
 
 interface DeclinePage {
   id: string
@@ -21,6 +24,11 @@ interface RefreshResult {
   section: string
   before: string
   after: string
+}
+
+interface AutoRefreshRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  pages: DeclinePage[]; results: Record<string, RefreshResult>
 }
 
 const PRIORITY_COLOR: Record<DeclinePage['priority'], string> = {
@@ -42,6 +50,9 @@ export function AutoRefresh() {
   const [newUrl,      setNewUrl]      = useState('')
   const [newTitle,    setNewTitle]    = useState('')
   const [newSection,  setNewSection]  = useState('')
+  const [tab,         setTab]         = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<AutoRefreshRecord>('jarvis_autorefresh_history')
 
   function addPage() {
     const url = newUrl.trim()
@@ -89,7 +100,16 @@ Return JSON:
       return null
     },
     onSuccess: (data) => {
-      if (data) setResults(r => ({ ...r, [data.id]: data.result }))
+      if (data) {
+        setResults(prev => {
+          const next = { ...prev, [data.id]: data.result }
+          save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+            label: data.result.section,
+            sublabel: `${pages.length} pages · ${Object.keys(next).length} refreshed`,
+            pages: [...pages], results: next })
+          return next
+        })
+      }
       setRefreshing(null)
     },
     onError: () => setRefreshing(null),
@@ -99,6 +119,21 @@ Return JSON:
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Content Refresh</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setPages(r.pages); setResults(r.results); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          emptyText="No refreshes saved yet. Refresh a content section to save results."
+        />
+      ) : (<>
       {/* Add page form */}
       <Card>
         <CardTitle className="mb-3">Add Declining Page</CardTitle>
@@ -255,6 +290,7 @@ Return JSON:
           </div>
         </Card>
       )}
+      </>)}
     </div>
   )
 }

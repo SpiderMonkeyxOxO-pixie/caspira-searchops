@@ -1,9 +1,17 @@
 import { useState } from 'react'
-import { Bell, Plus, X, ExternalLink, TrendingUp, Clock, AlertCircle, PenLine, Filter, RefreshCw, Loader2 } from 'lucide-react'
+import { Bell, Plus, X, ExternalLink, TrendingUp, Clock, AlertCircle, PenLine, Filter, RefreshCw, Loader2, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { callDFS, isDFSReady } from '@/lib/dataforseo'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface SpyRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  competitors: string[]; alerts: Alert[]
+}
 
 interface Alert {
   id: string
@@ -31,6 +39,9 @@ export function ContentSpy() {
   const [threatFilter, setThreatFilter] = useState<'all' | Alert['threat']>('all')
   const [scanning,     setScanning]     = useState(false)
   const [scanError,    setScanError]    = useState<string | null>(null)
+  const [tab,          setTab]          = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<SpyRecord>('jarvis_contentspy_history')
 
   async function scanCompetitors() {
     if (!isDFSReady() || competitors.length === 0) return
@@ -62,9 +73,12 @@ export function ContentSpy() {
           read:           false,
         })
       }))
-      setAlerts(prev =>
-        [...prev.filter(a => !newAlerts.some(n => n.competitor === a.competitor)), ...newAlerts]
-      )
+      const merged = [...([] as Alert[]).concat(newAlerts)]
+      setAlerts(prev => {
+        const next = [...prev.filter(a => !newAlerts.some(n => n.competitor === a.competitor)), ...newAlerts]
+        save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: `${competitors.length} competitors scanned`, sublabel: `${merged.length} alerts · ${merged.filter(a => a.threat === 'high').length} high`, competitors: [...competitors], alerts: next })
+        return next
+      })
     } catch (e: any) {
       setScanError(e?.message ?? 'Scan failed')
     } finally {
@@ -94,6 +108,15 @@ export function ContentSpy() {
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Content Spy</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setCompetitors(r.competitors); setAlerts(r.alerts); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No scans saved yet. Scan competitors to save results." />
+      ) : (<>
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
@@ -237,6 +260,7 @@ export function ContentSpy() {
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   )
 }

@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { FileCode2, Loader2, Search, XCircle, AlertCircle, CheckCircle2, Eye, EyeOff, Code2 } from 'lucide-react'
+import { FileCode2, Loader2, Search, XCircle, AlertCircle, CheckCircle2, Eye, EyeOff, Code2, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface JSSeoRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  url: string; result: JSResult
+}
 
 interface JSIssue {
   severity: 'critical' | 'warning' | 'pass'
@@ -41,6 +49,9 @@ export function JSSeo() {
   const [result,   setResult]   = useState<JSResult | null>(null)
   const [filter,   setFilter]   = useState<FilterSev>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [tab,      setTab]      = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<JSSeoRecord>('jarvis_jsseo_history')
 
   const check = useMutation({
     mutationFn: async () => {
@@ -75,7 +86,10 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
       if (data) {
         try {
           const match = data.match(/\{[\s\S]*\}/)
-          if (match) setResult(JSON.parse(match[0]) as JSResult)
+          if (!match) return
+          const r = JSON.parse(match[0]) as JSResult
+          setResult(r)
+          save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: r.url, sublabel: `Score ${r.renderScore}/100 · ${r.issues.filter(i => i.severity === 'critical').length} critical`, url, result: r })
         } catch { /* keep */ }
       }
     },
@@ -92,6 +106,15 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>JS SEO Checker</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setUrl(r.url); setResult(r.result); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No checks saved yet. Run a JS SEO check to save results." />
+      ) : (<>
       {/* Input */}
       <Card>
         <CardTitle className="mb-3">JavaScript SEO Checker</CardTitle>
@@ -215,6 +238,7 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
           <div className="text-sm text-muted">Enter your casino page URL to detect JS SEO issues</div>
         </div>
       )}
+      </>)}
     </div>
   )
 }

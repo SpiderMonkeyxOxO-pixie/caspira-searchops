@@ -1,7 +1,15 @@
 import { useState } from 'react'
-import { Monitor, Smartphone, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Monitor, Smartphone, AlertCircle, CheckCircle2, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface SerpRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  title: string; url: string; desc: string; date: string; view: 'desktop' | 'mobile'; rich: RichOptions
+}
 
 interface RichOptions {
   rating: boolean
@@ -158,12 +166,24 @@ export function SerpSimulator() {
     rating: false, ratingValue: '4.8', ratingCount: '1,240',
     breadcrumbs: true, date: false, sitelinks: false,
   })
+  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<SerpRecord>('jarvis_serpsim_history')
 
   const titleOk = title.length > 0 && title.length <= CHAR_LIMITS.title
   const descOk  = desc.length > 0 && desc.length <= CHAR_LIMITS.description
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>SERP Simulator</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setTitle(r.title); setUrl(r.url); setDesc(r.desc); setDate(r.date); setView(r.view); setRich(r.rich); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No SERP snapshots saved yet. Build a preview and save it." />
+      ) : (<>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Inputs */}
         <Card className="lg:col-span-2 space-y-4">
@@ -251,6 +271,10 @@ export function SerpSimulator() {
             <Badge variant={titleOk ? 'green' : 'red'}>Title {titleOk ? 'OK' : 'Too Long'}</Badge>
             <Badge variant={descOk  ? 'green' : 'red'}>Desc {descOk  ? 'OK' : 'Too Long'}</Badge>
           </div>
+          <button onClick={() => save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: title || url || 'Untitled', sublabel: `${view} · ${title.length}/${CHAR_LIMITS.title} chars`, title, url, desc, date, view, rich })}
+            className="w-full py-2 rounded-lg border border-border text-[11px] text-muted hover:text-accent hover:border-accent transition-colors cursor-pointer font-mono-jarvis">
+            Save Snapshot
+          </button>
         </Card>
 
         {/* Preview */}
@@ -292,6 +316,7 @@ export function SerpSimulator() {
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   )
 }

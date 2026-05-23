@@ -1,7 +1,10 @@
 import { useState, useRef } from 'react'
-import { Palette, Download, Copy, Check, Upload, X } from 'lucide-react'
+import { Palette, Download, Copy, Check, Upload, X, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
 
 interface Theme {
   id: string; label: string
@@ -17,6 +20,11 @@ const THEMES: Theme[] = [
 
 const TEMPLATES = ['Article Cover', 'Social Square', 'Wide Banner', 'Card Thumbnail'] as const
 const CATEGORIES = ['Casino Review', 'Bonus Guide', 'Slot Guide', 'News', 'Comparison', 'Strategy'] as const
+
+interface ImageRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  headline: string; subtitle: string; site: string; category: string; date: string; themeId: string; template: string
+}
 
 function splitText(text: string, maxLen: number): string[] {
   const words = text.split(' ')
@@ -141,7 +149,10 @@ export function ImageBuilder() {
   const [template,  setTemplate]  = useState<typeof TEMPLATES[number]>('Article Cover')
   const [copied,    setCopied]    = useState(false)
   const [bgImage,   setBgImage]   = useState<string | undefined>()
+  const [tab,       setTab]       = useState<'tool' | 'history'>('tool')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const { records, save, remove, clear } = useHistory<ImageRecord>('jarvis_imagebuilder_history')
 
   const theme = THEMES.find(t => t.id === themeId) ?? THEMES[0]
 
@@ -193,8 +204,29 @@ export function ImageBuilder() {
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 
+  function saveSnapshot() {
+    save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+      label: headline || 'Untitled', sublabel: `${template} · ${theme.label}`,
+      headline, subtitle, site, category, date, themeId, template })
+  }
+
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Image Builder</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setHeadline(r.headline); setSubtitle(r.subtitle); setSite(r.site); setCategory(r.category as typeof CATEGORIES[number]); setDate(r.date); setThemeId(r.themeId); setTemplate(r.template as typeof TEMPLATES[number]); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          emptyText="No image configs saved yet. Save a configuration to reuse it."
+        />
+      ) : (<>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Controls */}
         <Card className="lg:col-span-2 space-y-4">
@@ -286,6 +318,9 @@ export function ImageBuilder() {
             <Button variant="ghost" onClick={copySVGCode}>
               {copied ? <Check size={13} /> : <Copy size={13} />}
             </Button>
+            <Button variant="ghost" onClick={saveSnapshot}>
+              Save
+            </Button>
           </div>
           <div className="text-[10px] text-muted">1200×630px (Open Graph standard) · 1200×1200 for Social Square</div>
         </Card>
@@ -311,6 +346,7 @@ export function ImageBuilder() {
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   )
 }

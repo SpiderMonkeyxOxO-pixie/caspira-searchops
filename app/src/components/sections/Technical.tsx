@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Monitor, Smartphone, Zap, Brain, Wrench, Search, AlertCircle, Key } from 'lucide-react'
+import { Loader2, Monitor, Smartphone, Zap, Brain, Wrench, Search, AlertCircle, Key, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { cn } from '@/lib/utils'
 
 type Device = 'mobile' | 'desktop'
@@ -53,6 +55,11 @@ interface AuditResult {
   metrics: Metrics
   opportunities: Opportunity[]
   fetchedAt: string
+}
+
+interface TechnicalRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  url: string; device: Device; metrics: Metrics; opportunities: Opportunity[]; fetchedAt: string
 }
 
 const OPP_AUDIT_IDS = [
@@ -163,10 +170,21 @@ export function Technical() {
   const [device,   setDevice]   = useState<Device>('mobile')
   const [result,   setResult]   = useState<AuditResult | null>(null)
   const [aiRec,    setAiRec]    = useState('')
+  const [tab,      setTab]      = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<TechnicalRecord>('jarvis_technical_history')
 
   const audit = useMutation({
     mutationFn: () => runPsi(inputUrl, device, psiKey),
-    onSuccess: (data) => { setResult(data); setAiRec('') },
+    onSuccess: (data) => {
+      setResult(data)
+      setAiRec('')
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+        label: data.url.replace(/^https?:\/\//, '').split('/')[0],
+        sublabel: `${data.device} · score ${data.metrics.score}/100`,
+        url: data.url, device: data.device, metrics: data.metrics,
+        opportunities: data.opportunities, fetchedAt: data.fetchedAt })
+    },
   })
 
   const getAI = useMutation({
@@ -195,6 +213,26 @@ Be direct and technical.`,
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Technical SEO</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setInputUrl(r.url); setDevice(r.device); setResult({ url: r.url, device: r.device, metrics: r.metrics, opportunities: r.opportunities, fetchedAt: r.fetchedAt }); setAiRec(''); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          onDownload={r => {
+            const rows = r.opportunities.map(o => [o.title, o.savingsMs ? `${o.savingsMs}ms` : o.savingsKb ? `${o.savingsKb}KB` : o.displayValue, o.description])
+            const csv = [['Opportunity', 'Savings', 'Description'], ...rows].map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')
+            const a = document.createElement('a'); a.href = 'data:text/csv,' + encodeURIComponent(csv); a.download = `psi-${r.url.replace(/[^a-z0-9]/gi,'_')}.csv`; a.click()
+          }}
+          emptyText="No audits saved yet. Run a PageSpeed audit to save results."
+        />
+      ) : (<>
 
       {/* URL input + controls */}
       <Card>
@@ -366,6 +404,7 @@ Be direct and technical.`,
           </Card>
         </>
       )}
+      </>)}
     </div>
   )
 }

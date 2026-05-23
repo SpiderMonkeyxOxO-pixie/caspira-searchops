@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, Link2, AlertCircle, ExternalLink, Download, RefreshCw, Globe, TrendingUp } from 'lucide-react'
+import { Loader2, Link2, AlertCircle, ExternalLink, Download, RefreshCw, Globe, TrendingUp, History } from 'lucide-react'
 import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -9,6 +9,14 @@ import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface BacklinksRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  domain: string; summary: BlSummary | null; backlinks: BlItem[]
+}
 
 interface BlItem {
   domain:   string
@@ -87,6 +95,9 @@ export function Backlinks() {
   const [fetchError,   setFetchError]   = useState<string | null>(null)
   const [aiStrategy,   setAiStrategy]   = useState('')
   const [filterType,   setFilterType]   = useState<'all' | 'dofollow' | 'nofollow'>('all')
+  const [tab,          setTab]          = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<BacklinksRecord>('jarvis_backlinks_history')
 
   async function runFetch() {
     const d = targetDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -107,6 +118,9 @@ export function Backlinks() {
     }
     setLoading(false)
     setLoaded(true)
+    const s = sumResult.status === 'fulfilled' ? sumResult.value : null
+    const bl = listResult.status === 'fulfilled' ? listResult.value : []
+    save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: d, sublabel: `${fmt(s?.total)} backlinks · ${fmt(s?.refDomains)} domains`, domain: d, summary: s, backlinks: bl })
   }
 
   const getStrategy = useMutation({
@@ -145,7 +159,15 @@ Be specific and actionable for the regulated gambling industry.`,
 
   return (
     <div className="space-y-5">
-
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Backlinks</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setTargetDomain(r.domain); setSummary(r.summary); setBacklinks(r.backlinks); setLoaded(true); setTab('tool') }} onDelete={remove} onClear={clear} onDownload={r => downloadCSV(`backlinks-${r.domain}-${r.savedAt.slice(0,10)}.csv`, ['Domain','Rank','Anchor','Type','URL','Date'], r.backlinks.map(b => [b.domain,b.rank,b.anchor,b.dofollow?'Dofollow':'Nofollow',b.url,b.date]))} emptyText="No backlink fetches saved yet. Fetch backlinks to save results." />
+      ) : (<>
       {/* Search bar */}
       <Card>
         <CardTitle className="mb-1">Backlinks</CardTitle>
@@ -332,7 +354,7 @@ Be specific and actionable for the regulated gambling industry.`,
           </p>
         )}
       </Card>
-
+      </>)}
     </div>
   )
 }

@@ -1,11 +1,19 @@
 import { useState } from 'react'
-import { Globe, Plus, Trash2, Copy, Check, AlertCircle, CheckCircle2, Download } from 'lucide-react'
+import { Globe, Plus, Trash2, Copy, Check, AlertCircle, CheckCircle2, Download, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { cn } from '@/lib/utils'
 
 interface HreflangEntry { id: string; url: string; lang: string; region: string; isDefault: boolean }
+
+interface HreflangRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  entries: HreflangEntry[]; html: string
+}
 
 const LANGUAGES = [
   { code: 'en', name: 'English' }, { code: 'de', name: 'German' },
@@ -82,6 +90,9 @@ export function HreflangBuilder() {
   const [newRegion, setNewRegion] = useState('NZ')
   const [copied,   setCopied]   = useState(false)
   const [view,     setView]     = useState<'builder' | 'code'>('builder')
+  const [tab,      setTab]      = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<HreflangRecord>('jarvis_hreflang_history')
 
   function addEntry() {
     if (!newUrl.trim()) return
@@ -130,8 +141,31 @@ export function HreflangBuilder() {
     )
   }
 
+  function saveSnapshot() {
+    save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+      label: entries.find(e => e.isDefault)?.url || `${entries.length} entries`,
+      sublabel: `${entries.length} targets · ${new Set(entries.map(e => e.lang)).size} langs`,
+      entries: [...entries], html })
+  }
+
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Hreflang Builder</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setEntries(r.entries); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          onDownload={r => { const blob = new Blob([r.html], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `hreflang-${r.savedAt.slice(0,10)}.html`; a.click() }}
+          emptyText="No hreflang sets saved yet. Build and save your tags."
+        />
+      ) : (<>
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         {[
@@ -231,7 +265,7 @@ export function HreflangBuilder() {
               </div>
             ) : (
               <div>
-                <div className="flex gap-2 mb-3">
+                <div className="flex gap-2 mb-3 flex-wrap">
                   <Button variant="ghost" className="text-[11px]" onClick={handleCopy}>
                     {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
                   </Button>
@@ -240,6 +274,9 @@ export function HreflangBuilder() {
                   </Button>
                   <Button variant="ghost" className="text-[11px]" onClick={exportCSV}>
                     <Download size={11} /> Export CSV
+                  </Button>
+                  <Button variant="ghost" className="text-[11px]" onClick={saveSnapshot} disabled={entries.length === 0}>
+                    Save Snapshot
                   </Button>
                 </div>
                 <pre className="bg-code rounded-xl border border-border p-4 text-[10px] font-mono-jarvis text-accent3 overflow-x-auto whitespace-pre leading-relaxed">
@@ -288,6 +325,7 @@ export function HreflangBuilder() {
           </div>
         </Card>
       </div>
+      </>)}
     </div>
   )
 }

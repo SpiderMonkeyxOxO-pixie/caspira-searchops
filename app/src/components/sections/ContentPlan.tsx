@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, FileText, CheckCircle, Clock, PenLine } from 'lucide-react'
+import { Loader2, FileText, CheckCircle, Clock, PenLine, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { cn } from '@/lib/utils'
 
 type Status = 'published' | 'in-progress' | 'planned' | 'brief-ready'
@@ -22,6 +24,11 @@ interface ContentItem {
 }
 
 
+interface BriefRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  title: string; keyword: string; content: string
+}
+
 const STATUS_CONFIG: Record<Status, { label:string; color:'green'|'accent'|'amber'|'purple'; icon: typeof CheckCircle }> = {
   'published':   { label:'Published',    color:'green',   icon:CheckCircle },
   'in-progress': { label:'In Progress',  color:'accent',  icon:PenLine },
@@ -34,6 +41,9 @@ export function ContentPlan() {
   const items: ContentItem[] = []
   const [activeStatus, setActiveStatus] = useState<Status|'all'>('all')
   const [brief, setBrief] = useState<{title:string; content:string}|null>(null)
+  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<BriefRecord>('jarvis_contentplan_history')
 
   const generateBrief = useMutation({
     mutationFn: (item: ContentItem) => callClaude(
@@ -56,7 +66,12 @@ Include:
 Be specific and actionable for the iGaming industry.`,
       1200,
     ),
-    onSuccess: (content, item) => setBrief({ title: item.title, content }),
+    onSuccess: (content, item) => {
+      setBrief({ title: item.title, content })
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+        label: item.title, sublabel: `${item.keyword} · ${item.vol}/mo`,
+        title: item.title, keyword: item.keyword, content })
+    },
   })
 
   const filtered = activeStatus === 'all' ? items : items.filter(c => c.status === activeStatus)
@@ -70,6 +85,22 @@ Be specific and actionable for the iGaming industry.`,
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Content Plan</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setBrief({ title: r.title, content: r.content }); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          onDownload={r => { const blob = new Blob([`# ${r.title}\n\n${r.content}`], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `brief-${r.savedAt.slice(0,10)}.txt`; a.click() }}
+          emptyText="No briefs saved yet. Generate a content brief to save it here."
+        />
+      ) : (<>
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
@@ -166,6 +197,7 @@ Be specific and actionable for the iGaming industry.`,
           </div>
         </Card>
       )}
+      </>)}
     </div>
   )
 }

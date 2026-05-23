@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Plus, Loader2, Trash2, AlertCircle, Globe, Download, RefreshCw } from 'lucide-react'
+import { Plus, Loader2, Trash2, AlertCircle, Globe, Download, RefreshCw, History } from 'lucide-react'
 import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -8,6 +8,14 @@ import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface CompetitorsRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  competitors: CompetitorEntry[]; aiAnalysis: string
+}
 
 interface CompetitorEntry {
   domain: string
@@ -87,6 +95,9 @@ export function Competitors() {
   const [newDomain,   setNewDomain]   = useState('')
   const [aiAnalysis,  setAiAnalysis]  = useState('')
   const [yourDR,      setYourDR]      = useState<number | null>(null)
+  const [tab,         setTab]         = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<CompetitorsRecord>('jarvis_competitors_history')
 
   async function loadDomainData(d: string): Promise<Partial<CompetitorEntry>> {
     const [opr, dfs] = await Promise.all([
@@ -156,7 +167,10 @@ Be direct, specific, and actionable.`,
         800,
       )
     },
-    onSuccess: setAiAnalysis,
+    onSuccess: (analysis) => {
+      setAiAnalysis(analysis ?? '')
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: `${competitors.length} competitors`, sublabel: `vs ${domain || 'your site'}`, competitors: [...competitors], aiAnalysis: analysis ?? '' })
+    },
   })
 
   function exportCSV() {
@@ -190,6 +204,15 @@ Be direct, specific, and actionable.`,
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Competitors</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setCompetitors(r.competitors); setAiAnalysis(r.aiAnalysis); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No competitor analyses saved yet. Run AI Analysis to save results." />
+      ) : (<>
       {/* Domain cards */}
       {allEntries.length > 0 && (
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -372,6 +395,7 @@ Be direct, specific, and actionable.`,
           </p>
         )}
       </Card>
+      </>)}
     </div>
   )
 }

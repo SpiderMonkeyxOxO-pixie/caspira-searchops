@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Loader2, ArrowRight, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, ArrowRight, Copy, Check, ChevronDown, ChevronUp, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface LinkRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  domain: string; article: string; suggestions: LinkSuggestion[]
+}
 
 interface LinkSuggestion {
   anchor: string
@@ -53,6 +61,9 @@ export function LinkSuggester() {
   const [selected,    setSelected]    = useState<number | null>(null)
   const [filter,      setFilter]      = useState<'all' | LinkSuggestion['priority']>('all')
   const [copied,      setCopied]      = useState<number | null>(null)
+  const [tab,         setTab]         = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<LinkRecord>('jarvis_linksuggester_history')
 
   const analyze = useMutation({
     mutationFn: async () => {
@@ -84,7 +95,10 @@ Identify 6-8 opportunities. Prioritise:
       if (data) {
         try {
           const m = data.match(/\[[\s\S]*\]/)
-          if (m) setSuggestions(JSON.parse(m[0]) as LinkSuggestion[])
+          if (!m) return
+          const suggs = JSON.parse(m[0]) as LinkSuggestion[]
+          setSuggestions(suggs)
+          save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: domain, sublabel: `${suggs.length} suggestions · ${suggs.filter(s => s.priority === 'high').length} high`, domain, article: article.slice(0, 500), suggestions: suggs })
         } catch { /* parse failed */ }
       }
     },
@@ -101,6 +115,15 @@ Identify 6-8 opportunities. Prioritise:
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Link Suggester</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setDomain(r.domain); setArticle(r.article); setSuggestions(r.suggestions); setTab('tool') }} onDelete={remove} onClear={clear} emptyText="No link analyses saved yet. Analyse an article to save results." />
+      ) : (<>
       <Card>
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
@@ -209,6 +232,7 @@ Identify 6-8 opportunities. Prioritise:
           </div>
         )}
       </Card>
+      </>)}
     </div>
   )
 }

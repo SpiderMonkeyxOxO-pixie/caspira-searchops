@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download, Loader2 } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download, Loader2, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { callDFS, isDFSReady } from '@/lib/dataforseo'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
+import { cn } from '@/lib/utils'
+
+interface ATPRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  topic: string; groups: QGroup[]
+}
 
 interface QGroup { category: string; color: string; keywords: string[] }
 
@@ -56,29 +64,38 @@ export function AnswerThePublic() {
   const [copied,    setCopied]    = useState<string | null>(null)
   const [loading,   setLoading]   = useState(false)
   const [dfsGroups, setDfsGroups] = useState<QGroup[] | null>(null)
+  const [tab,       setTab]       = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<ATPRecord>('jarvis_atp_history')
 
   async function generate() {
     if (!topic.trim()) return
     if (!isDFSReady()) {
+      const staticGroups = buildStaticGroups(topic)
       setDfsGroups(null)
       setGenerated(true)
       setExpanded(new Set(['What', 'How', 'Which']))
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: topic, sublabel: `${staticGroups.reduce((s, g) => s + g.keywords.length, 0)} keywords · static`, topic, groups: staticGroups })
       return
     }
     setLoading(true)
+    let resolvedGroups: QGroup[] | null = null
     try {
       const result = await callDFS('dataforseo_labs/google/keyword_suggestions/live', [{
         keyword: topic.trim(), location_code: 2356, language_code: 'en', limit: 200,
       }])
       const keywords: string[] = (result?.items ?? []).map((i: any) => i.keyword as string)
       const groups = buildDFSGroups(keywords)
-      setDfsGroups(groups.length > 0 ? groups : null)
+      resolvedGroups = groups.length > 0 ? groups : null
+      setDfsGroups(resolvedGroups)
     } catch {
       setDfsGroups(null)
     } finally {
       setLoading(false)
       setGenerated(true)
       setExpanded(new Set(['What', 'How', 'Which']))
+      const groupsToSave = resolvedGroups ?? buildStaticGroups(topic)
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(), label: topic, sublabel: `${groupsToSave.reduce((s, g) => s + g.keywords.length, 0)} keywords · ${resolvedGroups ? 'DataForSEO' : 'static'}`, topic, groups: groupsToSave })
     }
   }
 
@@ -114,6 +131,15 @@ export function AnswerThePublic() {
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Answer the Public</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel records={records} onLoad={r => { setTopic(r.topic); setDfsGroups(r.groups); setGenerated(true); setExpanded(new Set(['What','How','Which'])); setTab('tool') }} onDelete={remove} onClear={clear} onDownload={r => { downloadCSV(`atp-${r.topic}-${r.savedAt.slice(0,10)}.csv`, ['Category','Keyword'], r.groups.flatMap(g => g.keywords.map(kw => [g.category, kw]))) }} emptyText="No research history yet. Generate questions to save results." />
+      ) : (<>
       <Card>
         <CardTitle className="mb-1">Answer the Public</CardTitle>
         <p className="text-sm text-muted mb-4">
@@ -220,6 +246,7 @@ export function AnswerThePublic() {
           </div>
         </Card>
       )}
+      </>)}
     </div>
   )
 }

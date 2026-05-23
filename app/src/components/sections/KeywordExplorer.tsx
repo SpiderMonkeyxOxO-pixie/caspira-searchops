@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, AlertCircle, Loader2 } from 'lucide-react'
+import { Hash, Search, TrendingUp, TrendingDown, Minus, Download, AlertCircle, Loader2, History } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,8 @@ import { callAI, isAIReady } from '@/lib/ai'
 import { callSerper, isSerperReady } from '@/lib/serper'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 import { useStore } from '@/store'
 import { supabase } from '@/lib/supabase'
 
@@ -33,6 +35,11 @@ const TABS: { id: KWTab; label: string }[] = [
   { id: 'commercial',  label: 'Commercial' },
   { id: 'comparisons', label: 'Comparisons' },
 ]
+
+interface KWExplorerRecord {
+  id: string; savedAt: string; label: string; sublabel: string
+  seed: string; rows: KWRow[]
+}
 
 const AI_SYSTEM = `You are an iGaming SEO expert specialising in India and Indonesia markets.
 Generate keyword ideas in JSON format only. No markdown, no explanation — pure JSON array.`
@@ -157,6 +164,9 @@ export function KeywordExplorer() {
   const [enriching,    setEnriching]    = useState(false)
   const [error,        setError]        = useState<string | null>(null)
   const [searched,     setSearched]     = useState(false)
+  const [tab,          setTab]          = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<KWExplorerRecord>('jarvis_kwexplorer_history')
 
   const results = useMemo(() => {
     let r = rows
@@ -178,22 +188,29 @@ export function KeywordExplorer() {
       if (found.length === 0) {
         setError('No related keywords found. Try a broader seed keyword.')
       } else {
+        let savedRows: KWRow[] = []
         setRows(prev => {
           const existing = new Set(prev.map(r => r.kw))
-          return [...prev, ...found.filter(f => !existing.has(f.kw))]
+          const next = [...prev, ...found.filter(f => !existing.has(f.kw))]
+          savedRows = next
+          return next
         })
         if (dataForSEOKey) {
           setEnriching(true)
           try {
             const newKws = found.map(f => f.kw)
             const metrics = await enrichWithDFS(newKws, dataForSEOKey)
-            setRows(prev => prev.map(r => {
-              const m = metrics.get(r.kw)
-              return m ? { ...r, ...m } : r
-            }))
+            setRows(prev => {
+              const updated = prev.map(r => { const m = metrics.get(r.kw); return m ? { ...r, ...m } : r })
+              savedRows = updated
+              return updated
+            })
           } catch { /* enrichment failure is non-fatal */ }
           finally { setEnriching(false) }
         }
+        save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+          label: seed.trim(), sublabel: `${savedRows.length} keywords · Serper`,
+          seed: seed.trim(), rows: savedRows })
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Serper search failed')
@@ -238,21 +255,28 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
         const existing = new Set(rows.map(x => x.kw))
         return !existing.has(r.kw)
       })
+      let savedRows: KWRow[] = []
       setRows(prev => {
         const existing = new Set(prev.map(r => r.kw))
-        return [...prev, ...newRows.filter(f => !existing.has(f.kw))]
+        const next = [...prev, ...newRows.filter(f => !existing.has(f.kw))]
+        savedRows = next
+        return next
       })
       if (dataForSEOKey && deduped.length > 0) {
         setEnriching(true)
         try {
           const metrics = await enrichWithDFS(deduped.map(r => r.kw), dataForSEOKey)
-          setRows(prev => prev.map(r => {
-            const m = metrics.get(r.kw)
-            return m ? { ...r, ...m } : r
-          }))
+          setRows(prev => {
+            const updated = prev.map(r => { const m = metrics.get(r.kw); return m ? { ...r, ...m } : r })
+            savedRows = updated
+            return updated
+          })
         } catch { /* enrichment failure is non-fatal */ }
         finally { setEnriching(false) }
       }
+      save({ id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+        label: seed.trim(), sublabel: `${savedRows.length} keywords · AI`,
+        seed: seed.trim(), rows: savedRows })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'AI generation failed')
     } finally {
@@ -274,6 +298,22 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
 
   return (
     <div className="space-y-5">
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>Keyword Explorer</button>
+        <button onClick={() => setTab('history')} className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer', tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setSeed(r.seed); setRows(r.rows); setSearched(true); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          onDownload={r => downloadCSV(`keywords-${r.seed}-${r.savedAt.slice(0,10)}.csv`, ['Keyword','Intent','Volume','KD','CPC','Trend','Source'], r.rows.map(x => [x.kw, x.intent, x.vol||'', x.kd||'', x.cpc?`$${x.cpc.toFixed(2)}`:'', x.trend, x.src==='ai'?'AI':'GSR']))}
+          emptyText="No keyword searches saved yet. Search or generate keywords to save results."
+        />
+      ) : (<>
       <Card>
         <CardTitle className="mb-1">Keyword Explorer</CardTitle>
         <p className="text-sm text-muted mb-4">
@@ -442,6 +482,7 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
           </div>
         </Card>
       )}
+      </>)}
     </div>
   )
 }

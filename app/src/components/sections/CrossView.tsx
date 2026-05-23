@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { GitMerge, BarChart2, Search, Unplug, Loader2, ArrowUpRight, TrendingUp, TrendingDown, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -73,9 +73,22 @@ function SortBtn({ col: _col, active, dir, onClick }: { col: string; active: boo
   )
 }
 
+// ── OAuth helper ──────────────────────────────────────────────
+const GSC_SCOPES = 'https://www.googleapis.com/auth/webmasters.readonly'
+function buildGscOAuthUrl(clientId: string): string {
+  const state = crypto.randomUUID()
+  sessionStorage.setItem('gsc_oauth_state', state)
+  const p = new URLSearchParams({
+    client_id: clientId, redirect_uri: window.location.origin,
+    response_type: 'code', scope: GSC_SCOPES,
+    access_type: 'offline', prompt: 'consent', state,
+  })
+  return `https://accounts.google.com/o/oauth2/v2/auth?${p}`
+}
+
 // ── Component ─────────────────────────────────────────────────
 export function CrossView() {
-  const { setSection, domain } = useStore()
+  const { setSection, domain, googleClientId } = useStore()
   const orgId = useAuthStore().org?.id ?? ''
 
   // Connection state
@@ -84,12 +97,15 @@ export function CrossView() {
   const [connLoading, setConnLoading] = useState(true)
 
   // Data state
-  const [rows,      setRows]      = useState<CrossRow[]>([])
-  const [loading,   setLoading]   = useState(false)
-  const [error,     setError]     = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState('28daysAgo')
-  const [sortBy,    setSortBy]    = useState<SortCol>('clicks')
-  const [sortDir,   setSortDir]   = useState<'asc'|'desc'>('desc')
+  const [rows,         setRows]        = useState<CrossRow[]>([])
+  const [loading,      setLoading]     = useState(false)
+  const [error,        setError]       = useState<string | null>(null)
+  const [reconnecting, setReconnecting] = useState(false)
+  const [dateRange,    setDateRange]   = useState('28daysAgo')
+  const [sortBy,       setSortBy]      = useState<SortCol>('clicks')
+  const [sortDir,      setSortDir]     = useState<'asc'|'desc'>('desc')
+
+  const fetchDataRef = useRef<((range: string) => void) | null>(null)
 
   const DATE_RANGES = [
     { label: '7d',  value: '7daysAgo'   },
@@ -114,6 +130,28 @@ export function CrossView() {
       setConnLoading(false)
     })
   }, [orgId])
+
+  // ── Reconnect GSC ───────────────────────────────────────────
+  function handleReconnect() {
+    if (!googleClientId.trim()) return
+    setReconnecting(true)
+    const url = buildGscOAuthUrl(googleClientId.trim())
+    const popup = window.open(url, 'gsc-oauth', 'width=520,height=640,left=200,top=100')
+    if (!popup) window.location.href = url
+  }
+
+  useEffect(() => {
+    function handler(e: Event) {
+      const { success } = (e as CustomEvent<{ success: boolean }>).detail
+      setReconnecting(false)
+      if (success) {
+        setError(null)
+        if (fetchDataRef.current) fetchDataRef.current(dateRange)
+      }
+    }
+    window.addEventListener('gsc-auth-result', handler)
+    return () => window.removeEventListener('gsc-auth-result', handler)
+  }, [dateRange])
 
   // ── Fetch + merge data ──────────────────────────────────────
   const fetchData = useCallback(async (range: string) => {
@@ -221,6 +259,8 @@ export function CrossView() {
       setLoading(false)
     }
   }, [orgId, gscConn, ga4Conn, domain])
+
+  useEffect(() => { fetchDataRef.current = fetchData }, [fetchData])
 
   useEffect(() => {
     if (!connLoading && gscConn && ga4Conn) fetchData(dateRange)
@@ -367,8 +407,14 @@ export function CrossView() {
               <span className="text-xs font-semibold text-amber-300">GSC connection expired — re-authorisation required</span>
             </div>
             <p className="text-xs text-muted leading-relaxed">
-              Your Google OAuth token has been <strong className="text-tx">revoked or expired</strong>. Go to <strong className="text-tx">Search Console</strong> in the sidebar and click <strong className="text-tx">Reconnect Google Search Console</strong> to re-authorise.
+              Your Google OAuth token has been <strong className="text-tx">revoked or expired</strong>. This usually happens when the OAuth app is in <strong className="text-tx">Test mode</strong> (tokens expire after 7 days) or when access was manually revoked in your Google account.
             </p>
+            <div className="flex items-center gap-3 pt-1">
+              <Button variant="primary" className="text-xs" onClick={handleReconnect} disabled={reconnecting || !googleClientId}>
+                {reconnecting ? 'Reconnecting…' : 'Reconnect Google Search Console'}
+              </Button>
+              <span className="text-[11px] text-muted">This will re-open the Google sign-in popup.</span>
+            </div>
           </div>
         )
         if (isPermErr) return (

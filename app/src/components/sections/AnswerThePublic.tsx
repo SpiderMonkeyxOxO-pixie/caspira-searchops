@@ -1,93 +1,85 @@
 import { useState } from 'react'
-import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download } from 'lucide-react'
+import { BookOpen, ChevronDown, ChevronRight, Copy, Check, Download, Loader2 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { callDFS, isDFSReady } from '@/lib/dataforseo'
 
 interface QGroup { category: string; color: string; keywords: string[] }
 
-function buildGroups(topic: string): QGroup[] {
+const Q_CATEGORIES = [
+  { category: 'What',    color: '#00d4ff', prefix: 'what '    },
+  { category: 'How',     color: '#10b981', prefix: 'how '     },
+  { category: 'Why',     color: '#7c3aed', prefix: 'why '     },
+  { category: 'Which',   color: '#f59e0b', prefix: 'which '   },
+  { category: 'Is',      color: '#34d399', prefix: 'is '      },
+  { category: 'Can',     color: '#ec4899', prefix: 'can '     },
+  { category: 'Are',     color: '#a78bfa', prefix: 'are '     },
+  { category: 'Will',    color: '#fb923c', prefix: 'will '    },
+  { category: 'For',     color: '#06b6d4', prefix: ' for '    },
+  { category: 'Without', color: '#64748b', prefix: ' without ' },
+  { category: 'vs',      color: '#e879f9', prefix: ' vs '     },
+]
+
+function buildStaticGroups(topic: string): QGroup[] {
   const t = topic.trim() || 'online casino'
   return [
-    { category: 'What', color: '#00d4ff', keywords: [
-      `what is the best ${t}`,
-      `what ${t} accepts UPI`,
-      `what ${t} has the best bonus`,
-      `what is the safest ${t} in india`,
-      `what is ${t}`,
-    ]},
-    { category: 'How', color: '#10b981', keywords: [
-      `how to win at ${t}`,
-      `how to deposit in ${t} india`,
-      `how to withdraw from ${t}`,
-      `how to choose ${t}`,
-      `how to get bonus from ${t}`,
-      `how to play ${t} on mobile`,
-    ]},
-    { category: 'Why', color: '#7c3aed', keywords: [
-      `why is ${t} popular in india`,
-      `why use ${t} instead of sports betting`,
-      `why is ${t} better than rummy`,
-    ]},
-    { category: 'Which', color: '#f59e0b', keywords: [
-      `which ${t} is best for beginners`,
-      `which ${t} pays the fastest`,
-      `which ${t} has no withdrawal limit`,
-      `which ${t} is legal in india`,
-    ]},
-    { category: 'Is', color: '#34d399', keywords: [
-      `is ${t} safe in india`,
-      `is ${t} legal`,
-      `is ${t} rigged`,
-      `is ${t} better than rummy`,
-    ]},
-    { category: 'Can', color: '#ec4899', keywords: [
-      `can i play ${t} in india`,
-      `can i win real money at ${t}`,
-      `can i use paytm at ${t}`,
-      `can ${t} ban my account`,
-    ]},
-    { category: 'Are', color: '#a78bfa', keywords: [
-      `are ${t}s legal in india`,
-      `are ${t} games fair`,
-      `are ${t} bonuses real`,
-    ]},
-    { category: 'Will', color: '#fb923c', keywords: [
-      `will ${t} become legal in india`,
-      `will ${t} ban my account`,
-      `will i get taxed on ${t} winnings india`,
-    ]},
-    { category: 'For', color: '#06b6d4', keywords: [
-      `${t} for beginners india`,
-      `${t} for real money`,
-      `${t} for mobile android`,
-      `${t} for indian players`,
-    ]},
-    { category: 'Without', color: '#64748b', keywords: [
-      `${t} without verification india`,
-      `${t} without deposit bonus`,
-      `${t} without id proof`,
-    ]},
-    { category: 'vs', color: '#e879f9', keywords: [
-      `${t} vs sports betting`,
-      `${t} vs rummy`,
-      `${t} vs lottery india`,
-      `${t} vs poker which is better`,
-    ]},
+    { category: 'What', color: '#00d4ff', keywords: [`what is the best ${t}`, `what ${t} accepts UPI`, `what ${t} has the best bonus`, `what is the safest ${t} in india`, `what is ${t}`] },
+    { category: 'How',  color: '#10b981', keywords: [`how to win at ${t}`, `how to deposit in ${t} india`, `how to withdraw from ${t}`, `how to choose ${t}`, `how to get bonus from ${t}`, `how to play ${t} on mobile`] },
+    { category: 'Why',  color: '#7c3aed', keywords: [`why is ${t} popular in india`, `why use ${t} instead of sports betting`, `why is ${t} better than rummy`] },
+    { category: 'Which',color: '#f59e0b', keywords: [`which ${t} is best for beginners`, `which ${t} pays the fastest`, `which ${t} has no withdrawal limit`, `which ${t} is legal in india`] },
+    { category: 'Is',   color: '#34d399', keywords: [`is ${t} safe in india`, `is ${t} legal`, `is ${t} rigged`, `is ${t} better than rummy`] },
+    { category: 'Can',  color: '#ec4899', keywords: [`can i play ${t} in india`, `can i win real money at ${t}`, `can i use paytm at ${t}`, `can ${t} ban my account`] },
+    { category: 'Are',  color: '#a78bfa', keywords: [`are ${t}s legal in india`, `are ${t} games fair`, `are ${t} bonuses real`] },
+    { category: 'Will', color: '#fb923c', keywords: [`will ${t} become legal in india`, `will ${t} ban my account`, `will i get taxed on ${t} winnings india`] },
+    { category: 'For',  color: '#06b6d4', keywords: [`${t} for beginners india`, `${t} for real money`, `${t} for mobile android`, `${t} for indian players`] },
+    { category: 'Without', color: '#64748b', keywords: [`${t} without verification india`, `${t} without deposit bonus`, `${t} without id proof`] },
+    { category: 'vs',   color: '#e879f9', keywords: [`${t} vs sports betting`, `${t} vs rummy`, `${t} vs lottery india`, `${t} vs poker which is better`] },
   ]
 }
 
+function buildDFSGroups(keywords: string[]): QGroup[] {
+  return Q_CATEGORIES.map(cat => ({
+    category: cat.category,
+    color:    cat.color,
+    keywords: keywords
+      .filter(kw => kw.toLowerCase().includes(cat.prefix))
+      .slice(0, 10),
+  })).filter(g => g.keywords.length > 0)
+}
+
 export function AnswerThePublic() {
-  const [topic,    setTopic]    = useState('')
+  const [topic,     setTopic]     = useState('')
   const [generated, setGenerated] = useState(false)
   const [expanded,  setExpanded]  = useState<Set<string>>(new Set())
   const [copied,    setCopied]    = useState<string | null>(null)
+  const [loading,   setLoading]   = useState(false)
+  const [dfsGroups, setDfsGroups] = useState<QGroup[] | null>(null)
 
-  function generate() {
+  async function generate() {
     if (!topic.trim()) return
-    setGenerated(true)
-    setExpanded(new Set(['What', 'How', 'Which']))
+    if (!isDFSReady()) {
+      setDfsGroups(null)
+      setGenerated(true)
+      setExpanded(new Set(['What', 'How', 'Which']))
+      return
+    }
+    setLoading(true)
+    try {
+      const result = await callDFS('dataforseo_labs/google/keyword_suggestions/live', [{
+        keyword: topic.trim(), location_code: 2356, language_code: 'en', limit: 200,
+      }])
+      const keywords: string[] = (result?.items ?? []).map((i: any) => i.keyword as string)
+      const groups = buildDFSGroups(keywords)
+      setDfsGroups(groups.length > 0 ? groups : null)
+    } catch {
+      setDfsGroups(null)
+    } finally {
+      setLoading(false)
+      setGenerated(true)
+      setExpanded(new Set(['What', 'How', 'Which']))
+    }
   }
 
   function toggleGroup(cat: string) {
@@ -114,7 +106,7 @@ export function AnswerThePublic() {
     )
   }
 
-  const groups    = buildGroups(topic)
+  const groups    = dfsGroups ?? buildStaticGroups(topic)
   const total     = groups.reduce((s, g) => s + g.keywords.length, 0)
   const questions = groups.slice(0, 8).reduce((s, g) => s + g.keywords.length, 0)
   const comparisons = groups.find(g => g.category === 'vs')?.keywords.length ?? 0
@@ -138,8 +130,9 @@ export function AnswerThePublic() {
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
             />
           </div>
-          <Button variant="primary" onClick={generate} disabled={!topic.trim()}>
-            Generate Questions
+          <Button variant="primary" onClick={generate} disabled={!topic.trim() || loading}>
+            {loading ? <Loader2 size={13} className="animate-spin" /> : null}
+            {loading ? 'Fetching…' : 'Generate Questions'}
           </Button>
         </div>
       </Card>

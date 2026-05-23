@@ -54,6 +54,7 @@ interface JarvisState {
   serperKeys:      string   // newline-separated, auto-rotated
   searchFitKey:    string
   psiKey:          string
+  indexNowKey:     string
   backendProvider: 'supabase' | 'pocketbase' | 'custom'
   backendUrl:      string
   backendKey:      string
@@ -76,6 +77,7 @@ interface JarvisState {
   setSerperKeys:      (k: string) => void
   setSearchFitKey:    (k: string) => void
   setPsiKey:           (k: string) => void
+  setIndexNowKey:      (k: string) => void
   setBackendProvider:  (p: 'supabase' | 'pocketbase' | 'custom') => void
   setBackendUrl:       (k: string) => void
   setBackendKey:       (k: string) => void
@@ -136,6 +138,7 @@ export const useStore = create<JarvisState>()(
       serperKeys:      '',
       searchFitKey:    '',
       psiKey:          '',
+      indexNowKey:     '',
       backendProvider: 'supabase',
       backendUrl:      '',
       backendKey:      '',
@@ -158,6 +161,7 @@ export const useStore = create<JarvisState>()(
       setSerperKeys:      (serperKeys)      => set({ serperKeys }),
       setSearchFitKey:    (searchFitKey)    => set({ searchFitKey }),
       setPsiKey:          (psiKey)          => set({ psiKey }),
+      setIndexNowKey:     (indexNowKey)     => set({ indexNowKey }),
       setBackendProvider: (backendProvider) => set({ backendProvider }),
       setBackendUrl:      (backendUrl)      => set({ backendUrl }),
       setBackendKey:      (backendKey)      => set({ backendKey }),
@@ -313,6 +317,7 @@ export const useStore = create<JarvisState>()(
         serperKeys:      state.serperKeys,
         searchFitKey:    state.searchFitKey,
         psiKey:          state.psiKey,
+        indexNowKey:     state.indexNowKey,
         backendProvider: state.backendProvider,
         backendUrl:      state.backendUrl,
         backendKey:      state.backendKey,

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { callAI, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
+import { callDFS, isDFSReady } from '@/lib/dataforseo'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -208,6 +209,45 @@ export function OutrankBlueprint() {
     mutationFn: async () => {
       const sys = `You are an elite iGaming SEO strategist with deep expertise in the ${market} online casino market. Be direct, specific, and actionable. Every recommendation must name exact keywords, content types, or publication targets. No generic advice.`
 
+      // Pre-fetch real DFS data to ground the AI
+      let dfsContext = ''
+      if (isDFSReady() && competitor.trim()) {
+        try {
+          const compClean = competitor.replace(/^https?:\/\//, '').replace(/\/$/, '')
+          const ownClean  = (domain || '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+          const [compOverview, compKws, ownKws] = await Promise.allSettled([
+            callDFS('dataforseo_labs/google/domain_rank_overview/live', [{
+              target: compClean, location_code: 2356, language_code: 'en',
+            }]),
+            callDFS('dataforseo_labs/google/keywords_for_site/live', [{
+              target: compClean, location_code: 2356, language_code: 'en', limit: 50,
+            }]),
+            ownClean ? callDFS('dataforseo_labs/google/keywords_for_site/live', [{
+              target: ownClean, location_code: 2356, language_code: 'en', limit: 50,
+            }]) : Promise.resolve(null),
+          ])
+
+          const compMetrics = compOverview.status === 'fulfilled' ? compOverview.value : null
+          const compKeywords: string[] = compKws.status === 'fulfilled'
+            ? (compKws.value?.items ?? []).map((i: any) => i.keyword as string) : []
+          const ownKeywords: string[] = ownKws.status === 'fulfilled' && ownKws.value
+            ? (ownKws.value?.items ?? []).map((i: any) => i.keyword as string) : []
+
+          const ownSet = new Set(ownKeywords.map(k => k.toLowerCase()))
+          const gapKws = compKeywords.filter(k => !ownSet.has(k.toLowerCase()))
+
+          if (compMetrics || compKeywords.length > 0) {
+            dfsContext = `\n\nREAL DATAFORSEO DATA:
+Competitor organic traffic: ${compMetrics?.metrics?.organic?.etv ?? 'unknown'}
+Competitor organic keywords: ${compMetrics?.metrics?.organic?.count ?? 'unknown'}
+Competitor top keywords: ${compKeywords.slice(0, 20).join(', ')}
+Keyword gaps (competitor ranks, you don't): ${gapKws.slice(0, 20).join(', ')}
+Your top keywords: ${ownKeywords.slice(0, 15).join(', ')}
+`
+          }
+        } catch { /* ignore — fall back to pure AI */ }
+      }
+
       const [bpRaw, dataRaw] = await Promise.allSettled([
         callAI(sys,
           `Generate a competitor outrank blueprint.
@@ -215,7 +255,7 @@ export function OutrankBlueprint() {
 MY SITE: ${domain || 'yoursite.com'}
 COMPETITOR: ${competitor}
 TARGET MARKET: ${market}
-PRIMARY KEYWORD: "${keyword}"
+PRIMARY KEYWORD: "${keyword}"${dfsContext}
 
 Deliver each section with a clear heading:
 

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Loader2, TrendingUp, Plus, Crosshair, Brain, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
+import { callDFS, isDFSReady } from '@/lib/dataforseo'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -47,11 +48,34 @@ export function ContentGap() {
 
   const { records, save, remove, clear } = useHistory<ContentGapRecord>('jarvis_contentgap_history')
 
+  async function fetchSiteKeywords(domain: string): Promise<string[]> {
+    try {
+      const clean = domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+      const result = await callDFS('dataforseo_labs/google/keywords_for_site/live', [{
+        target: clean, location_code: 2356, language_code: 'en', limit: 60,
+      }])
+      return (result?.items ?? []).map((i: any) => i.keyword as string)
+    } catch { return [] }
+  }
+
   const analyze = useMutation({
     mutationFn: async () => {
+      let realDataContext = ''
+      if (isDFSReady() && own.trim()) {
+        const [ownKws, c1Kws, c2Kws] = await Promise.all([
+          fetchSiteKeywords(own),
+          c1.trim() ? fetchSiteKeywords(c1) : Promise.resolve([]),
+          c2.trim() ? fetchSiteKeywords(c2) : Promise.resolve([]),
+        ])
+        const ownSet = new Set(ownKws.map(k => k.toLowerCase()))
+        const gapKws = [...new Set([...c1Kws, ...c2Kws])].filter(k => !ownSet.has(k.toLowerCase()))
+        if (gapKws.length > 0) {
+          realDataContext = `\n\nREAL DATAFORSEO DATA (use this to inform your gaps):\nYour site ranks for: ${ownKws.slice(0, 20).join(', ')}\nCompetitors rank for but you DON'T: ${gapKws.slice(0, 30).join(', ')}\n`
+        }
+      }
       return callClaude(
         'You are an elite content gap analyst. Return ONLY JSON for the gaps array, then a brief text summary.',
-        `Find content gaps for the iGaming/casino site "${own}" vs competitors "${c1}" and "${c2}" in the "${niche}" niche.
+        `Find content gaps for the iGaming/casino site "${own}" vs competitors "${c1}" and "${c2}" in the "${niche}" niche.${realDataContext}
 
 Return this exact format:
 GAPS_JSON:

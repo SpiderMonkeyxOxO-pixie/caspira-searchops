@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Bell, Plus, X, ExternalLink, TrendingUp, Clock, AlertCircle, PenLine, Filter } from 'lucide-react'
+import { Bell, Plus, X, ExternalLink, TrendingUp, Clock, AlertCircle, PenLine, Filter, RefreshCw, Loader2 } from 'lucide-react'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { callDFS, isDFSReady } from '@/lib/dataforseo'
 
 interface Alert {
   id: string
@@ -23,11 +24,53 @@ const THREAT_BADGE: Record<Alert['threat'], 'red' | 'amber' | 'muted'> = {
 }
 
 export function ContentSpy() {
-  const [competitors, setCompetitors] = useState<string[]>(DEFAULT_COMPETITORS)
-  const [alerts,      setAlerts]      = useState<Alert[]>([])
-  const [newComp,     setNewComp]     = useState('')
-  const [filter,      setFilter]      = useState<'all' | string>('all')
+  const [competitors,  setCompetitors]  = useState<string[]>(DEFAULT_COMPETITORS)
+  const [alerts,       setAlerts]       = useState<Alert[]>([])
+  const [newComp,      setNewComp]      = useState('')
+  const [filter,       setFilter]       = useState<'all' | string>('all')
   const [threatFilter, setThreatFilter] = useState<'all' | Alert['threat']>('all')
+  const [scanning,     setScanning]     = useState(false)
+  const [scanError,    setScanError]    = useState<string | null>(null)
+
+  async function scanCompetitors() {
+    if (!isDFSReady() || competitors.length === 0) return
+    setScanning(true)
+    setScanError(null)
+    const newAlerts: Alert[] = []
+    try {
+      await Promise.allSettled(competitors.map(async (comp) => {
+        const clean = comp.replace(/^https?:\/\//, '').replace(/\/$/, '')
+        const result = await callDFS('dataforseo_labs/google/keywords_for_site/live', [{
+          target: clean, location_code: 2356, language_code: 'en', limit: 20,
+        }])
+        const items = (result?.items ?? []) as Array<any>
+        // Group top items into a single alert per domain
+        const topItems = items.slice(0, 10)
+        if (topItems.length === 0) return
+        const vol = topItems[0]?.keyword_data?.keyword_info?.search_volume ?? 0
+        const threat: Alert['threat'] = vol > 5000 ? 'high' : vol > 1000 ? 'medium' : 'low'
+        const url  = topItems[0]?.ranked_serp_element?.serp_item?.url ?? `https://${clean}`
+        newAlerts.push({
+          id:             crypto.randomUUID(),
+          competitor:     clean,
+          title:          `${comp} ranks for ${topItems.length} keywords — top: "${topItems[0]?.keyword ?? ''}"`,
+          url,
+          targetKeywords: topItems.map((i: any) => i.keyword as string).slice(0, 5),
+          estVolume:      vol > 1000 ? `${(vol / 1000).toFixed(0)}K` : String(vol),
+          published:      new Date().toLocaleDateString(),
+          threat,
+          read:           false,
+        })
+      }))
+      setAlerts(prev =>
+        [...prev.filter(a => !newAlerts.some(n => n.competitor === a.competitor)), ...newAlerts]
+      )
+    } catch (e: any) {
+      setScanError(e?.message ?? 'Scan failed')
+    } finally {
+      setScanning(false)
+    }
+  }
 
   function addCompetitor() {
     const v = newComp.trim()
@@ -97,12 +140,23 @@ export function ContentSpy() {
               <Plus size={13} className="text-black" />
             </button>
           </div>
-          <div className="mt-4 p-3 bg-surface border border-border rounded-lg">
+          <button
+            onClick={scanCompetitors}
+            disabled={scanning || !isDFSReady() || competitors.length === 0}
+            className="w-full mt-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent text-black text-xs font-semibold cursor-pointer hover:bg-accent/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {scanning ? 'Scanning…' : 'Scan Competitors'}
+          </button>
+          {!isDFSReady() && (
+            <div className="mt-2 text-[10px] text-amber-400 leading-relaxed">Add DataForSEO key in Onboarding to scan.</div>
+          )}
+          {scanError && <div className="mt-2 text-[10px] text-danger">{scanError}</div>}
+          <div className="mt-3 p-3 bg-surface border border-border rounded-lg">
             <div className="text-[10px] text-accent font-mono-jarvis tracking-widest mb-1 flex items-center gap-1">
-              <Bell size={9} /> ALERT SETTINGS
+              <Bell size={9} /> HOW IT WORKS
             </div>
             <div className="text-[10px] text-muted leading-relaxed">
-              Jarvis monitors competitor RSS feeds, sitemaps, and new URLs daily. High-threat alerts are sent within 2 hours.
+              Click Scan to fetch each competitor's top-ranking keywords via DataForSEO and detect keyword threats.
             </div>
           </div>
         </Card>

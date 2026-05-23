@@ -4,9 +4,9 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
-import { callSerper, isSerperReady } from '@/lib/serper'
 import { useStore } from '@/store'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
 
 type ChangeType = 'up' | 'down' | 'new' | 'dropped' | 'same'
 
@@ -23,12 +23,15 @@ const FILTER_TABS = [
 ]
 
 async function checkPosition(keyword: string, targetDomain: string, country: string): Promise<{ pos: number | null; url: string | null }> {
-  const clean = targetDomain.replace(/^www\./, '').toLowerCase()
-  const data  = await callSerper(keyword, { num: 100, gl: country })
-  const organic = (data?.organic ?? []) as Array<{ link?: string; position?: number }>
-  for (const r of organic) {
-    if (r.link?.toLowerCase().includes(clean)) {
-      return { pos: r.position ?? null, url: r.link ?? null }
+  const clean = targetDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase()
+  const locationCode = LOCATION_CODES[country] ?? 2840
+  const result = await callDFS('serp/google/organic/live/advanced', [{
+    keyword, location_code: locationCode, language_code: 'en', depth: 100,
+  }])
+  const items = (result?.items ?? []) as Array<{ type: string; rank_absolute?: number; url?: string }>
+  for (const item of items) {
+    if (item.type === 'organic' && item.url?.toLowerCase().includes(clean)) {
+      return { pos: item.rank_absolute ?? null, url: item.url ?? null }
     }
   }
   return { pos: null, url: null }
@@ -36,7 +39,7 @@ async function checkPosition(keyword: string, targetDomain: string, country: str
 
 export function UpdateSERP() {
   const { domain } = useStore()
-  const serperReady = isSerperReady()
+  const dfsReady = isDFSReady()
 
   const [keywords,     setKeywords]     = useState('')
   const [targetDomain, setTargetDomain] = useState(domain || '')
@@ -48,7 +51,7 @@ export function UpdateSERP() {
   const [progress,     setProgress]     = useState<{ done: number; total: number } | null>(null)
 
   async function refresh() {
-    if (refreshing || !serperReady) return
+    if (refreshing || !dfsReady) return
     const kwList = keywords.split('\n').map(k => k.trim()).filter(Boolean)
     if (!kwList.length || !targetDomain.trim()) return
 
@@ -91,7 +94,7 @@ export function UpdateSERP() {
       <Card>
         <CardTitle className="mb-1">Update SERP</CardTitle>
         <p className="text-sm text-muted mb-4">
-          Check real Google positions for your keywords via Serper. Paste keywords, enter your domain, and see where you actually rank.
+          Check real Google positions for your keywords via DataForSEO. Paste keywords, enter your domain, and see where you actually rank.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
           <div className="md:col-span-2">
@@ -119,16 +122,16 @@ export function UpdateSERP() {
               <option value="ph">🇵🇭 Philippines</option>
             </select>
             <Button variant="primary" onClick={refresh}
-              disabled={refreshing || !serperReady || !keywords.trim() || !targetDomain.trim()}>
+              disabled={refreshing || !dfsReady || !keywords.trim() || !targetDomain.trim()}>
               {refreshing ? `${progress?.done}/${progress?.total} checked…` : 'Check Positions'}
             </Button>
           </div>
         </div>
 
-        {!serperReady && (
+        {!dfsReady && (
           <div className="flex items-center gap-2 text-[11px] text-muted">
             <AlertCircle size={11} className="text-amber-400 shrink-0" />
-            Add a Serper API key in Onboarding to check real Google positions.
+            Add a DataForSEO key (login:password) in Onboarding to check real Google positions.
           </div>
         )}
         {lastUpdated && (
@@ -170,7 +173,7 @@ export function UpdateSERP() {
                   </button>
                 ))}
               </div>
-              <button onClick={refresh} disabled={refreshing || !serperReady}
+              <button onClick={refresh} disabled={refreshing || !dfsReady}
                 className="flex items-center gap-1.5 text-[11px] text-muted hover:text-accent transition-colors cursor-pointer font-mono-jarvis disabled:opacity-40">
                 <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} /> Refresh all
               </button>

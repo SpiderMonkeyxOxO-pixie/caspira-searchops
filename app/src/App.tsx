@@ -81,6 +81,7 @@ const AIVisibility       = load(() => import('@/components/sections/AIVisibility
 const TeamManagement     = load(() => import('@/components/sections/TeamManagement'))
 const SEONews            = load(() => import('@/components/sections/SEONews'))
 const ActivityLogs       = load(() => import('@/components/sections/ActivityLogs'))
+const IndexNow           = load(() => import('@/components/sections/IndexNow'))
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -148,6 +149,7 @@ const SECTION_MAP: Partial<Record<NavSection, React.LazyExoticComponent<React.Co
   team:           TeamManagement,
   seonews:        SEONews,
   activitylogs:   ActivityLogs,
+  indexnow:       IndexNow,
 }
 
 // ── Error boundary — catches any section crash, resets on nav ─

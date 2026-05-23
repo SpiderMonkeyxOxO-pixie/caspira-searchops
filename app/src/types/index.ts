@@ -71,7 +71,7 @@ export type NavSection =
   | 'articlewriter' | 'contentgrader' | 'autorefresh' | 'topicalmap'
   | 'serpsim'       | 'contentspy'    | 'faqgen'
   | 'redirectmgr'   | 'loganalyzer'   | 'hreflang'   | 'robotstxt'
-  | 'sitemapgen'    | 'jsseo'
+  | 'sitemapgen'    | 'jsseo'    | 'indexnow'
   | 'contentcal'    | 'socialsnip'    | 'imagebuilder' | 'pipeline'
   | 'linksuggester'
   | 'themesettings' | 'shortcuts'    | 'sharelinks'

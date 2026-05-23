@@ -114,6 +114,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
       { id: 'robotstxt',   label: 'Robots.txt Editor',icon: Bot },
       { id: 'sitemapgen',  label: 'Sitemap Generator',icon: Map },
       { id: 'jsseo',       label: 'JS SEO Checker',   icon: FileCode2 },
+      { id: 'indexnow',    label: 'IndexNow Submitter', icon: Zap, badge: 'NEW', badgeColor: 'bg-accent3' },
     ],
   },
   {

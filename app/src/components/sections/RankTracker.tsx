@@ -8,7 +8,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { callSerper, isSerperReady } from '@/lib/serper'
+import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
@@ -54,10 +54,14 @@ function visScore(p: number | null) {
 async function fetchPosition(keyword: string, targetDomain: string, country = 'in'): Promise<number | null> {
   const clean = targetDomain
     .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase()
-  const data    = await callSerper(keyword, { num: 30, gl: country })
-  const organic = (data?.organic ?? []) as Array<{ link?: string; position?: number }>
-  for (const r of organic) {
-    if (r.link?.toLowerCase().includes(clean)) return r.position ?? null
+  const locationCode = LOCATION_CODES[country] ?? 2356
+  const result = await callDFS('serp/google/organic/live/advanced', [{
+    keyword, location_code: locationCode, language_code: 'en', depth: 30,
+  }])
+  const items = (result?.items ?? []) as Array<{ type: string; rank_absolute?: number; url?: string }>
+  for (const item of items) {
+    if (item.type === 'organic' && item.url?.toLowerCase().includes(clean))
+      return item.rank_absolute ?? null
   }
   return null
 }
@@ -88,7 +92,7 @@ function Sparkline({ positions }: { positions: Position[] }) {
 export function RankTracker() {
   const { domain }   = useStore()
   const orgId        = useAuthStore().org?.id ?? ''
-  const serperReady  = isSerperReady()
+  const dfsReady     = isDFSReady()
 
   const [tracked,          setTracked]          = useState<TrackedKW[]>([])
   const [loading,          setLoading]          = useState(true)
@@ -198,7 +202,7 @@ export function RankTracker() {
 
   // ── Position checks ────────────────────────────────────────
   async function checkOne(id: string) {
-    if (!serperReady || !targetDomain.trim() || checking) return
+    if (!dfsReady || !targetDomain.trim() || checking) return
     setChecking(id)
     const kw = tracked.find(t => t.id === id)
     if (kw) {
@@ -219,7 +223,7 @@ export function RankTracker() {
   }
 
   async function refreshAll() {
-    if (!serperReady || !targetDomain.trim() || refreshingAll || tracked.length === 0) return
+    if (!dfsReady || !targetDomain.trim() || refreshingAll || tracked.length === 0) return
     setRefreshingAll(true)
     setProgress({ done: 0, total: tracked.length })
     const today = new Date().toISOString().split('T')[0]
@@ -341,7 +345,7 @@ export function RankTracker() {
           {tracked.length > 0 && (
             <>
               <Button variant="ghost" onClick={refreshAll}
-                disabled={refreshingAll || !serperReady || !targetDomain.trim()}>
+                disabled={refreshingAll || !dfsReady || !targetDomain.trim()}>
                 <RefreshCw size={13} className={refreshingAll ? 'animate-spin' : ''} />
                 {refreshingAll && progress ? `${progress.done}/${progress.total}` : 'Refresh All'}
               </Button>
@@ -377,7 +381,7 @@ export function RankTracker() {
           </div>
         )}
 
-        {!serperReady && (
+        {!dfsReady && (
           <div className="flex items-center gap-2 mt-3 text-[11px] text-muted">
             <AlertCircle size={11} className="text-amber-400 shrink-0" />
             Add a Serper API key in Settings → to check real Google positions.
@@ -512,7 +516,7 @@ export function RankTracker() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <button onClick={() => checkOne(kw.id)}
-                              disabled={!serperReady || !!checking || refreshingAll || !targetDomain.trim()}
+                              disabled={!dfsReady || !!checking || refreshingAll || !targetDomain.trim()}
                               className="text-[10px] text-accent hover:underline cursor-pointer disabled:opacity-40 font-mono-jarvis whitespace-nowrap">
                               {checking === kw.id ? <span className="flex items-center gap-1"><Loader2 size={9} className="animate-spin" />checking…</span> : 'check now'}
                             </button>

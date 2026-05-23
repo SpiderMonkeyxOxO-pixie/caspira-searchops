@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Loader2, Search, TrendingUp, Star, MapPin, ShoppingCart, Image, Video, BookOpen, HelpCircle, ChevronUp, ChevronDown, Check, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
+import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -54,30 +55,99 @@ const OPP_COLOR: Record<string, 'green' | 'amber' | 'red'> = {
   high: 'green', medium: 'amber', low: 'red',
 }
 
+const FEATURE_TYPE_MAP: Record<string, string> = {
+  featured_snippet: 'Featured Snippet',
+  people_also_ask:  'People Also Ask',
+  local_pack:       'Local Pack',
+  shopping:         'Shopping',
+  images:           'Image Pack',
+  video:            'Video Carousel',
+  top_stories:      'Top Stories',
+  knowledge_graph:  'Knowledge Panel',
+}
+
 export function SerpFeatures() {
   const { domain } = useStore()
-  const [url, setUrl] = useState(domain || '')
+  const [url,      setUrl]      = useState(domain || '')
+  const [kwInput,  setKwInput]  = useState('')
   const [features, setFeatures] = useState<SerpFeature[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+  const [tab,      setTab]      = useState<'tool' | 'history'>('tool')
+  const [country,  setCountry]  = useState('in')
 
   const { records, save, remove, clear } = useHistory<SerpFeaturesRecord>('jarvis_serpfeatures_history')
 
+  async function fetchRealFeatures(keywords: string[]): Promise<SerpFeature[]> {
+    const locationCode = LOCATION_CODES[country] ?? 2356
+    const featureMap = new Map<string, { keywords: { kw: string; position: number; owned: boolean }[] }>()
+
+    await Promise.allSettled(keywords.slice(0, 5).map(async (kw) => {
+      const result = await callDFS('serp/google/organic/live/advanced', [{
+        keyword: kw, location_code: locationCode, language_code: 'en', depth: 10,
+      }])
+      const items = (result?.items ?? []) as Array<{ type: string; rank_absolute?: number; url?: string }>
+      const cleanDomain = url.replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase()
+
+      // Find own position
+      const ownItem = items.find(i => i.type === 'organic' && i.url?.toLowerCase().includes(cleanDomain))
+      const ownPos  = ownItem?.rank_absolute ?? null
+
+      // Detect special feature types
+      for (const item of items) {
+        const featureName = FEATURE_TYPE_MAP[item.type]
+        if (!featureName) continue
+        const existing = featureMap.get(featureName) ?? { keywords: [] }
+        existing.keywords.push({
+          kw,
+          position: ownPos ?? 0,
+          owned: item.url?.toLowerCase().includes(cleanDomain) ?? false,
+        })
+        featureMap.set(featureName, existing)
+      }
+    }))
+
+    return Array.from(featureMap.entries()).map(([feature, data]) => ({
+      feature,
+      icon: '',
+      keywords: data.keywords,
+      opportunity: data.keywords.some(k => k.owned) ? 'medium' as const : 'high' as const,
+      tip: '',
+    }))
+  }
+
   const analyze = useMutation({
     mutationFn: async () => {
+      const keywords = kwInput.split('\n').map(k => k.trim()).filter(Boolean)
+
+      if (isDFSReady() && keywords.length > 0) {
+        const realFeatures = await fetchRealFeatures(keywords)
+        // Enrich with AI tips
+        const aiRaw = await callClaude(
+          'You are a SERP feature analyst. Add actionable tips for each detected feature.',
+          `These SERP features were ACTUALLY DETECTED for site "${url}" via DataForSEO:
+${realFeatures.map(f => `- ${f.feature}: detected on ${f.keywords.length} keyword(s)`).join('\n')}
+
+Return ONLY a JSON array adding a "tip" field to each (same feature names, same order):
+[{"feature":"Featured Snippet","keywords":[],"opportunity":"high","tip":"specific actionable tip"}]`,
+          800,
+        )
+        try {
+          const match = aiRaw?.match(/\[[\s\S]*\]/)
+          if (match) {
+            const aiParsed = JSON.parse(match[0]) as SerpFeature[]
+            return realFeatures.map((f, i) => ({ ...f, tip: aiParsed[i]?.tip ?? '' }))
+          }
+        } catch { /* use real features without tips */ }
+        return realFeatures
+      }
+
+      // Fallback: pure AI
       return callClaude(
         'You are a SERP feature analyst. Identify which rich-result features a site could capture.',
         `Analyse SERP feature opportunities for: ${url || 'a general SEO website'}
 
 Return ONLY a JSON array:
-[
-  {
-    "feature": "Featured Snippet",
-    "keywords": [{"kw":"...","position":4,"owned":false}],
-    "opportunity": "high",
-    "tip": "specific actionable tip"
-  }
-]
+[{"feature":"Featured Snippet","keywords":[{"kw":"...","position":4,"owned":false}],"opportunity":"high","tip":"specific actionable tip"}]
 
 Include 5-6 features from: Featured Snippet, People Also Ask, Image Pack, Video Carousel, Local Pack, Shopping, Top Stories, Knowledge Panel.
 opportunity: high=easy win, medium=requires work, low=unlikely.`,
@@ -85,22 +155,26 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
       )
     },
     onSuccess: (data) => {
-      if (data) {
+      if (!data) return
+      let parsed: SerpFeature[] = []
+      if (Array.isArray(data)) {
+        parsed = data as SerpFeature[]
+      } else if (typeof data === 'string') {
         try {
           const match = data.match(/\[[\s\S]*\]/)
-          if (match) {
-            const parsed = JSON.parse(match[0]) as SerpFeature[]
-            setFeatures(parsed)
-            save({
-              id: crypto.randomUUID(),
-              savedAt: new Date().toISOString(),
-              label: url || 'General site',
-              sublabel: `${parsed.filter(f => f.opportunity === 'high').length} high-opp features · ${parsed.length} total`,
-              url,
-              features: parsed,
-            })
-          }
-        } catch { /* keep mock */ }
+          if (match) parsed = JSON.parse(match[0]) as SerpFeature[]
+        } catch { /* keep */ }
+      }
+      if (parsed.length > 0) {
+        setFeatures(parsed)
+        save({
+          id: crypto.randomUUID(),
+          savedAt: new Date().toISOString(),
+          label: url || 'General site',
+          sublabel: `${parsed.filter(f => f.opportunity === 'high').length} high-opp features · ${parsed.length} total`,
+          url,
+          features: parsed,
+        })
       }
     },
   })
@@ -134,19 +208,38 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
           {/* Input */}
           <Card>
             <CardTitle className="mb-3">SERP Feature Tracker</CardTitle>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div className="relative">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
                 <input value={url} onChange={e => setUrl(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && analyze.mutate()}
                   placeholder="yoursite.com"
                   className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis"
                 />
               </div>
+              <div className="md:col-span-2">
+                <textarea value={kwInput} onChange={e => setKwInput(e.target.value)}
+                  placeholder={'Keywords to check (one per line — DFS detects real features):\nbest online casino india\nteen patti real money'}
+                  rows={3}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors resize-none font-mono-jarvis"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <select value={country} onChange={e => setCountry(e.target.value)}
+                className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-tx outline-none cursor-pointer font-mono-jarvis">
+                <option value="in">🇮🇳 India</option>
+                <option value="us">🇺🇸 US</option>
+                <option value="gb">🇬🇧 UK</option>
+                <option value="ph">🇵🇭 Philippines</option>
+                <option value="id">🇮🇩 Indonesia</option>
+              </select>
               <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
                 {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
-                {analyze.isPending ? 'Analysing…' : 'Analyse SERP Features'}
+                {analyze.isPending ? 'Analysing…' : isDFSReady() && kwInput.trim() ? 'Detect Real Features' : 'Analyse SERP Features'}
               </Button>
+              {isDFSReady() && kwInput.trim() && (
+                <span className="text-[10px] text-accent3 font-mono-jarvis">● Live DataForSEO detection</span>
+              )}
             </div>
             {!isAIReady() && <div className="mt-2 text-[11px] text-muted">Add an AI key in Onboarding.</div>}
           </Card>

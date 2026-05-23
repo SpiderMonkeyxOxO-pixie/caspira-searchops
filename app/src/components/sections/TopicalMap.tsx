@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Compass, Loader2, Plus, CheckCircle2, XCircle, AlertCircle, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
+import { callDFS, isDFSReady } from '@/lib/dataforseo'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -83,6 +84,7 @@ function CoverageWeb({ clusters, selected, onSelect }: {
 
 export function TopicalMap() {
   const [niche,    setNiche]    = useState('')
+  const [domain,   setDomain]   = useState('')
   const [clusters, setClusters] = useState<Cluster[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [tab, setTab] = useState<'tool' | 'history'>('tool')
@@ -92,9 +94,21 @@ export function TopicalMap() {
   const analyze = useMutation({
     mutationFn: async () => {
       if (!isAIReady()) return null
+      let realDataContext = ''
+      if (isDFSReady() && domain.trim()) {
+        try {
+          const clean = domain.replace(/^https?:\/\//, '').replace(/\/$/, '')
+          const result = await callDFS('dataforseo_labs/google/keywords_for_site/live', [{
+            target: clean, location_code: 2356, language_code: 'en', limit: 80,
+          }])
+          const keywords: string[] = (result?.items ?? []).map((i: any) => i.keyword as string)
+          if (keywords.length > 0)
+            realDataContext = `\n\nREAL KEYWORDS this domain actually ranks for (use to mark covered:true for matching subtopics):\n${keywords.join(', ')}\n`
+        } catch { /* ignore */ }
+      }
       return callClaude(
         'You are a topical authority expert for iGaming SEO. Map every subtopic a site should cover to rank in a casino niche.',
-        `Create a topical authority map for the iGaming niche: "${niche}"
+        `Create a topical authority map for the iGaming niche: "${niche}"${realDataContext}
 
 Return JSON array of 6 clusters:
 [{
@@ -110,9 +124,9 @@ Return JSON array of 6 clusters:
 }]
 
 Use angles: -90, -30, 30, 90, 150, 210
-Coverage 0-100 (realistic, some gaps expected)
+Coverage 0-100 (base on real keyword data if provided, otherwise realistic estimate)
 4-6 subtopics per cluster
-Mark about 40% as covered:false (honest gap analysis)`,
+Mark covered:true only where real keywords evidence exists`,
         1200,
       )
     },
@@ -176,10 +190,15 @@ Mark about 40% as covered:false (honest gap analysis)`,
                 <CardTitle className="mb-1">Topical Authority Map</CardTitle>
                 <div className="text-[11px] text-muted font-mono-jarvis">Visual coverage of your niche vs Google's topical expectations</div>
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center flex-wrap">
                 <input value={niche} onChange={e => setNiche(e.target.value)}
                   placeholder="e.g. online casino uk"
-                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-44" />
+                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-40" />
+                {isDFSReady() && (
+                  <input value={domain} onChange={e => setDomain(e.target.value)}
+                    placeholder="yoursite.com (optional)"
+                    className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-44" />
+                )}
                 <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
                   {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}
                   {analyze.isPending ? 'Mapping…' : 'Map Niche'}

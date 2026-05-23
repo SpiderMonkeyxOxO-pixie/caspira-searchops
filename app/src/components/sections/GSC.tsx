@@ -496,13 +496,15 @@ export function GSC() {
     setConn(null); setData(null); setSiteTabs([]); setActiveUrl(''); setDataCache(new Map())
   }
 
-  async function handleReconnect() {
-    await handleDisconnect()
+  function handleReconnect() {
     if (!clientId.trim()) return
-    setConnectError(null); setConnecting(true)
+    setConnectError(null)
+    setConnecting(true)
+    // Open popup synchronously — browsers block window.open() called after an await
     const authUrl = buildOAuthUrl(clientId.trim())
     const popup = window.open(authUrl, 'gsc-oauth', 'width=520,height=640,left=200,top=100')
     if (!popup) window.location.href = authUrl
+    // gsc-auth does an upsert, so no need to disconnect first — new tokens overwrite the old ones
   }
 
   function applyPreset(preset: DatePreset) {

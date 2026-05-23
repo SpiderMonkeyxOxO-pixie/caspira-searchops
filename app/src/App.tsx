@@ -6,7 +6,6 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar }  from '@/components/layout/TopBar'
 import { JarvisWidget } from '@/components/layout/JarvisWidget'
 import { SectionGuide } from '@/components/ui/SectionGuide'
-import { CursorPresence } from '@/components/ui/CursorPresence'
 import { AuthPage } from '@/components/auth/AuthPage'
 import { OrgCreateWizard } from '@/components/auth/OrgCreateWizard'
 import { useStore } from '@/store'
@@ -315,7 +314,6 @@ function AppLayout() {
         </div>
       </main>
       <JarvisWidget />
-      <CursorPresence />
     </div>
   )
 }

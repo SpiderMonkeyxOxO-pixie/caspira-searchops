@@ -88,7 +88,7 @@ function buildGscOAuthUrl(clientId: string): string {
 
 // ── Component ─────────────────────────────────────────────────
 export function CrossView() {
-  const { setSection, domain, googleClientId } = useStore()
+  const { setSection, domain, googleClientId, setSettingsOpen } = useStore()
   const orgId = useAuthStore().org?.id ?? ''
 
   // Connection state
@@ -133,10 +133,10 @@ export function CrossView() {
 
   // ── Reconnect GSC ───────────────────────────────────────────
   function handleReconnect() {
-    if (!googleClientId.trim()) return
+    if (!googleClientId.trim()) { setSettingsOpen(true); return }
     setReconnecting(true)
     const url = buildGscOAuthUrl(googleClientId.trim())
-    const popup = window.open(url, 'gsc-oauth', 'width=520,height=640,left=200,top=100')
+    const popup = window.open(url, '_blank', 'width=520,height=640,left=200,top=100')
     if (!popup) window.location.href = url
   }
 
@@ -410,10 +410,12 @@ export function CrossView() {
               Your Google OAuth token has been <strong className="text-tx">revoked or expired</strong>. This usually happens when the OAuth app is in <strong className="text-tx">Test mode</strong> (tokens expire after 7 days) or when access was manually revoked in your Google account.
             </p>
             <div className="flex items-center gap-3 pt-1">
-              <Button variant="primary" className="text-xs" onClick={handleReconnect} disabled={reconnecting || !googleClientId}>
+              <Button variant="primary" className="text-xs" onClick={handleReconnect} disabled={reconnecting}>
                 {reconnecting ? 'Reconnecting…' : 'Reconnect Google Search Console'}
               </Button>
-              <span className="text-[11px] text-muted">This will re-open the Google sign-in popup.</span>
+              <span className="text-[11px] text-muted">
+                {googleClientId ? 'This will re-open the Google sign-in popup.' : 'Google Client ID not set — click to open Settings.'}
+              </span>
             </div>
           </div>
         )

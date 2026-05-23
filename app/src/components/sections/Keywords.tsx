@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Search, Loader2, Copy, Check, Download } from 'lucide-react'
+import { Search, Loader2, Copy, Check, Download, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -9,8 +9,19 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { downloadCSV } from '@/lib/csv'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { HistoryPanel } from '@/components/ui/HistoryPanel'
+import { useHistory } from '@/lib/history'
 
 interface Kw { kw: string; vol: string; kd: number; intent: string; cpc: string; opportunity: 'HIGH'|'MED'|'LOW' }
+
+interface KwRecord {
+  id: string
+  savedAt: string
+  label: string
+  sublabel: string
+  query: string
+  keywords: Kw[]
+}
 
 
 const INTENT_COLOR: Record<string, 'accent'|'purple'|'green'|'amber'> = {
@@ -36,6 +47,9 @@ export function Keywords() {
   const [filter, setFilter] = useState('all')
   const [results, setResults] = useState<Kw[]>([])
   const [copied, setCopied] = useState(false)
+  const [tab, setTab] = useState<'tool' | 'history'>('tool')
+
+  const { records, save, remove, clear } = useHistory<KwRecord>('jarvis_keywords_history')
 
   const research = useMutation({
     mutationFn: async () => {
@@ -56,7 +70,16 @@ Make them realistic, varied difficulty, mix of intents.`,
     onSuccess: (raw) => {
       try {
         const match = raw?.match(/\[[\s\S]*\]/)
-        if (match) setResults(JSON.parse(match[0]) as Kw[])
+        if (!match) return
+        const kws = JSON.parse(match[0]) as Kw[]
+        setResults(kws)
+        save({
+          id: crypto.randomUUID(), savedAt: new Date().toISOString(),
+          label:    query || domain || 'keyword research',
+          sublabel: `${kws.length} keywords · ${kws.filter(k => k.opportunity === 'HIGH').length} high opp.`,
+          query:    query,
+          keywords: kws,
+        })
       } catch { /* keep existing */ }
     },
   })
@@ -93,6 +116,30 @@ Make them realistic, varied difficulty, mix of intents.`,
 
   return (
     <div className="space-y-5">
+      {/* Tab bar */}
+      <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg w-fit">
+        <button onClick={() => setTab('tool')}
+          className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'tool' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          Keyword Research
+        </button>
+        <button onClick={() => setTab('history')}
+          className={cn('flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
+            tab === 'history' ? 'bg-accent text-black' : 'text-muted hover:text-tx')}>
+          <History size={11} /> History {records.length > 0 && `(${records.length})`}
+        </button>
+      </div>
+
+      {tab === 'history' ? (
+        <HistoryPanel
+          records={records}
+          onLoad={r => { setQuery(r.query); setResults(r.keywords); setTab('tool') }}
+          onDelete={remove}
+          onClear={clear}
+          emptyText="No research history yet. Run AI Research to save results."
+        />
+      ) : (<>
+
       {/* Search */}
       <Card>
         <CardTitle className="mb-3">Keyword Research</CardTitle>
@@ -199,6 +246,7 @@ Make them realistic, varied difficulty, mix of intents.`,
           </table>
         </div>
       </Card>
+      </>)}
     </div>
   )
 }

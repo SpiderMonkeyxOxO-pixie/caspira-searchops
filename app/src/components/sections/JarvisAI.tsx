@@ -64,6 +64,13 @@ const MODE_META: Record<JarvisMode, {
   },
 }
 
+function withDate(sys: string): string {
+  const d  = new Date()
+  const yr = d.getFullYear()
+  const mo = d.toLocaleString('en-GB', { month: 'long' })
+  return `Current date: ${d.getDate()} ${mo} ${yr}. All year references, timelines, and date examples in your response must use ${yr} or later — never reference past years.\n\n${sys}`
+}
+
 const MODE_SYSTEM: Record<JarvisMode, string> = {
   white: `You are JARVIS, an elite iGaming SEO strategist operating in WHITE-HAT mode.
 
@@ -357,6 +364,12 @@ function MessageContent({ content }: { content: string }) {
       return
     }
 
+    if (line.startsWith('#### ')) {
+      flush(`fl-${i}`)
+      result.push(<h4 key={k} className="text-[11px] font-semibold text-tx/80 mt-3 mb-1"><InlineContent text={line.slice(5)} /></h4>)
+      return
+    }
+
     if (line.startsWith('### ')) {
       flush(`fl-${i}`)
       result.push(<h3 key={k} className="text-sm font-bold text-tx mt-4 mb-1.5"><InlineContent text={line.slice(4)} /></h3>)
@@ -508,6 +521,7 @@ function toExportHTML(content: string): string {
     if (tblRows.length) flushTable()
     if (!line.trim()) { closeList(); continue }
     if (/^[-=]{3,}$/.test(line.trim())) { closeList(); out.push('<hr>'); continue }
+    if (line.startsWith('#### ')) { closeList(); out.push(`<h4>${inline(line.slice(5))}</h4>`); continue }
     if (line.startsWith('### ')) { closeList(); out.push(`<h3>${inline(line.slice(4))}</h3>`); continue }
     if (line.startsWith('## '))  { closeList(); out.push(`<h2>${inline(line.slice(3))}</h2>`); continue }
     if (line.startsWith('# '))   { closeList(); out.push(`<h1>${inline(line.slice(2))}</h1>`); continue }
@@ -538,6 +552,7 @@ const REPORT_CSS = `
   h1{font-size:22px;color:#4f46e5;border-bottom:2.5px solid #4f46e5;padding-bottom:8px;margin:0 0 6px;word-break:break-word}
   h2{font-size:16px;color:#4f46e5;margin:22px 0 5px;word-break:break-word}
   h3{font-size:14px;color:#3730a3;margin:16px 0 4px;word-break:break-word}
+  h4{font-size:12.5px;color:#6366f1;margin:12px 0 3px;word-break:break-word;font-weight:600}
   .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:20px 0 8px;font-weight:700;font-size:12px;color:#3730a3}
   p{margin:5px 0;word-wrap:break-word}
   ul{list-style:none;padding:0;margin:6px 0}
@@ -932,9 +947,9 @@ ${landingPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.eng} enga
   // ── Send ──────────────────────────────────────────────────────────────────
   const send = useMutation({
     mutationFn: async ({ text, img }: { text: string; img?: PendingImage }) => {
-      const system = chatContext
+      const system = withDate(chatContext
         ? `${MODE_SYSTEM[jarvisMode]}\n\n━━━ LIVE SITE DATA (use this for all recommendations) ━━━\n${chatContext}`
-        : MODE_SYSTEM[jarvisMode]
+        : MODE_SYSTEM[jarvisMode])
       const raw: MultiTurnMessage[] = messages.map((m) => ({ role: m.role, content: m.content }))
       const firstUser = raw.findIndex(m => m.role === 'user')
       const history = firstUser >= 0 ? raw.slice(firstUser) : []
@@ -1165,7 +1180,7 @@ Month 3 — Scale (weeks 9–12): 3–4 actions to compound and diversify
 Use exact data. No generics. Every recommendation must trace back to a specific number in the data provided.`
         : `The user has not yet connected GSC, GA4, or PageSpeed Insights for ${site}. Provide a concise onboarding guide: explain what each data source provides for iGaming SEO, list key metrics to monitor, and give a general 90-day iGaming SEO starting strategy.`
 
-      return callAIMulti(MODE_SYSTEM[jarvisMode], [{ role: 'user', content: prompt }], 4500)
+      return callAIMulti(withDate(MODE_SYSTEM[jarvisMode]), [{ role: 'user', content: prompt }], 4500)
     },
     onMutate: () => {
       const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]

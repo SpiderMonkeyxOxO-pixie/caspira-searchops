@@ -33,6 +33,14 @@ interface Conversation {
   updatedAt: number
 }
 
+interface ExportRecord {
+  id:         string
+  title:      string
+  type:       'pdf' | 'word'
+  content:    string
+  exportedAt: number
+}
+
 // ── Mode config ───────────────────────────────────────────────────────────────
 
 const MODE_META: Record<JarvisMode, {
@@ -285,8 +293,10 @@ const RANGE_OPTIONS: { label: string; value: AnalyzeRange; days: number; ga4: st
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY    = 'jarvis_conversations'
-const MAX_CONVS      = 50
+const STORAGE_KEY        = 'jarvis_conversations'
+const MAX_CONVS          = 50
+const EXPORT_HISTORY_KEY = 'jarvis_export_history'
+const MAX_EXPORTS        = 30
 
 function time() {
   return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
@@ -408,140 +418,171 @@ function MessageContent({ content }: { content: string }) {
 
 // ── Export helpers ────────────────────────────────────────────────────────────
 
+// Danger keywords → red highlight; ALL CAPS → bold priority; `code` → underlined keyword
 function toExportHTML(content: string): string {
-  const lines  = content.split('\n')
+  const lines    = content.split('\n')
   const out: string[] = []
-  let inList   = false
-  let listTag  = ''
-  let tblRows: string[][] = []
-  let tblHead  = false
+  let inList = false, listTag = ''
+  let tblRows: string[][] = [], tblHead = false
 
   const closeList = () => { if (inList) { out.push(`</${listTag}>`); inList = false; listTag = '' } }
-
   const flushTable = () => {
     if (!tblRows.length) return
     out.push('<table>')
-    tblRows.forEach((row, i) => {
-      if (i === 0 && tblHead) {
+    tblRows.forEach((row, idx) => {
+      if (idx === 0 && tblHead)
         out.push('<thead><tr>' + row.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>')
-      } else {
+      else
         out.push('<tr>' + row.map(c => `<td>${c}</td>`).join('') + '</tr>')
-      }
     })
     if (tblHead) out.push('</tbody>')
     out.push('</table>')
     tblRows = []; tblHead = false
   }
 
-  const inline = (t: string) =>
-    t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-     .replace(/`([^`]+)`/g, '<code>$1</code>')
+  // Sentinel characters mark semantic zones before HTML escaping
+  const DANGER_WORDS = /\b(ILLEGAL(?:LY)?|BANNED|PROHIBITED|CRIMINAL|VIOLATION|HIGH[\s\-]RISK|HIGH RISK|CRITICAL|PENALI[ZS]ED?|DANGEROUS?|FORBIDDEN|REVOKED?|NOT ALLOWED|BLOCKED|DO NOT|NEVER RECOMMEND)\b/g
+  const CAPS_WORD    = /\b([A-Z][A-Z][A-Z]+(?:\s+[A-Z][A-Z]+)*)\b/g
+
+  const inline = (raw: string): string => {
+    // Mark danger words before escaping (use private-use sentinels)
+    let s = raw.replace(DANGER_WORDS, '\x02$1\x03')
+
+    // HTML escape
+    s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+    // Emoji → styled SVG-like badge spans (no emoji in output)
+    s = s
+      .replace(/✅/g, '<b class="badge-ok"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><circle cx="5" cy="5" r="5" fill="#166534"/><path d="M2.5 5l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>PASS</b>')
+      .replace(/⚠️/g, '<b class="badge-warn"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><path d="M5 1L9 9H1z" fill="#854d0e"/><text x="5" y="8.5" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">!</text></svg>WARN</b>')
+      .replace(/❌/g, '<b class="badge-err"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><circle cx="5" cy="5" r="5" fill="#991b1b"/><path d="M3 3l4 4M7 3l-4 4" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>FAIL</b>')
+      .replace(/🔴/g, '<b class="badge-red">HIGH RISK</b>')
+      .replace(/🟡/g, '<b class="badge-yellow">MEDIUM</b>')
+      .replace(/🟢/g, '<b class="badge-green">LOW RISK</b>')
+      .replace(/⛔/g, '<b class="badge-red">STOP</b>')
+      .replace(/🚨/g, '<b class="badge-red">ALERT</b>')
+      .replace(/✓/g,  '<b class="badge-ok">✓</b>')
+
+    // Markdown → HTML
+    s = s
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<u class="keyword">$1</u>')  // backtick = must-implement keyword
+
+    // Restore danger sentinels as red-highlighted spans
+    s = s.replace(/\x02([^\x03]+)\x03/g, '<span class="danger">$1</span>')
+
+    // ALL CAPS (3+ letters) → priority strong — only in text nodes, not inside tags
+    s = s.replace(/(<[^>]+>)|([^<]+)/g, (_: string, tag: string, text: string) => {
+      if (tag) return tag
+      return text.replace(CAPS_WORD, (m: string) => `<strong class="priority">${m}</strong>`)
+    })
+
+    return s
+  }
 
   for (const line of lines) {
-    // ── Markdown table row ────────────────────────────────────────────────
     if (line.trim().startsWith('|')) {
-      // separator row (|---|---| or |:---|---:|) — marks previous row as header
       if (/^\|[\s\-:|]+(\|[\s\-:|]+)+\|?\s*$/.test(line.trim())) {
-        tblHead = tblRows.length > 0
-        continue
+        tblHead = tblRows.length > 0; continue
       }
       closeList()
-      const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim()))
-      tblRows.push(cells)
+      tblRows.push(line.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim())))
       continue
     }
-
-    // Flush any pending table before handling other elements
     if (tblRows.length) flushTable()
-
     if (!line.trim()) { closeList(); continue }
     if (/^[-=]{3,}$/.test(line.trim())) { closeList(); out.push('<hr>'); continue }
-
-    // Headings — check longest prefix first
     if (line.startsWith('### ')) { closeList(); out.push(`<h3>${inline(line.slice(4))}</h3>`); continue }
     if (line.startsWith('## '))  { closeList(); out.push(`<h2>${inline(line.slice(3))}</h2>`); continue }
-    if (line.startsWith('# '))   { closeList(); out.push(`<h2 class="h1">${inline(line.slice(2))}</h2>`); continue }
-
-    // Bold-only line → section header
+    if (line.startsWith('# '))   { closeList(); out.push(`<h1>${inline(line.slice(2))}</h1>`); continue }
     const bh = line.match(/^\*\*([^*]+)\*\*$/)
     if (bh) { closeList(); out.push(`<div class="section-header">${bh[1]}</div>`); continue }
-
-    // Bullet list
     if (line.match(/^[•\-\*] /)) {
       if (!inList || listTag !== 'ul') { closeList(); out.push('<ul>'); inList = true; listTag = 'ul' }
       out.push(`<li>${inline(line.replace(/^[•\-\*] /, ''))}</li>`)
       continue
     }
-
-    // Numbered list
     const nm = line.match(/^(\d+)\.\s+(.+)/)
     if (nm) {
       if (!inList || listTag !== 'ol') { closeList(); out.push('<ol>'); inList = true; listTag = 'ol' }
       out.push(`<li>${inline(nm[2])}</li>`)
       continue
     }
-
     closeList()
     out.push(`<p>${inline(line)}</p>`)
   }
-
   if (tblRows.length) flushTable()
   closeList()
   return out.join('\n')
 }
 
 const REPORT_CSS = `
-  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:820px;margin:40px auto;padding:20px 48px;color:#1a1a2e;font-size:13px;line-height:1.75}
-  h1,h2.h1{font-size:20px;color:#4f46e5;border-bottom:2px solid #4f46e5;padding-bottom:8px;margin:28px 0 6px}
-  h2{font-size:16px;color:#4f46e5;margin:24px 0 6px}
-  h3{font-size:14px;color:#3730a3;margin:18px 0 4px}
-  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:20px 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#3730a3}
-  ul{list-style:none;padding:0;margin:6px 0}
-  ul li{display:flex;gap:8px;margin:5px 0;align-items:flex-start}
-  ul li::before{content:"▸";color:#6366f1;flex-shrink:0;margin-top:1px}
-  ol{padding-left:20px;margin:6px 0}
-  ol li{margin:5px 0}
-  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
-  th{background:#eef0ff;color:#3730a3;font-weight:700;padding:7px 10px;text-align:left;border:1px solid #c7d2fe}
-  td{padding:6px 10px;border:1px solid #e0e0f0;vertical-align:top;line-height:1.5}
+  *{box-sizing:border-box}
+  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:820px;margin:40px auto;padding:24px 48px;color:#1a1a2e;font-size:13px;line-height:1.8;word-wrap:break-word}
+  h1{font-size:22px;color:#4f46e5;border-bottom:2.5px solid #4f46e5;padding-bottom:8px;margin:0 0 6px;word-break:break-word}
+  h2{font-size:16px;color:#4f46e5;margin:24px 0 6px;word-break:break-word}
+  h3{font-size:14px;color:#3730a3;margin:18px 0 4px;word-break:break-word}
+  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:8px 14px;margin:22px 0 10px;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#3730a3;page-break-after:avoid}
+  p{margin:6px 0;word-wrap:break-word}
+  ul{list-style:none;padding:0;margin:8px 0}
+  ul li{display:flex;gap:10px;margin:6px 0;align-items:flex-start;word-break:break-word}
+  ul li::before{content:"▸";color:#6366f1;flex-shrink:0;margin-top:2px;font-weight:700}
+  ol{padding-left:22px;margin:8px 0}
+  ol li{margin:6px 0;word-break:break-word}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px;table-layout:fixed;word-break:break-word}
+  th{background:#eef0ff;color:#3730a3;font-weight:700;padding:8px 10px;text-align:left;border:1px solid #c7d2fe;word-wrap:break-word}
+  td{padding:7px 10px;border:1px solid #e0e0f0;vertical-align:top;line-height:1.6;word-wrap:break-word}
   tr:nth-child(even) td{background:#f8f8ff}
-  code{background:#f1f1f3;padding:1px 5px;border-radius:3px;font-family:'Courier New',monospace;font-size:11px}
-  hr{border:none;border-top:1px solid #d1d5db;margin:16px 0}
-  p{margin:5px 0}
+  u.keyword{text-decoration:underline;text-decoration-color:#d97706;text-underline-offset:2px;font-family:'Courier New',monospace;font-size:11.5px;background:#fff8e1;padding:1px 4px;border-radius:2px;font-style:normal}
+  .danger{background:#fee2e2;color:#991b1b;padding:1px 4px;border-radius:3px;font-weight:700;white-space:nowrap}
+  strong.priority{font-weight:900;color:#1e1b4b;letter-spacing:.02em}
   strong{font-weight:600}
-  .meta{color:#6b7280;font-size:11px;margin-bottom:28px}
-  @media print{body{margin:0;max-width:100%}}
+  .badge-ok{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  .badge-warn{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  .badge-err{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  .badge-red{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  .badge-yellow{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  .badge-green{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
+  hr{border:none;border-top:1px solid #d1d5db;margin:18px 0}
+  .meta{color:#6b7280;font-size:11px;margin-bottom:30px}
+  @media print{
+    body{margin:0;max-width:100%;padding:16px 32px}
+    .section-header,h2,h3{page-break-after:avoid}
+    table{page-break-inside:avoid}
+    tr{page-break-inside:avoid}
+    ul li,ol li{page-break-inside:avoid}
+  }
 `
 
-function exportToPDF(content: string, title = 'Jarvis SEO Report') {
+function exportToPDF(content: string, title = 'Jarvis SEO Report', onSave?: (r: ExportRecord) => void) {
   const html = toExportHTML(content)
   const win  = window.open('', '_blank')
   if (!win) return
   const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${REPORT_CSS}</style></head><body>
-<h1>${title}</h1><p class="meta">Generated by Jarvis SEO · ${date}</p>${html}</body></html>`)
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>${title}</title><style>${REPORT_CSS}</style></head><body>
+<h1>${title}</h1><p class="meta">Generated by Jarvis SEO &nbsp;·&nbsp; ${date}</p>${html}</body></html>`)
   win.document.close()
   win.focus()
-  setTimeout(() => win.print(), 400)
+  setTimeout(() => win.print(), 500)
+  onSave?.({ id: crypto.randomUUID(), title, type: 'pdf', content, exportedAt: Date.now() })
 }
 
-function exportToWord(content: string, title = 'Jarvis SEO Report') {
-  const html = toExportHTML(content)
-  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-  const doc  = `<!DOCTYPE html>
+function exportToWord(content: string, title = 'Jarvis SEO Report', onSave?: (r: ExportRecord) => void) {
+  const wordCSS = REPORT_CSS.replace(/@media print\{[\s\S]*?\}/g, '')
+  const html    = toExportHTML(content)
+  const date    = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const doc     = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="UTF-8"><title>${title}</title><style>${REPORT_CSS.replace('@media print{body{margin:0;max-width:100%}}', '')}</style></head>
+<head><meta charset="UTF-8"><title>${title}</title><style>${wordCSS}</style></head>
 <body><h1>${title}</h1><p class="meta">Generated by Jarvis SEO · ${date}</p>${html}</body></html>`
   const blob = new Blob(['﻿', doc], { type: 'application/msword' })
   const url  = URL.createObjectURL(blob)
   const a    = Object.assign(document.createElement('a'), {
     href: url, download: `jarvis-report-${new Date().toISOString().slice(0, 10)}.doc`,
   })
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
   URL.revokeObjectURL(url)
+  onSave?.({ id: crypto.randomUUID(), title, type: 'word', content, exportedAt: Date.now() })
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -571,6 +612,8 @@ export function JarvisAI() {
   const [selectedGscSite,setSelectedGscSite]= useState<string>('')
   const [ga4Props,       setGa4Props]       = useState<{ id: string; name: string }[]>([])
   const [selectedGa4Prop,setSelectedGa4Prop]= useState<string>('')
+  const [exportHistory,  setExportHistory]  = useState<ExportRecord[]>([])
+  const [sidebarTab,     setSidebarTab]     = useState<'chats' | 'exports'>('chats')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
 
@@ -587,6 +630,10 @@ export function JarvisAI() {
       setMessages(latest.messages)
       if (latest.mode) setJarvisMode(latest.mode)
     } catch { /* ignore malformed data */ }
+    try {
+      const rawExp = localStorage.getItem(EXPORT_HISTORY_KEY)
+      if (rawExp) setExportHistory(JSON.parse(rawExp))
+    } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -686,6 +733,24 @@ export function JarvisAI() {
     setConversations([])
     localStorage.removeItem(STORAGE_KEY)
     newConversation()
+  }
+
+  // ── Export history ────────────────────────────────────────────────────────
+  function saveExport(record: ExportRecord) {
+    setExportHistory(prev => {
+      const updated = [record, ...prev].slice(0, MAX_EXPORTS)
+      localStorage.setItem(EXPORT_HISTORY_KEY, JSON.stringify(updated))
+      return updated
+    })
+    setSidebarTab('exports')
+  }
+
+  function deleteExport(id: string) {
+    setExportHistory(prev => {
+      const updated = prev.filter(r => r.id !== id)
+      localStorage.setItem(EXPORT_HISTORY_KEY, JSON.stringify(updated))
+      return updated
+    })
   }
 
   // ── Mode + copy ───────────────────────────────────────────────────────────
@@ -1045,68 +1110,158 @@ Keep it practical and specific to iGaming SEO.`
   return (
     <div className="flex gap-3 flex-1 min-h-0">
 
-      {/* ── Conversation sidebar ─────────────────────────────────────────── */}
+      {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <div className="w-52 shrink-0 flex flex-col gap-2 border-r border-border pr-3">
 
-        {/* New chat */}
-        <button
-          onClick={newConversation}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-xl border border-dashed border-border
-            text-xs text-muted hover:border-accent hover:text-accent transition-all cursor-pointer"
-        >
-          <Plus size={12} /> New Chat
-        </button>
-
-        {/* Conversation list */}
-        <div className="flex-1 overflow-y-auto space-y-0.5 scrollbar-thin">
-          {conversations.length === 0 ? (
-            <div className="text-center py-8">
-              <MessageSquare size={18} className="text-muted mx-auto mb-2" strokeWidth={1} />
-              <div className="text-[11px] text-muted">No saved chats yet</div>
-              <div className="text-[10px] text-muted/60 mt-1">Conversations auto-save</div>
-            </div>
-          ) : conversations.map(conv => {
-            const isActive = conv.id === activeConvId
-            const ModeIcon = MODE_META[conv.mode]?.icon ?? ShieldCheck
-            const modeColor = MODE_META[conv.mode]?.color ?? '#10b981'
-            return (
-              <button
-                key={conv.id}
-                onClick={() => loadConversation(conv)}
-                className={cn(
-                  'group/item w-full flex items-start gap-2 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer',
-                  isActive
-                    ? 'bg-accent/10 border border-accent/20'
-                    : 'hover:bg-surface border border-transparent'
-                )}
-              >
-                <ModeIcon size={10} className="mt-0.5 shrink-0" style={{ color: modeColor }} />
-                <div className="flex-1 min-w-0">
-                  <div className={cn('text-[11px] font-medium truncate leading-tight', isActive ? 'text-accent' : 'text-tx')}>
-                    {conv.title}
-                  </div>
-                  <div className="text-[10px] text-muted font-mono-jarvis mt-0.5">{fmtConvDate(conv.updatedAt)}</div>
-                </div>
-                <button
-                  onClick={e => deleteConversation(conv.id, e)}
-                  title="Delete"
-                  className="opacity-0 group-hover/item:opacity-100 transition-opacity text-muted hover:text-danger cursor-pointer mt-0.5 shrink-0"
-                >
-                  <Trash2 size={10} />
-                </button>
-              </button>
-            )
-          })}
+        {/* Tab toggle */}
+        <div className="flex gap-0.5 p-0.5 bg-surface border border-border rounded-xl">
+          <button
+            onClick={() => setSidebarTab('chats')}
+            className={cn(
+              'flex-1 text-[10px] font-semibold py-1.5 rounded-lg transition-all cursor-pointer',
+              sidebarTab === 'chats' ? 'bg-card text-tx shadow-sm' : 'text-muted hover:text-tx'
+            )}
+          >Chats</button>
+          <button
+            onClick={() => setSidebarTab('exports')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 rounded-lg transition-all cursor-pointer',
+              sidebarTab === 'exports' ? 'bg-card text-tx shadow-sm' : 'text-muted hover:text-tx'
+            )}
+          >
+            Exports
+            {exportHistory.length > 0 && (
+              <span className="text-[9px] bg-accent/20 text-accent rounded-full px-1.5 font-bold">{exportHistory.length}</span>
+            )}
+          </button>
         </div>
 
-        {/* Clear all */}
-        {conversations.length > 1 && (
-          <button
-            onClick={deleteAllConversations}
-            className="text-[10px] text-muted/60 hover:text-danger transition-colors cursor-pointer text-center py-1"
-          >
-            Clear all history
-          </button>
+        {sidebarTab === 'chats' ? (
+          <>
+            {/* New chat */}
+            <button
+              onClick={newConversation}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl border border-dashed border-border
+                text-xs text-muted hover:border-accent hover:text-accent transition-all cursor-pointer"
+            >
+              <Plus size={12} /> New Chat
+            </button>
+
+            {/* Conversation list */}
+            <div className="flex-1 overflow-y-auto space-y-0.5 scrollbar-thin">
+              {conversations.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare size={18} className="text-muted mx-auto mb-2" strokeWidth={1} />
+                  <div className="text-[11px] text-muted">No saved chats yet</div>
+                  <div className="text-[10px] text-muted/60 mt-1">Conversations auto-save</div>
+                </div>
+              ) : conversations.map(conv => {
+                const isActive  = conv.id === activeConvId
+                const ModeIcon  = MODE_META[conv.mode]?.icon ?? ShieldCheck
+                const modeColor = MODE_META[conv.mode]?.color ?? '#10b981'
+                return (
+                  <button
+                    key={conv.id}
+                    onClick={() => loadConversation(conv)}
+                    className={cn(
+                      'group/item w-full flex items-start gap-2 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer',
+                      isActive ? 'bg-accent/10 border border-accent/20' : 'hover:bg-surface border border-transparent'
+                    )}
+                  >
+                    <ModeIcon size={10} className="mt-0.5 shrink-0" style={{ color: modeColor }} />
+                    <div className="flex-1 min-w-0">
+                      <div className={cn('text-[11px] font-medium truncate leading-tight', isActive ? 'text-accent' : 'text-tx')}>
+                        {conv.title}
+                      </div>
+                      <div className="text-[10px] text-muted font-mono-jarvis mt-0.5">{fmtConvDate(conv.updatedAt)}</div>
+                    </div>
+                    <button
+                      onClick={e => deleteConversation(conv.id, e)}
+                      title="Delete"
+                      className="opacity-0 group-hover/item:opacity-100 transition-opacity text-muted hover:text-danger cursor-pointer mt-0.5 shrink-0"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </button>
+                )
+              })}
+            </div>
+
+            {conversations.length > 1 && (
+              <button
+                onClick={deleteAllConversations}
+                className="text-[10px] text-muted/60 hover:text-danger transition-colors cursor-pointer text-center py-1"
+              >
+                Clear all history
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Export history list */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin">
+              {exportHistory.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileDown size={18} className="text-muted mx-auto mb-2" strokeWidth={1} />
+                  <div className="text-[11px] text-muted">No exports yet</div>
+                  <div className="text-[10px] text-muted/60 mt-1">PDF &amp; Word exports appear here</div>
+                </div>
+              ) : exportHistory.map(rec => (
+                <div key={rec.id} className="group/exp rounded-lg border border-border bg-card/50 p-2 hover:bg-surface transition-all">
+                  <div className="flex items-start gap-1.5 mb-1.5">
+                    {rec.type === 'pdf'
+                      ? <FileDown size={10} className="text-red-400 mt-0.5 shrink-0" />
+                      : <FileText size={10} className="text-blue-400 mt-0.5 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-medium text-tx truncate leading-tight">{rec.title}</div>
+                      <div className="text-[10px] text-muted font-mono-jarvis mt-0.5">
+                        {fmtConvDate(rec.exportedAt)} · {new Date(rec.exportedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <span className={cn(
+                        'inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border font-mono-jarvis',
+                        rec.type === 'pdf'
+                          ? 'bg-red-500/10 text-red-400 border-red-400/30'
+                          : 'bg-blue-500/10 text-blue-400 border-blue-400/30'
+                      )}>
+                        {rec.type.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => rec.type === 'pdf'
+                        ? exportToPDF(rec.content, rec.title)
+                        : exportToWord(rec.content, rec.title)}
+                      title="Download again"
+                      className="flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-[10px]
+                        bg-accent/10 text-accent hover:bg-accent/20 cursor-pointer transition-colors border border-accent/20"
+                    >
+                      <FileDown size={9} /><span className="font-mono-jarvis">Download</span>
+                    </button>
+                    <button
+                      onClick={() => deleteExport(rec.id)}
+                      title="Remove from history"
+                      className="px-2 py-1 rounded-md text-[10px] text-muted hover:text-danger hover:bg-danger/10 cursor-pointer transition-colors border border-border"
+                    >
+                      <Trash2 size={9} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {exportHistory.length > 1 && (
+              <button
+                onClick={() => {
+                  setExportHistory([])
+                  localStorage.removeItem(EXPORT_HISTORY_KEY)
+                }}
+                className="text-[10px] text-muted/60 hover:text-danger transition-colors cursor-pointer text-center py-1"
+              >
+                Clear all exports
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -1209,7 +1364,7 @@ Keep it practical and specific to iGaming SEO.`
                       }
                     </button>
                     <button
-                      onClick={() => exportToPDF(m.content)}
+                      onClick={() => exportToPDF(m.content, 'Jarvis SEO Report', saveExport)}
                       title="Export as PDF"
                       className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
                         text-[10px] text-muted hover:text-red-400 hover:border-red-400/50 cursor-pointer shadow-sm"
@@ -1217,7 +1372,7 @@ Keep it practical and specific to iGaming SEO.`
                       <FileDown size={10} /><span className="font-mono-jarvis">PDF</span>
                     </button>
                     <button
-                      onClick={() => exportToWord(m.content)}
+                      onClick={() => exportToWord(m.content, 'Jarvis SEO Report', saveExport)}
                       title="Export as Word document"
                       className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
                         text-[10px] text-muted hover:text-blue-400 hover:border-blue-400/50 cursor-pointer shadow-sm"

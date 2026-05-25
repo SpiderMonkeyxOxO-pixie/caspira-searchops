@@ -276,3 +276,108 @@ export async function callAIWithImageMulti(
 export async function callClaude(system: string, user: string, maxTokens = 1000): Promise<string> {
   return callAI(system, user, maxTokens)
 }
+
+// ── Streaming ─────────────────────────────────────────────────────────────────
+
+export type StopReason = 'end_turn' | 'max_tokens'
+
+async function streamAnthropicDirect(
+  system: string, msgs: MultiTurnMessage[], onChunk: (t: string) => void, maxTokens: number
+): Promise<StopReason> {
+  const key = useStore.getState().anthropicKey
+  if (!key) throw new Error('NO_KEY')
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({ model: CLAUDE_MODEL, system, messages: msgs, max_tokens: maxTokens, stream: true }),
+  })
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}))
+    throw new Error(e?.error?.message ?? `HTTP ${res.status}`)
+  }
+  const reader  = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let stop: StopReason = 'end_turn'
+  let buf = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n'); buf = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const d = line.slice(6).trim()
+      if (d === '[DONE]') continue
+      try {
+        const j = JSON.parse(d)
+        if (j.type === 'content_block_delta' && j.delta?.type === 'text_delta') onChunk(j.delta.text)
+        if (j.type === 'message_delta' && j.delta?.stop_reason === 'max_tokens') stop = 'max_tokens'
+      } catch { /* partial JSON */ }
+    }
+  }
+  return stop
+}
+
+async function streamOpenRouterDirect(
+  system: string, msgs: MultiTurnMessage[], onChunk: (t: string) => void, maxTokens: number
+): Promise<StopReason> {
+  const { openRouterKey, openRouterModel } = useStore.getState()
+  if (!openRouterKey) throw new Error('NO_KEY')
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openRouterKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'Jarvis SEO',
+    },
+    body: JSON.stringify({
+      model: openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      messages: [{ role: 'system', content: system }, ...msgs.map(m => ({ role: m.role, content: m.content }))],
+      max_tokens: maxTokens,
+      stream: true,
+    }),
+  })
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}))
+    throw new Error(e?.error?.message ?? `HTTP ${res.status}`)
+  }
+  const reader  = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let stop: StopReason = 'end_turn'
+  let buf = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n'); buf = lines.pop() ?? ''
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const d = line.slice(6).trim()
+      if (d === '[DONE]') continue
+      try {
+        const j = JSON.parse(d)
+        const text = j.choices?.[0]?.delta?.content
+        if (text) onChunk(text)
+        if (j.choices?.[0]?.finish_reason === 'length') stop = 'max_tokens'
+      } catch { /* partial JSON */ }
+    }
+  }
+  return stop
+}
+
+export async function streamAIMulti(
+  system: string,
+  msgs: MultiTurnMessage[],
+  onChunk: (t: string) => void,
+  maxTokens = 8192,
+): Promise<StopReason> {
+  const provider = useStore.getState().aiProvider
+  if (provider === 'openrouter') return streamOpenRouterDirect(system, msgs, onChunk, maxTokens)
+  return streamAnthropicDirect(system, msgs, onChunk, maxTokens)
+}

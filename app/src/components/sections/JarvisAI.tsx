@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Send, Brain, Zap, User, ShieldCheck, Shuffle, Skull, ImageIcon, X,
   Copy, Check, Plus, Trash2, MessageSquare, Loader2, Sparkles, FileDown, FileText,
 } from 'lucide-react'
-import { callAIMulti, callAIWithImageMulti, isAIReady, getActiveProvider, type ImageAttachment, type ImageMime, type MultiTurnMessage } from '@/lib/ai'
+import { callAIWithImageMulti, streamAIMulti, isAIReady, getActiveProvider, type StopReason, type ImageAttachment, type ImageMime, type MultiTurnMessage } from '@/lib/ai'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
@@ -635,6 +634,9 @@ export function JarvisAI() {
   const [input,        setInput]        = useState('')
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null)
   const [copiedIdx,    setCopiedIdx]    = useState<number | null>(null)
+  const [isStreaming,  setIsStreaming]  = useState(false)
+  const [isAnalyzing,  setIsAnalyzing] = useState(false)
+  const streamBuf = useRef('')
   const [analyzeStep,    setAnalyzeStep]    = useState<string | null>(null)
   const [analyzeRange,   setAnalyzeRange]   = useState<AnalyzeRange>('3m')
   const [gscSites,       setGscSites]       = useState<string[]>([])
@@ -945,38 +947,33 @@ ${landingPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.eng} enga
   }
 
   // ── Send ──────────────────────────────────────────────────────────────────
-  const send = useMutation({
-    mutationFn: async ({ text, img }: { text: string; img?: PendingImage }) => {
-      const system = withDate(chatContext
-        ? `${MODE_SYSTEM[jarvisMode]}\n\n━━━ LIVE SITE DATA (use this for all recommendations) ━━━\n${chatContext}`
-        : MODE_SYSTEM[jarvisMode])
-      const raw: MultiTurnMessage[] = messages.map((m) => ({ role: m.role, content: m.content }))
-      const firstUser = raw.findIndex(m => m.role === 'user')
-      const history = firstUser >= 0 ? raw.slice(firstUser) : []
-      if (img) return callAIWithImageMulti(system, history, text, img.attachment, 3000)
-      return callAIMulti(system, [...history, { role: 'user', content: text }], 3000)
-    },
-    onMutate: ({ text, img }) => {
-      setMessages(prev => [...prev, { role: 'user', content: text, ts: time(), imageUrl: img?.url }])
-      setInput('')
-      setPendingImage(null)
-    },
-    onSuccess: (reply) => {
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, ts: time() }])
-    },
-    onError: (err) => {
-      const raw = err instanceof Error ? err.message : 'Unknown error'
-      const msg = raw === 'NO_KEY'
-        ? 'No API key configured. Go to **Settings** to add your OpenRouter or Anthropic key.'
-        : `**${providerLabel} error:** ${raw}`
-      setMessages(prev => [...prev, { role: 'assistant', content: msg, ts: time() }])
-    },
-  })
+  // streaming helper — appends chunks to the last assistant message in state
+  const appendChunk = useCallback((chunk: string) => {
+    streamBuf.current += chunk
+    const content = streamBuf.current
+    setMessages(prev => {
+      const upd = [...prev]
+      upd[upd.length - 1] = { ...upd[upd.length - 1], content }
+      return upd
+    })
+  }, [])
 
   // ── Auto-site analysis ────────────────────────────────────────────────────
-  const analyze = useMutation({
-    mutationFn: async () => {
-      const rangeOpt   = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
+  const handleAnalyze = useCallback(async () => {
+    if (isAnalyzing || isStreaming) return
+    const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
+    const siteName = selectedGscSite
+      ? selectedGscSite.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+      : (domain || 'my site')
+    setIsAnalyzing(true)
+    setIsStreaming(true)
+    setAnalyzeStep('Starting analysis…')
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: `Analyze ${siteName} — last ${rangeOpt.label} · GSC + GA4 + PageSpeed Insights`,
+      ts: time(),
+    }])
+    try {
       const today      = new Date().toISOString().slice(0, 10)
       const agoDate    = new Date(Date.now() - rangeOpt.days * 86_400_000).toISOString().slice(0, 10)
       const rangeLabel = rangeOpt.label
@@ -1180,38 +1177,86 @@ Month 3 — Scale (weeks 9–12): 3–4 actions to compound and diversify
 Use exact data. No generics. Every recommendation must trace back to a specific number in the data provided.`
         : `The user has not yet connected GSC, GA4, or PageSpeed Insights for ${site}. Provide a concise onboarding guide: explain what each data source provides for iGaming SEO, list key metrics to monitor, and give a general 90-day iGaming SEO starting strategy.`
 
-      return callAIMulti(withDate(MODE_SYSTEM[jarvisMode]), [{ role: 'user', content: prompt }], 4500)
-    },
-    onMutate: () => {
-      const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
-      const siteName = selectedGscSite
-        ? selectedGscSite.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')
-        : (domain || 'my site')
-      setAnalyzeStep('Starting analysis…')
-      setMessages(prev => [...prev, {
-        role: 'user',
-        content: `Analyze ${siteName} — last ${rangeOpt.label} · GSC + GA4 + PageSpeed Insights`,
-        ts: time(),
-      }])
-    },
-    onSuccess: (reply) => {
-      setAnalyzeStep(null)
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, ts: time() }])
-    },
-    onError: (err) => {
-      setAnalyzeStep(null)
-      const raw = err instanceof Error ? err.message : 'Analysis failed'
+      // ── Step 4: Stream AI response ────────────────────────────────────────
+      setAnalyzeStep('JARVIS is writing your report…')
+      streamBuf.current = ''
+      setMessages(prev => [...prev, { role: 'assistant', content: '', ts: time() }])
+
+      let accMsgs: MultiTurnMessage[] = [{ role: 'user', content: prompt }]
+      let stop: StopReason
+      do {
+        stop = await streamAIMulti(withDate(MODE_SYSTEM[jarvisMode]), accMsgs, appendChunk, 8192)
+        if (stop === 'max_tokens') {
+          accMsgs = [...accMsgs, { role: 'assistant', content: streamBuf.current }, { role: 'user', content: 'Continue exactly where you left off, do not repeat anything.' }]
+        }
+      } while (stop === 'max_tokens')
+
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : 'Analysis failed'
       const msg = raw === 'NO_KEY'
         ? 'No API key configured. Go to **Settings** to add your OpenRouter or Anthropic key.'
         : `**Analysis error:** ${raw}`
-      setMessages(prev => [...prev, { role: 'assistant', content: msg, ts: time() }])
-    },
-  })
+      setMessages(prev => {
+        const upd = [...prev]
+        const last = upd[upd.length - 1]
+        if (last?.role === 'assistant' && last.content === '') upd[upd.length - 1] = { ...last, content: msg }
+        else upd.push({ role: 'assistant', content: msg, ts: time() })
+        return upd
+      })
+    } finally {
+      setAnalyzeStep(null)
+      setIsAnalyzing(false)
+      setIsStreaming(false)
+    }
+  }, [isAnalyzing, isStreaming, analyzeRange, orgId, selectedGscSite, selectedGa4Prop, ga4Props, psiKey, domain, jarvisMode, appendChunk])
 
-  function handleSend(text = input.trim()) {
-    if ((!text && !pendingImage) || send.isPending) return
-    send.mutate({ text: text || 'Analyze this image in the context of iGaming SEO.', img: pendingImage ?? undefined })
-  }
+  // ── Send (streaming) ──────────────────────────────────────────────────────
+  const handleSend = useCallback(async (text = input.trim()) => {
+    const msgText = text || (pendingImage ? 'Analyze this image in the context of iGaming SEO.' : '')
+    if (!msgText && !pendingImage) return
+    if (isStreaming || isAnalyzing) return
+
+    const img = pendingImage ?? undefined
+    const snap = messages // capture history before state changes
+    setMessages(prev => [...prev, { role: 'user', content: msgText, ts: time(), imageUrl: img?.url }])
+    setInput('')
+    setPendingImage(null)
+    setIsStreaming(true)
+    streamBuf.current = ''
+    setMessages(prev => [...prev, { role: 'assistant', content: '', ts: time() }])
+
+    try {
+      const system = withDate(chatContext
+        ? `${MODE_SYSTEM[jarvisMode]}\n\n━━━ LIVE SITE DATA (use this for all recommendations) ━━━\n${chatContext}`
+        : MODE_SYSTEM[jarvisMode])
+
+      const raw = snap.map(m => ({ role: m.role, content: m.content }))
+      const firstUser = raw.findIndex(m => m.role === 'user')
+      const baseHistory: MultiTurnMessage[] = (firstUser >= 0 ? raw.slice(firstUser) : []) as MultiTurnMessage[]
+
+      if (img) {
+        const reply = await callAIWithImageMulti(system, baseHistory, msgText, img.attachment, 4000)
+        setMessages(prev => { const u = [...prev]; u[u.length - 1] = { ...u[u.length - 1], content: reply }; return u })
+      } else {
+        let accMsgs: MultiTurnMessage[] = [...baseHistory, { role: 'user', content: msgText }]
+        let stop: StopReason
+        do {
+          stop = await streamAIMulti(system, accMsgs, appendChunk, 8192)
+          if (stop === 'max_tokens') {
+            accMsgs = [...accMsgs, { role: 'assistant', content: streamBuf.current }, { role: 'user', content: 'Continue exactly where you left off, do not repeat anything.' }]
+          }
+        } while (stop === 'max_tokens')
+      }
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : 'Unknown error'
+      const msg = raw === 'NO_KEY'
+        ? 'No API key configured. Go to **Settings** to add your OpenRouter or Anthropic key.'
+        : `**${providerLabel} error:** ${raw}`
+      setMessages(prev => { const u = [...prev]; u[u.length - 1] = { ...u[u.length - 1], content: msg }; return u })
+    } finally {
+      setIsStreaming(false)
+    }
+  }, [isStreaming, isAnalyzing, pendingImage, messages, input, chatContext, jarvisMode, appendChunk, providerLabel])
 
   // ── Not connected screen ──────────────────────────────────────────────────
   if (!ready) {
@@ -1510,7 +1555,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
             </div>
           ))}
 
-          {(send.isPending || analyze.isPending) && (
+          {(isStreaming || isAnalyzing) && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
                 <img src="/jarvis-icon.png" alt="Jarvis" className="w-full h-full object-cover" />
@@ -1544,7 +1589,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 <button
                   key={r.value}
                   onClick={() => setAnalyzeRange(r.value)}
-                  disabled={analyze.isPending}
+                  disabled={isAnalyzing}
                   className={cn(
                     'px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer border',
                     analyzeRange === r.value
@@ -1564,7 +1609,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 <select
                   value={selectedGscSite}
                   onChange={e => setSelectedGscSite(e.target.value)}
-                  disabled={analyze.isPending}
+                  disabled={isAnalyzing}
                   className="text-[11px] bg-surface border border-border rounded-lg px-2 py-0.5 text-tx outline-none cursor-pointer max-w-[200px] font-mono-jarvis"
                 >
                   {gscSites.map(s => (
@@ -1583,7 +1628,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 <select
                   value={selectedGa4Prop}
                   onChange={e => setSelectedGa4Prop(e.target.value)}
-                  disabled={analyze.isPending}
+                  disabled={isAnalyzing}
                   className="text-[11px] bg-surface border border-border rounded-lg px-2 py-0.5 text-tx outline-none cursor-pointer max-w-[200px] font-mono-jarvis"
                 >
                   {ga4Props.map(p => (
@@ -1595,16 +1640,16 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
 
             {/* Run button */}
             <button
-              onClick={() => analyze.mutate()}
-              disabled={analyze.isPending || send.isPending}
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || isStreaming}
               className={cn(
                 'ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border',
-                analyze.isPending
+                isAnalyzing
                   ? 'border-accent/40 bg-accent/15 text-accent cursor-not-allowed'
                   : 'border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed'
               )}
             >
-              {analyze.isPending ? (
+              {isAnalyzing ? (
                 <>
                   <Loader2 size={11} className="animate-spin shrink-0" />
                   <span className="font-mono-jarvis">{analyzeStep || 'Collecting…'}</span>
@@ -1625,7 +1670,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
             <button
               key={q}
               onClick={() => handleSend(q)}
-              disabled={send.isPending || analyze.isPending}
+              disabled={isStreaming || isAnalyzing}
               className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted hover:text-tx transition-all disabled:opacity-40 cursor-pointer"
               onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '' }}
@@ -1674,7 +1719,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
             <div className="flex gap-1.5">
               <button
                 onClick={() => fileRef.current?.click()}
-                disabled={send.isPending}
+                disabled={isStreaming}
                 title="Attach image (JPEG, PNG, GIF, WebP · max 5 MB)"
                 className={cn(
                   'p-2 rounded-lg transition-colors cursor-pointer',
@@ -1693,12 +1738,12 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 <Zap size={13} />
               </Button>
               <Button
-                variant={(send.isPending || analyze.isPending) ? 'ghost' : 'ai'}
+                variant={(isStreaming || isAnalyzing) ? 'ghost' : 'ai'}
                 className="p-2"
                 onClick={() => handleSend()}
-                disabled={send.isPending || analyze.isPending || (!input.trim() && !pendingImage)}
+                disabled={isStreaming || isAnalyzing || (!input.trim() && !pendingImage)}
               >
-                {send.isPending ? <Brain size={14} className="animate-pulse" /> : <Send size={14} />}
+                {isStreaming ? <Brain size={14} className="animate-pulse" /> : <Send size={14} />}
               </Button>
             </div>
           </div>

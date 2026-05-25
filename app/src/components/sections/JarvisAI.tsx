@@ -440,18 +440,38 @@ function toExportHTML(content: string): string {
     tblRows = []; tblHead = false
   }
 
-  // Sentinel characters mark semantic zones before HTML escaping
+  // Danger words → red highlight via sentinel (marked before HTML escaping)
   const DANGER_WORDS = /\b(ILLEGAL(?:LY)?|BANNED|PROHIBITED|CRIMINAL|VIOLATION|HIGH[\s\-]RISK|HIGH RISK|CRITICAL|PENALI[ZS]ED?|DANGEROUS?|FORBIDDEN|REVOKED?|NOT ALLOWED|BLOCKED|DO NOT|NEVER RECOMMEND)\b/g
-  const CAPS_WORD    = /\b([A-Z][A-Z][A-Z]+(?:\s+[A-Z][A-Z]+)*)\b/g
 
   const inline = (raw: string): string => {
-    // Mark danger words before escaping (use private-use sentinels)
+    // Mark danger words before escaping
     let s = raw.replace(DANGER_WORDS, '\x02$1\x03')
 
     // HTML escape
     s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-    // Emoji → styled SVG-like badge spans (no emoji in output)
+    // Flag emoji → country-code badges (SVG rect + text label)
+    const ccBadge = (code: string) =>
+      `<svg width="26" height="14" viewBox="0 0 26 14" style="display:inline;vertical-align:middle;margin:0 2px" xmlns="http://www.w3.org/2000/svg"><rect width="26" height="14" rx="2" fill="#e0e7ff"/><text x="13" y="10.5" text-anchor="middle" fill="#3730a3" font-size="8" font-weight="700" font-family="Segoe UI,Arial,sans-serif">${code}</text></svg>`
+    s = s
+      .replace(/🇮🇳/g, ccBadge('IN'))
+      .replace(/🇮🇩/g, ccBadge('ID'))
+      .replace(/🇵🇭/g, ccBadge('PH'))
+      .replace(/🇬🇧/g, ccBadge('UK'))
+      .replace(/🇦🇺/g, ccBadge('AU'))
+      .replace(/🇨🇦/g, ccBadge('CA'))
+      .replace(/🇩🇪/g, ccBadge('DE'))
+      .replace(/🇳🇱/g, ccBadge('NL'))
+      .replace(/🇸🇪/g, ccBadge('SE'))
+      .replace(/🇲🇾/g, ccBadge('MY'))
+      .replace(/🇹🇭/g, ccBadge('TH'))
+      .replace(/🇧🇩/g, ccBadge('BD'))
+      .replace(/🇦🇪/g, ccBadge('UAE'))
+      .replace(/🇲🇹/g, ccBadge('MT'))
+      .replace(/🇺🇸/g, ccBadge('US'))
+      .replace(/🇪🇺/g, ccBadge('EU'))
+
+    // Status / signal emoji → inline SVG badges
     s = s
       .replace(/✅/g, '<b class="badge-ok"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><circle cx="5" cy="5" r="5" fill="#166534"/><path d="M2.5 5l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>PASS</b>')
       .replace(/⚠️/g, '<b class="badge-warn"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><path d="M5 1L9 9H1z" fill="#854d0e"/><text x="5" y="8.5" text-anchor="middle" fill="#fff" font-size="6" font-weight="bold">!</text></svg>WARN</b>')
@@ -461,21 +481,17 @@ function toExportHTML(content: string): string {
       .replace(/🟢/g, '<b class="badge-green">LOW RISK</b>')
       .replace(/⛔/g, '<b class="badge-red">STOP</b>')
       .replace(/🚨/g, '<b class="badge-red">ALERT</b>')
-      .replace(/✓/g,  '<b class="badge-ok">✓</b>')
+      .replace(/✓/g,  '<b class="badge-ok"><svg width="10" height="10" viewBox="0 0 10 10" style="display:inline;vertical-align:middle;margin-right:2px"><circle cx="5" cy="5" r="5" fill="#166534"/><path d="M2.5 5l2 2 3-3" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>OK</b>')
+      // strip any remaining emoji (catch-all for Unicode emoji blocks)
+      .replace(/[\u{1F300}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]/gu, '')
 
     // Markdown → HTML
     s = s
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/`([^`]+)`/g, '<u class="keyword">$1</u>')  // backtick = must-implement keyword
+      .replace(/`([^`]+)`/g, '<u class="keyword">$1</u>')
 
     // Restore danger sentinels as red-highlighted spans
     s = s.replace(/\x02([^\x03]+)\x03/g, '<span class="danger">$1</span>')
-
-    // ALL CAPS (3+ letters) → priority strong — only in text nodes, not inside tags
-    s = s.replace(/(<[^>]+>)|([^<]+)/g, (_: string, tag: string, text: string) => {
-      if (tag) return tag
-      return text.replace(CAPS_WORD, (m: string) => `<strong class="priority">${m}</strong>`)
-    })
 
     return s
   }
@@ -518,36 +534,34 @@ function toExportHTML(content: string): string {
 
 const REPORT_CSS = `
   *{box-sizing:border-box}
-  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:820px;margin:40px auto;padding:24px 48px;color:#1a1a2e;font-size:13px;line-height:1.8;word-wrap:break-word}
+  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:820px;margin:40px auto;padding:24px 48px;color:#1a1a2e;font-size:13px;line-height:1.75;word-wrap:break-word}
   h1{font-size:22px;color:#4f46e5;border-bottom:2.5px solid #4f46e5;padding-bottom:8px;margin:0 0 6px;word-break:break-word}
-  h2{font-size:16px;color:#4f46e5;margin:24px 0 6px;word-break:break-word}
-  h3{font-size:14px;color:#3730a3;margin:18px 0 4px;word-break:break-word}
-  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:8px 14px;margin:22px 0 10px;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#3730a3;page-break-after:avoid}
-  p{margin:6px 0;word-wrap:break-word}
-  ul{list-style:none;padding:0;margin:8px 0}
-  ul li{display:flex;gap:10px;margin:6px 0;align-items:flex-start;word-break:break-word}
+  h2{font-size:16px;color:#4f46e5;margin:22px 0 5px;word-break:break-word}
+  h3{font-size:14px;color:#3730a3;margin:16px 0 4px;word-break:break-word}
+  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:20px 0 8px;font-weight:700;font-size:12px;color:#3730a3}
+  p{margin:5px 0;word-wrap:break-word}
+  ul{list-style:none;padding:0;margin:6px 0}
+  ul li{display:flex;gap:10px;margin:5px 0;align-items:flex-start;word-break:break-word}
   ul li::before{content:"▸";color:#6366f1;flex-shrink:0;margin-top:2px;font-weight:700}
-  ol{padding-left:22px;margin:8px 0}
-  ol li{margin:6px 0;word-break:break-word}
-  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px;table-layout:fixed;word-break:break-word}
-  th{background:#eef0ff;color:#3730a3;font-weight:700;padding:8px 10px;text-align:left;border:1px solid #c7d2fe;word-wrap:break-word}
-  td{padding:7px 10px;border:1px solid #e0e0f0;vertical-align:top;line-height:1.6;word-wrap:break-word}
+  ol{padding-left:22px;margin:6px 0}
+  ol li{margin:5px 0;word-break:break-word}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px;word-break:break-word}
+  th{background:#eef0ff;color:#3730a3;font-weight:700;padding:7px 10px;text-align:left;border:1px solid #c7d2fe;overflow-wrap:break-word}
+  td{padding:6px 10px;border:1px solid #e0e0f0;vertical-align:top;line-height:1.55;overflow-wrap:break-word}
   tr:nth-child(even) td{background:#f8f8ff}
   u.keyword{text-decoration:underline;text-decoration-color:#d97706;text-underline-offset:2px;font-family:'Courier New',monospace;font-size:11.5px;background:#fff8e1;padding:1px 4px;border-radius:2px;font-style:normal}
-  .danger{background:#fee2e2;color:#991b1b;padding:1px 4px;border-radius:3px;font-weight:700;white-space:nowrap}
-  strong.priority{font-weight:900;color:#1e1b4b;letter-spacing:.02em}
+  .danger{background:#fee2e2;color:#991b1b;padding:1px 4px;border-radius:3px;font-weight:700}
   strong{font-weight:600}
-  .badge-ok{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  .badge-warn{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  .badge-err{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  .badge-red{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  .badge-yellow{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  .badge-green{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:.05em;margin:0 2px}
-  hr{border:none;border-top:1px solid #d1d5db;margin:18px 0}
-  .meta{color:#6b7280;font-size:11px;margin-bottom:30px}
+  .badge-ok{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge-warn{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge-err{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge-red{display:inline-flex;align-items:center;gap:2px;background:#fee2e2;color:#991b1b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge-yellow{display:inline-flex;align-items:center;gap:2px;background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  .badge-green{display:inline-flex;align-items:center;gap:2px;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 2px}
+  hr{border:none;border-top:1px solid #d1d5db;margin:16px 0}
+  .meta{color:#6b7280;font-size:11px;margin-bottom:28px}
   @media print{
     body{margin:0;max-width:100%;padding:16px 32px}
-    .section-header,h2,h3{page-break-after:avoid}
     table{page-break-inside:avoid}
     tr{page-break-inside:avoid}
     ul li,ol li{page-break-inside:avoid}

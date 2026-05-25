@@ -628,6 +628,8 @@ export function JarvisAI() {
   const [selectedGa4Prop,setSelectedGa4Prop]= useState<string>('')
   const [exportHistory,  setExportHistory]  = useState<ExportRecord[]>([])
   const [sidebarTab,     setSidebarTab]     = useState<'chats' | 'exports'>('chats')
+  // Background-loaded site context — injected into every chat so Jarvis never asks the user to share data
+  const [chatContext,    setChatContext]     = useState<string>('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
 
@@ -713,6 +715,134 @@ export function JarvisAI() {
         setSelectedGa4Prop(data.property_id || props[0]?.id || '')
       })
   }, [orgId])
+
+  // ── Background site-data loader — keeps chat context fresh ───────────────
+  useEffect(() => {
+    if (!orgId || !selectedGscSite) return
+    const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
+    const today    = new Date().toISOString().slice(0, 10)
+    const agoDate  = new Date(Date.now() - rangeOpt.days * 86_400_000).toISOString().slice(0, 10)
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseGA4 = (data: any): Record<string, string>[] => {
+      if (!data?.rows) return []
+      const dims: string[] = (data.dimensionHeaders ?? []).map((h: any) => h.name)
+      const mets: string[] = (data.metricHeaders   ?? []).map((h: any) => h.name)
+      return data.rows.map((row: any) => {
+        const obj: Record<string, string> = {}
+        row.dimensionValues?.forEach((v: any, i: number) => { obj[dims[i]] = v.value })
+        row.metricValues?.forEach((v: any, i: number) => { obj[mets[i]] = v.value })
+        return obj
+      })
+    }
+
+    const requests: Promise<void>[] = []
+    let gsc = '', ga4 = ''
+
+    type GscRow = { query: string; clicks: number; impressions: number; ctr: string; pos: number }
+    type PageRow = { url: string; clicks: number; impressions: number; ctr: string; pos: number }
+
+    requests.push(
+      Promise.all([
+        supabase.functions.invoke('gsc-proxy', {
+          body: { org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+            params: { startDate: agoDate, endDate: today, dimensions: ['query'], rowLimit: 50 } },
+        }),
+        supabase.functions.invoke('gsc-proxy', {
+          body: { org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+            params: { startDate: agoDate, endDate: today, dimensions: ['page'], rowLimit: 25 } },
+        }),
+      ]).then(([qRes, pRes]) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const queries: GscRow[] = (qRes.data?.rows ?? []).map((r: any) => ({
+          query: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+          ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pages: PageRow[] = (pRes.data?.rows ?? []).map((r: any) => ({
+          url: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+          ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
+        }))
+        if (!queries.length && !pages.length) return
+        const totals = queries.reduce(
+          (a: { c: number; i: number }, q: GscRow) => ({ c: a.c + q.clicks, i: a.i + q.impressions }),
+          { c: 0, i: 0 }
+        )
+
+        const group = (label: string, qs: GscRow[]) =>
+          qs.length ? `${label}:\n${qs.map((q: GscRow) => `  "${q.query}" — ${q.clicks} clicks, ${q.impressions} impr, CTR ${q.ctr}, Pos ${q.pos}`).join('\n')}` : ''
+
+        const pos1_3  = queries.filter((q: GscRow) => q.pos <= 3)
+        const pos4_10 = queries.filter((q: GscRow) => q.pos > 3 && q.pos <= 10)
+        const pos11   = queries.filter((q: GscRow) => q.pos > 10 && q.pos <= 20)
+        const pos21   = queries.filter((q: GscRow) => q.pos > 20)
+
+        gsc = `=== GSC QUERIES TAB — Last ${rangeOpt.label} | ${selectedGscSite} ===
+Total Clicks: ${totals.c.toLocaleString()} | Total Impressions: ${totals.i.toLocaleString()}
+
+${group('RANKING #1–3 (defending)', pos1_3)}
+${group('RANKING #4–10 (quick-win targets)', pos4_10)}
+${group('RANKING #11–20 (developing)', pos11)}
+${group('RANKING #21+ (early stage)', pos21)}
+
+=== GSC PAGES TAB — Top ${pages.length} Pages ===
+${pages.map((p: PageRow) => `• ${p.url} — ${p.clicks} clicks, ${p.impressions} impr, CTR ${p.ctr}, Pos ${p.pos}`).join('\n')}`
+      })
+    )
+
+    if (selectedGa4Prop) {
+      const propName = ga4Props.find(p => p.id === selectedGa4Prop)?.name || selectedGa4Prop
+      requests.push(
+        Promise.all([
+          supabase.functions.invoke('ga4-proxy', {
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
+                metrics: [{ name: 'sessions' }, { name: 'screenPageViews' }, { name: 'engagementRate' }, { name: 'averageSessionDuration' }] } },
+          }),
+          supabase.functions.invoke('ga4-proxy', {
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
+                dimensions: [{ name: 'sessionDefaultChannelGrouping' }],
+                metrics: [{ name: 'sessions' }],
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 8 } },
+          }),
+          supabase.functions.invoke('ga4-proxy', {
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
+                dimensions: [{ name: 'landingPage' }],
+                metrics: [{ name: 'sessions' }, { name: 'engagementRate' }, { name: 'bounceRate' }],
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 25 } },
+          }),
+        ]).then(([kpiRes, chRes, lpRes]) => {
+          const kpiRows = parseGA4(kpiRes.data)
+          const channels = parseGA4(chRes.data).map(r => ({ ch: r.sessionDefaultChannelGrouping, s: Number(r.sessions) }))
+          const landingPages = parseGA4(lpRes.data).map(r => ({
+            page: r.landingPage, sessions: Number(r.sessions),
+            eng: (Number(r.engagementRate) * 100).toFixed(0) + '%',
+            bounce: (Number(r.bounceRate) * 100).toFixed(0) + '%',
+          }))
+          if (!kpiRows.length) return
+          const k = kpiRows[0]
+          const dur = Math.floor(Number(k.averageSessionDuration) / 60) + ':' +
+            String(Math.round(Number(k.averageSessionDuration) % 60)).padStart(2, '0')
+          ga4 = `=== GA4 LANDING PAGES REPORT — Last ${rangeOpt.label} | ${propName} ===
+Sessions: ${Number(k.sessions).toLocaleString()} | Pageviews: ${Number(k.screenPageViews).toLocaleString()} | Engagement: ${(Number(k.engagementRate)*100).toFixed(1)}% | Avg Duration: ${dur}
+
+Traffic Channels:
+${channels.map(c => `• ${c.ch}: ${c.s.toLocaleString()} sessions`).join('\n')}
+
+Top Landing Pages (entry pages, ordered by sessions):
+${landingPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.eng} engaged, ${p.bounce} bounce`).join('\n')}`
+        })
+      )
+    }
+
+    Promise.allSettled(requests).then(() => {
+      const ctx = [gsc, ga4].filter(Boolean).join('\n\n')
+      if (ctx) setChatContext(ctx)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, selectedGscSite, selectedGa4Prop, analyzeRange])
 
   // ── Conversation actions ──────────────────────────────────────────────────
   function newConversation() {
@@ -802,11 +932,14 @@ export function JarvisAI() {
   // ── Send ──────────────────────────────────────────────────────────────────
   const send = useMutation({
     mutationFn: async ({ text, img }: { text: string; img?: PendingImage }) => {
+      const system = chatContext
+        ? `${MODE_SYSTEM[jarvisMode]}\n\n━━━ LIVE SITE DATA (use this for all recommendations) ━━━\n${chatContext}`
+        : MODE_SYSTEM[jarvisMode]
       const raw: MultiTurnMessage[] = messages.map((m) => ({ role: m.role, content: m.content }))
       const firstUser = raw.findIndex(m => m.role === 'user')
       const history = firstUser >= 0 ? raw.slice(firstUser) : []
-      if (img) return callAIWithImageMulti(MODE_SYSTEM[jarvisMode], history, text, img.attachment, 3000)
-      return callAIMulti(MODE_SYSTEM[jarvisMode], [...history, { role: 'user', content: text }], 3000)
+      if (img) return callAIWithImageMulti(system, history, text, img.attachment, 3000)
+      return callAIMulti(system, [...history, { role: 'user', content: text }], 3000)
     },
     onMutate: ({ text, img }) => {
       setMessages(prev => [...prev, { role: 'user', content: text, ts: time(), imageUrl: img?.url }])
@@ -831,70 +964,68 @@ export function JarvisAI() {
       const rangeOpt   = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
       const today      = new Date().toISOString().slice(0, 10)
       const agoDate    = new Date(Date.now() - rangeOpt.days * 86_400_000).toISOString().slice(0, 10)
-      const ga4Range   = rangeOpt.ga4
       const rangeLabel = rangeOpt.label
-      let gscData = ''
-      let ga4Data = ''
-      let psiData = ''
+      let gscQueries = '', gscPages = '', ga4Data = '', psiData = ''
 
-      // ── Step 1: GSC ───────────────────────────────────────────────────────
+      // ── Step 1: GSC Queries tab + Pages tab ───────────────────────────────
       if (orgId && selectedGscSite) {
-        setAnalyzeStep(`Reading GSC data (${rangeLabel})…`)
-        const [queriesRes, pagesRes] = await Promise.all([
+        setAnalyzeStep(`Reading GSC Queries + Pages (${rangeLabel})…`)
+        const [qRes, pRes] = await Promise.all([
           supabase.functions.invoke('gsc-proxy', {
-            body: {
-              org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
-              params: { startDate: agoDate, endDate: today, dimensions: ['query'], rowLimit: 25 },
-            },
+            body: { org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+              params: { startDate: agoDate, endDate: today, dimensions: ['query'], rowLimit: 50 } },
           }),
           supabase.functions.invoke('gsc-proxy', {
-            body: {
-              org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
-              params: { startDate: agoDate, endDate: today, dimensions: ['page'], rowLimit: 15 },
-            },
+            body: { org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+              params: { startDate: agoDate, endDate: today, dimensions: ['page'], rowLimit: 25 } },
           }),
         ])
 
-        if (!queriesRes.error && !pagesRes.error) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const queries: { query: string; clicks: number; impressions: number; ctr: string; position: number }[] =
-            (queriesRes.data?.rows ?? []).slice(0, 20).map((r: any) => ({
-              query: r.keys[0], clicks: r.clicks, impressions: r.impressions,
-              ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1),
-            }))
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const pages: { url: string; clicks: number; impressions: number; ctr: string; position: number }[] =
-            (pagesRes.data?.rows ?? []).slice(0, 10).map((r: any) => ({
-              url: r.keys[0], clicks: r.clicks, impressions: r.impressions,
-              ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1),
-            }))
-          const totals = queries.reduce(
-            (acc, q) => ({ clicks: acc.clicks + q.clicks, impressions: acc.impressions + q.impressions }),
-            { clicks: 0, impressions: 0 }
-          )
-          gscData = `
-=== GOOGLE SEARCH CONSOLE — Last ${rangeLabel} ===
-Site: ${selectedGscSite}
-Total Clicks: ${totals.clicks.toLocaleString()}
-Total Impressions: ${totals.impressions.toLocaleString()}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const queries = (qRes.data?.rows ?? []).map((r: any) => ({
+          query: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+          ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
+        }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pages = (pRes.data?.rows ?? []).map((r: any) => ({
+          url: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+          ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
+        }))
 
-Top Queries (by clicks):
-${queries.map(q => `• "${q.query}" — ${q.clicks} clicks, ${q.impressions} impr, CTR ${q.ctr}, Avg Pos ${q.position}`).join('\n')}
+        if (queries.length) {
+          const totals = queries.reduce((a, q) => ({ c: a.c + q.clicks, i: a.i + q.impressions }), { c: 0, i: 0 })
+          const pos1_3  = queries.filter(q => q.pos <= 3)
+          const pos4_10 = queries.filter(q => q.pos > 3 && q.pos <= 10)
+          const pos11   = queries.filter(q => q.pos > 10 && q.pos <= 20)
+          const pos21   = queries.filter(q => q.pos > 20)
 
-Top Pages (by clicks):
-${pages.map(p => `• ${p.url} — ${p.clicks} clicks, ${p.impressions} impr, CTR ${p.ctr}, Pos ${p.position}`).join('\n')}`
+          const group = (label: string, qs: typeof queries) =>
+            qs.length ? `${label}:\n${qs.map(q => `  "${q.query}" — ${q.clicks} clicks, ${q.impressions} impr, CTR ${q.ctr}, Pos ${q.pos}`).join('\n')}` : ''
+
+          gscQueries = `=== GSC QUERIES TAB — Last ${rangeLabel} | ${selectedGscSite} ===
+Total Clicks: ${totals.c.toLocaleString()} | Total Impressions: ${totals.i.toLocaleString()}
+
+${group('Ranking #1–3 (defending — protect CTR)', pos1_3)}
+${group('Ranking #4–10 (quick-win targets — push to page 1 top)', pos4_10)}
+${group('Ranking #11–20 (developing — content & link investment)', pos11)}
+${group('Ranking #21+ (early stage — long-tail content gaps)', pos21)}`
+        }
+
+        if (pages.length) {
+          gscPages = `=== GSC PAGES TAB — Top ${pages.length} Pages ===
+${pages.map(p => `• ${p.url} — ${p.clicks} clicks, ${p.impressions} impr, CTR ${p.ctr}, Pos ${p.pos}`).join('\n')}`
         }
       }
 
-      // ── Step 2: GA4 ───────────────────────────────────────────────────────
+      // ── Step 2: GA4 Landing Pages report ─────────────────────────────────
       if (orgId && selectedGa4Prop) {
-        setAnalyzeStep(`Reading GA4 data (${rangeLabel})…`)
+        setAnalyzeStep(`Reading GA4 landing pages (${rangeLabel})…`)
         const propName = ga4Props.find(p => p.id === selectedGa4Prop)?.name || selectedGa4Prop
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parseRows = (data: any): Record<string, string>[] => {
+        const parseGA4 = (data: any): Record<string, string>[] => {
           if (!data?.rows) return []
           const dims: string[] = (data.dimensionHeaders ?? []).map((h: any) => h.name)
-          const mets: string[] = (data.metricHeaders ?? []).map((h: any) => h.name)
+          const mets: string[] = (data.metricHeaders   ?? []).map((h: any) => h.name)
           return data.rows.map((row: any) => {
             const obj: Record<string, string> = {}
             row.dimensionValues?.forEach((v: any, i: number) => { obj[dims[i]] = v.value })
@@ -903,71 +1034,50 @@ ${pages.map(p => `• ${p.url} — ${p.clicks} clicks, ${p.impressions} impr, CT
           })
         }
 
-        const [kpiRes, channelRes, pagesRes] = await Promise.all([
+        const [kpiRes, chRes, lpRes] = await Promise.all([
           supabase.functions.invoke('ga4-proxy', {
-            body: {
-              org_id: orgId, property_id: selectedGa4Prop,
-              report: {
-                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
-                metrics: [
-                  { name: 'sessions' }, { name: 'screenPageViews' },
-                  { name: 'engagementRate' }, { name: 'averageSessionDuration' },
-                ],
-              },
-            },
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
+                metrics: [{ name: 'sessions' }, { name: 'screenPageViews' }, { name: 'engagementRate' }, { name: 'averageSessionDuration' }] } },
           }),
           supabase.functions.invoke('ga4-proxy', {
-            body: {
-              org_id: orgId, property_id: selectedGa4Prop,
-              report: {
-                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
                 dimensions: [{ name: 'sessionDefaultChannelGrouping' }],
                 metrics: [{ name: 'sessions' }],
-                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                limit: 8,
-              },
-            },
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 8 } },
           }),
           supabase.functions.invoke('ga4-proxy', {
-            body: {
-              org_id: orgId, property_id: selectedGa4Prop,
-              report: {
-                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
-                dimensions: [{ name: 'pagePath' }],
-                metrics: [{ name: 'sessions' }, { name: 'engagementRate' }],
-                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-                limit: 10,
-              },
-            },
+            body: { org_id: orgId, property_id: selectedGa4Prop,
+              report: { dateRanges: [{ startDate: rangeOpt.ga4, endDate: 'today' }],
+                dimensions: [{ name: 'landingPage' }],
+                metrics: [{ name: 'sessions' }, { name: 'engagementRate' }, { name: 'bounceRate' }],
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }], limit: 25 } },
           }),
         ])
 
-        const kpiRows  = parseRows(kpiRes.data)
-        const channels = parseRows(channelRes.data).map(r => ({
-          channel: r.sessionDefaultChannelGrouping, sessions: Number(r.sessions),
-        }))
-        const topPages = parseRows(pagesRes.data).map(r => ({
-          page: r.pagePath, sessions: Number(r.sessions),
-          engagement: (Number(r.engagementRate) * 100).toFixed(0) + '%',
+        const kpiRows = parseGA4(kpiRes.data)
+        const channels = parseGA4(chRes.data).map(r => ({ ch: r.sessionDefaultChannelGrouping, s: Number(r.sessions) }))
+        const landingPages = parseGA4(lpRes.data).map(r => ({
+          page: r.landingPage,
+          sessions: Number(r.sessions),
+          eng: (Number(r.engagementRate) * 100).toFixed(0) + '%',
+          bounce: (Number(r.bounceRate) * 100).toFixed(0) + '%',
         }))
 
-        if (kpiRows.length > 0) {
-          const k   = kpiRows[0]
+        if (kpiRows.length) {
+          const k = kpiRows[0]
           const dur = Math.floor(Number(k.averageSessionDuration) / 60) + ':' +
             String(Math.round(Number(k.averageSessionDuration) % 60)).padStart(2, '0')
-          ga4Data = `
-=== GOOGLE ANALYTICS 4 — Last ${rangeLabel} ===
-Property: ${propName}
-Sessions:             ${Number(k.sessions).toLocaleString()}
-Pageviews:            ${Number(k.screenPageViews).toLocaleString()}
-Engagement Rate:      ${(Number(k.engagementRate) * 100).toFixed(1)}%
-Avg Session Duration: ${dur}
+          ga4Data = `=== GA4 OVERVIEW — Last ${rangeLabel} | ${propName} ===
+Sessions: ${Number(k.sessions).toLocaleString()} | Pageviews: ${Number(k.screenPageViews).toLocaleString()} | Engagement: ${(Number(k.engagementRate)*100).toFixed(1)}% | Avg Duration: ${dur}
 
 Traffic Channels:
-${channels.map(c => `• ${c.channel}: ${c.sessions.toLocaleString()} sessions`).join('\n')}
+${channels.map(c => `• ${c.ch}: ${c.s.toLocaleString()} sessions`).join('\n')}
 
-Top Pages:
-${topPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.engagement} engaged`).join('\n')}`
+=== GA4 LANDING PAGES REPORT — Top ${landingPages.length} Entry Pages ===
+(These are the pages users LAND on — cross-reference with GSC Pages tab for SEO alignment gaps)
+${landingPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.eng} engaged, ${p.bounce} bounce rate`).join('\n')}`
         }
       }
 
@@ -988,39 +1098,20 @@ ${topPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.engagement} e
             const cls    = Math.round((audits['cumulative-layout-shift']?.numericValue ?? 0) * 100) / 100
             const fcp    = Math.round((audits['first-contentful-paint']?.numericValue ?? 0) / 10) / 100
             const ttfb   = Math.round(audits['server-response-time']?.numericValue ?? 0)
-
-            const oppIds = [
-              'render-blocking-resources', 'unused-javascript', 'unused-css-rules',
-              'uses-optimized-images', 'uses-webp-images', 'uses-text-compression',
-              'server-response-time', 'total-byte-weight', 'dom-size',
-            ]
-            const opps = oppIds
-              .map(id => {
-                const a = audits[id]
-                if (!a || a.score === 1 || a.score === null) return null
-                const ms = Math.round(a.details?.overallSavingsMs ?? 0)
-                const kb = Math.round((a.details?.overallSavingsBytes ?? 0) / 1024)
-                const sv = ms >= 100 ? `${ms}ms` : kb > 0 ? `${kb}KB` : a.displayValue || 'fix needed'
-                return `• ${a.title}: ${sv}`
-              })
-              .filter((o): o is string => o !== null)
-
-            psiData = `
-=== SITE AUDIT — PageSpeed Insights Mobile ===
-URL:               ${url}
-Performance Score: ${score}/100 ${score >= 90 ? '(Good ✅)' : score >= 50 ? '(Needs improvement ⚠️)' : '(Poor ❌)'}
-
-Core Web Vitals:
-• LCP:  ${lcp}s  ${lcp <= 2.5 ? '✅' : lcp <= 4 ? '⚠️' : '❌'}  (target <2.5s)
-• TBT:  ${tbt}ms ${tbt <= 200 ? '✅' : tbt <= 600 ? '⚠️' : '❌'}  (target <200ms)
-• CLS:  ${cls}   ${cls <= 0.1 ? '✅' : cls <= 0.25 ? '⚠️' : '❌'}  (target <0.1)
-• FCP:  ${fcp}s
-• TTFB: ${ttfb}ms
-
-Opportunities:
-${opps.length > 0 ? opps.join('\n') : '• No major opportunities — site is well-optimised'}`
+            const oppIds = ['render-blocking-resources','unused-javascript','unused-css-rules','uses-optimized-images','uses-webp-images','uses-text-compression','server-response-time','total-byte-weight','dom-size']
+            const opps = oppIds.map(id => {
+              const a = audits[id]
+              if (!a || a.score === 1 || a.score === null) return null
+              const ms = Math.round(a.details?.overallSavingsMs ?? 0)
+              const kb = Math.round((a.details?.overallSavingsBytes ?? 0) / 1024)
+              return `• ${a.title}: ${ms >= 100 ? `${ms}ms` : kb > 0 ? `${kb}KB` : a.displayValue || 'fix needed'}`
+            }).filter((o): o is string => o !== null)
+            psiData = `=== PAGESPEED INSIGHTS (Mobile) ===
+URL: ${url} | Score: ${score}/100 ${score >= 90 ? '(Good)' : score >= 50 ? '(Needs improvement)' : '(Poor)'}
+LCP: ${lcp}s ${lcp <= 2.5 ? '(Good)' : lcp <= 4 ? '(Needs work)' : '(Poor)'} | TBT: ${tbt}ms | CLS: ${cls} | FCP: ${fcp}s | TTFB: ${ttfb}ms
+Opportunities: ${opps.length ? '\n' + opps.join('\n') : 'None — site is well-optimised'}`
           }
-        } catch { /* PSI unavailable — skip */ }
+        } catch { /* PSI unavailable */ }
       }
 
       // ── Step 4: Build prompt & call AI ────────────────────────────────────
@@ -1028,48 +1119,51 @@ ${opps.length > 0 ? opps.join('\n') : '• No major opportunities — site is we
       const site    = selectedGscSite
         ? selectedGscSite.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')
         : (domain || 'your site')
-      const hasData = gscData || ga4Data || psiData
+      const hasData = gscQueries || ga4Data || psiData
 
       const prompt = hasData
-        ? `You are performing a full SEO analysis for ${site} using real data from the last ${rangeLabel}.
-${gscData}
+        ? `Full SEO analysis for ${site} — last ${rangeLabel}. Use EVERY data point below.
+
+${gscQueries}
+
+${gscPages}
+
 ${ga4Data}
+
 ${psiData}
 
-Based on this real data, produce a structured SEO analysis report with these exact sections:
+━━━ REPORT STRUCTURE (follow exactly) ━━━
+
+**JARVIS SEO ANALYSIS REPORT — ${site}**
+Reporting Period: Last ${rangeLabel} | Mode: ${jarvisMode.toUpperCase()}-HAT
 
 **KEY FINDINGS**
-List 3–5 specific, data-backed findings. Reference actual numbers from the data provided. For example: "7 queries ranking position 4–10 represent X impressions but only Y clicks — CTR wins available" or "Organic traffic is only X% of sessions — dangerous single-channel dependency."
+Exactly 4–6 findings, each referencing specific numbers, URLs, or queries from the data above. Format each as one sentence stating the insight + the specific number + why it matters.
 
 **TRAFFIC ANALYSIS**
-- GSC: Which queries are under-monetised (high impressions, low CTR or high position)? Which pages are strongest vs weakest?
-- GA4: What does the channel breakdown reveal about traffic diversification? Is engagement rate healthy?
-- What do the two data sets tell us together about user intent vs actual traffic behaviour?
 
-**TECHNICAL HEALTH**
-- Rate the site's current technical performance based on the PageSpeed score and Core Web Vitals
-- Which performance issues are most damaging to both rankings and conversions?
-- Priority fix order with expected impact
+**GSC: Query Performance**
+- Group the queries by position bracket (1–3 / 4–10 / 11–20 / 21+). For the 4–10 bracket specifically, calculate the combined impressions and identify which queries have CTR significantly below the expected rate for that position — these are title/meta description fix candidates.
+- For the pages tab: identify the strongest page (highest clicks), weakest page (lowest CTR for its impression volume), and any page with position < 10 but CTR < 3% (meta optimisation needed).
+
+**GA4: Landing Page Behaviour**
+- Cross-reference the GA4 landing pages with GSC pages. List any GSC top pages that do NOT appear in GA4 top landing pages — this gap means Google sends traffic but users aren't entering through those pages organically.
+- Flag any landing pages with bounce rate > 60% AND high session volume — these are conversion leaks.
+- Comment on channel diversification: what % of sessions is organic vs paid vs direct?
 
 **QUICK WINS — This Week**
-List exactly 5 specific, actionable tasks doable within 48–72 hours each with measurable impact. Reference actual pages or queries from the data where possible.
+Exactly 5 tasks. Each must name a specific page URL or query string from the data. Format:
+1. [Task] — [specific page/query] — [expected impact] — [effort: hours]
 
 **90-DAY STRATEGY ROADMAP**
-Month 1 — Foundation: [3–4 specific actions with clear outcomes]
-Month 2 — Growth: [3–4 specific actions building on Month 1]
-Month 3 — Scale: [3–4 specific actions to compound results]
+Month 1 — Foundation (weeks 1–4): 3–4 actions addressing the biggest gaps in the data
+Month 2 — Growth (weeks 5–8): 3–4 actions building content for position 11–20 queries
+Month 3 — Scale (weeks 9–12): 3–4 actions to compound and diversify
 
-Be precise. Reference actual numbers, page URLs, and query strings from the data. No filler — every sentence must be actionable.`
-        : `The user has not yet connected GSC, GA4, or PageSpeed Insights for ${site}.
+Use exact data. No generics. Every recommendation must trace back to a specific number in the data provided.`
+        : `The user has not yet connected GSC, GA4, or PageSpeed Insights for ${site}. Provide a concise onboarding guide: explain what each data source provides for iGaming SEO, list key metrics to monitor, and give a general 90-day iGaming SEO starting strategy.`
 
-Provide a concise onboarding guide:
-1. Explain what each data source provides and why it matters for iGaming SEO
-2. List the key metrics to monitor once each is connected
-3. Provide a general 90-day iGaming SEO starting strategy for this domain
-
-Keep it practical and specific to iGaming SEO.`
-
-      return callAIMulti(MODE_SYSTEM[jarvisMode], [{ role: 'user', content: prompt }], 4000)
+      return callAIMulti(MODE_SYSTEM[jarvisMode], [{ role: 'user', content: prompt }], 4500)
     },
     onMutate: () => {
       const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]

@@ -981,19 +981,21 @@ ${landingPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.eng} enga
           }),
         ])
 
+        type GscQRow = { query: string; clicks: number; impressions: number; ctr: string; pos: number }
+        type GscPRow = { url: string; clicks: number; impressions: number; ctr: string; pos: number }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const queries = (qRes.data?.rows ?? []).map((r: any) => ({
+        const queries: GscQRow[] = (qRes.data?.rows ?? []).map((r: any) => ({
           query: r.keys[0], clicks: r.clicks, impressions: r.impressions,
           ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
         }))
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pages = (pRes.data?.rows ?? []).map((r: any) => ({
+        const pages: GscPRow[] = (pRes.data?.rows ?? []).map((r: any) => ({
           url: r.keys[0], clicks: r.clicks, impressions: r.impressions,
           ctr: (r.ctr * 100).toFixed(1) + '%', pos: +r.position.toFixed(1),
         }))
 
         if (queries.length) {
-          const totals = queries.reduce((a, q) => ({ c: a.c + q.clicks, i: a.i + q.impressions }), { c: 0, i: 0 })
+          const totals = queries.reduce((a: { c: number; i: number }, q: GscQRow) => ({ c: a.c + q.clicks, i: a.i + q.impressions }), { c: 0, i: 0 })
           const pos1_3  = queries.filter(q => q.pos <= 3)
           const pos4_10 = queries.filter(q => q.pos > 3 && q.pos <= 10)
           const pos11   = queries.filter(q => q.pos > 10 && q.pos <= 20)

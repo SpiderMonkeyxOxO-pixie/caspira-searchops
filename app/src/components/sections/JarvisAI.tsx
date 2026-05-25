@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
   Send, Brain, Zap, User, ShieldCheck, Shuffle, Skull, ImageIcon, X,
-  Copy, Check, Plus, Trash2, MessageSquare, Loader2, Sparkles,
+  Copy, Check, Plus, Trash2, MessageSquare, Loader2, Sparkles, FileDown, FileText,
 } from 'lucide-react'
 import { callAIMulti, callAIWithImageMulti, isAIReady, getActiveProvider, type ImageAttachment, type ImageMime, type MultiTurnMessage } from '@/lib/ai'
 import { useStore } from '@/store'
@@ -300,19 +300,195 @@ function fmtConvDate(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function MessageContent({ content }: { content: string }) {
-  const parts = content.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
+function InlineContent({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
   return (
     <span>
       {parts.map((p, i) => {
         if (p.startsWith('**') && p.endsWith('**'))
-          return <strong key={i}>{p.slice(2, -2)}</strong>
+          return <strong key={i} className="font-semibold text-tx">{p.slice(2, -2)}</strong>
         if (p.startsWith('`') && p.endsWith('`'))
           return <code key={i} className="bg-black/20 px-1 rounded text-[11px] font-mono-jarvis">{p.slice(1, -1)}</code>
-        return <span key={i} style={{ whiteSpace: 'pre-wrap' }}>{p}</span>
+        return <span key={i}>{p}</span>
       })}
     </span>
   )
+}
+
+function MessageContent({ content }: { content: string }) {
+  const lines = content.split('\n')
+  const result: React.ReactNode[] = []
+  const liBuffer: React.ReactNode[] = []
+  let liKind: 'ul' | 'ol' | null = null
+
+  const flush = (key: string) => {
+    if (!liBuffer.length) return
+    result.push(
+      liKind === 'ul'
+        ? <ul key={key} className="my-2 space-y-1.5 list-none pl-0">{[...liBuffer]}</ul>
+        : <ol key={key} className="my-2 space-y-1.5 list-none pl-0">{[...liBuffer]}</ol>
+    )
+    liBuffer.length = 0
+    liKind = null
+  }
+
+  lines.forEach((line, i) => {
+    const k = `${i}`
+
+    if (!line.trim()) {
+      flush(`fl-${i}`)
+      result.push(<div key={`sp-${i}`} className="h-2" />)
+      return
+    }
+
+    if (/^[-=]{3,}$/.test(line.trim())) {
+      flush(`fl-${i}`)
+      result.push(<hr key={`hr-${i}`} className="border-border/50 my-3" />)
+      return
+    }
+
+    if (line.startsWith('### ')) {
+      flush(`fl-${i}`)
+      result.push(<h3 key={k} className="text-sm font-bold text-tx mt-4 mb-1.5"><InlineContent text={line.slice(4)} /></h3>)
+      return
+    }
+
+    if (line.startsWith('## ')) {
+      flush(`fl-${i}`)
+      result.push(<h2 key={k} className="text-base font-bold text-accent mt-5 mb-2"><InlineContent text={line.slice(3)} /></h2>)
+      return
+    }
+
+    const bh = line.match(/^\*\*([^*]+)\*\*$/)
+    if (bh) {
+      flush(`fl-${i}`)
+      result.push(
+        <div key={k} className="flex items-center gap-2 mt-5 mb-2">
+          <span className="w-[3px] h-[18px] rounded-full bg-accent shrink-0" />
+          <span className="text-[10px] font-bold text-accent tracking-[0.1em] uppercase">{bh[1]}</span>
+        </div>
+      )
+      return
+    }
+
+    if (line.match(/^[•\-\*] /)) {
+      if (liKind !== 'ul') { flush(`fl-${i}`); liKind = 'ul' }
+      liBuffer.push(
+        <li key={k} className="flex gap-2 text-sm text-tx/90 leading-relaxed">
+          <span className="text-accent/70 shrink-0 text-xs mt-0.5">▸</span>
+          <InlineContent text={line.replace(/^[•\-\*] /, '')} />
+        </li>
+      )
+      return
+    }
+
+    const nm = line.match(/^(\d+)\.\s+(.+)/)
+    if (nm) {
+      if (liKind !== 'ol') { flush(`fl-${i}`); liKind = 'ol' }
+      liBuffer.push(
+        <li key={k} className="flex gap-2 text-sm text-tx/90 leading-relaxed">
+          <span className="text-accent font-bold text-[11px] shrink-0 w-5 text-right font-mono-jarvis mt-0.5">{nm[1]}.</span>
+          <InlineContent text={nm[2]} />
+        </li>
+      )
+      return
+    }
+
+    flush(`fl-${i}`)
+    result.push(
+      <p key={k} className="text-sm text-tx/90 leading-relaxed">
+        <InlineContent text={line} />
+      </p>
+    )
+  })
+
+  flush('final')
+  return <div className="space-y-0.5">{result}</div>
+}
+
+// ── Export helpers ────────────────────────────────────────────────────────────
+
+function toExportHTML(content: string): string {
+  const lines = content.split('\n')
+  const out: string[] = []
+  let inList = false
+  let listTag = ''
+  const closeList = () => { if (inList) { out.push(`</${listTag}>`); inList = false; listTag = '' } }
+  const inline = (t: string) =>
+    t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
+
+  for (const line of lines) {
+    if (!line.trim()) { closeList(); continue }
+    if (/^[-=]{3,}$/.test(line.trim())) { closeList(); out.push('<hr>'); continue }
+    if (line.startsWith('### ')) { closeList(); out.push(`<h3>${inline(line.slice(4))}</h3>`); continue }
+    if (line.startsWith('## '))  { closeList(); out.push(`<h2>${inline(line.slice(3))}</h2>`); continue }
+    const bh = line.match(/^\*\*([^*]+)\*\*$/)
+    if (bh) { closeList(); out.push(`<div class="section-header">${bh[1]}</div>`); continue }
+    if (line.match(/^[•\-\*] /)) {
+      if (!inList || listTag !== 'ul') { closeList(); out.push('<ul>'); inList = true; listTag = 'ul' }
+      out.push(`<li>${inline(line.replace(/^[•\-\*] /, ''))}</li>`)
+      continue
+    }
+    const nm = line.match(/^(\d+)\.\s+(.+)/)
+    if (nm) {
+      if (!inList || listTag !== 'ol') { closeList(); out.push('<ol>'); inList = true; listTag = 'ol' }
+      out.push(`<li>${inline(nm[2])}</li>`)
+      continue
+    }
+    closeList()
+    out.push(`<p>${inline(line)}</p>`)
+  }
+  closeList()
+  return out.join('\n')
+}
+
+const REPORT_CSS = `
+  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px 40px;color:#1a1a2e;font-size:13px;line-height:1.75}
+  h1{font-size:22px;color:#4f46e5;border-bottom:2px solid #4f46e5;padding-bottom:8px;margin-bottom:4px}
+  h2{font-size:16px;color:#4f46e5;margin-top:24px}
+  h3{font-size:14px;color:#4f46e5;margin-top:18px}
+  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:18px 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#3730a3}
+  ul{list-style:none;padding:0;margin:6px 0}
+  ul li{display:flex;gap:8px;margin:5px 0}
+  ul li::before{content:"▸";color:#6366f1;flex-shrink:0}
+  ol{padding-left:20px;margin:6px 0}
+  ol li{margin:5px 0}
+  code{background:#f1f1f3;padding:1px 5px;border-radius:3px;font-family:'Courier New',monospace;font-size:11px}
+  hr{border:none;border-top:1px solid #d1d5db;margin:16px 0}
+  p{margin:5px 0}strong{font-weight:600}
+  .meta{color:#6b7280;font-size:11px;margin-bottom:28px}
+  @media print{body{margin:0;max-width:100%}}
+`
+
+function exportToPDF(content: string, title = 'Jarvis SEO Report') {
+  const html = toExportHTML(content)
+  const win  = window.open('', '_blank')
+  if (!win) return
+  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>${REPORT_CSS}</style></head><body>
+<h1>${title}</h1><p class="meta">Generated by Jarvis SEO · ${date}</p>${html}</body></html>`)
+  win.document.close()
+  win.focus()
+  setTimeout(() => win.print(), 400)
+}
+
+function exportToWord(content: string, title = 'Jarvis SEO Report') {
+  const html = toExportHTML(content)
+  const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const doc  = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>${title}</title><style>${REPORT_CSS.replace('@media print{body{margin:0;max-width:100%}}', '')}</style></head>
+<body><h1>${title}</h1><p class="meta">Generated by Jarvis SEO · ${date}</p>${html}</body></html>`
+  const blob = new Blob(['﻿', doc], { type: 'application/msword' })
+  const url  = URL.createObjectURL(blob)
+  const a    = Object.assign(document.createElement('a'), {
+    href: url, download: `jarvis-report-${new Date().toISOString().slice(0, 10)}.doc`,
+  })
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -965,20 +1141,37 @@ Keep it practical and specific to iGaming SEO.`
                   <div className="text-[10px] opacity-50 mt-1 font-mono-jarvis">{m.ts}</div>
                 </div>
 
-                {/* Copy button — assistant only */}
+                {/* Action buttons — assistant only */}
                 {m.role === 'assistant' && m.content && (
-                  <button
-                    onClick={() => copyMessage(m.content, i)}
-                    title="Copy reply"
-                    className="absolute -bottom-2 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity
-                      flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
-                      text-[10px] text-muted hover:text-accent hover:border-accent cursor-pointer shadow-sm"
-                  >
-                    {copiedIdx === i
-                      ? <><Check size={10} className="text-accent3" /><span className="font-mono-jarvis text-accent3">Copied</span></>
-                      : <><Copy size={10} /><span className="font-mono-jarvis">Copy</span></>
-                    }
-                  </button>
+                  <div className="absolute -bottom-5 right-2 opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-1">
+                    <button
+                      onClick={() => copyMessage(m.content, i)}
+                      title="Copy to clipboard"
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
+                        text-[10px] text-muted hover:text-accent hover:border-accent cursor-pointer shadow-sm"
+                    >
+                      {copiedIdx === i
+                        ? <><Check size={10} className="text-accent3" /><span className="font-mono-jarvis text-accent3">Copied</span></>
+                        : <><Copy size={10} /><span className="font-mono-jarvis">Copy</span></>
+                      }
+                    </button>
+                    <button
+                      onClick={() => exportToPDF(m.content)}
+                      title="Export as PDF"
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
+                        text-[10px] text-muted hover:text-red-400 hover:border-red-400/50 cursor-pointer shadow-sm"
+                    >
+                      <FileDown size={10} /><span className="font-mono-jarvis">PDF</span>
+                    </button>
+                    <button
+                      onClick={() => exportToWord(m.content)}
+                      title="Export as Word document"
+                      className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface border border-border
+                        text-[10px] text-muted hover:text-blue-400 hover:border-blue-400/50 cursor-pointer shadow-sm"
+                    >
+                      <FileText size={10} /><span className="font-mono-jarvis">Word</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

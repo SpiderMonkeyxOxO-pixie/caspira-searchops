@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
   Send, Brain, Zap, User, ShieldCheck, Shuffle, Skull, ImageIcon, X,
-  Copy, Check, Plus, Trash2, MessageSquare,
+  Copy, Check, Plus, Trash2, MessageSquare, Loader2, Sparkles,
 } from 'lucide-react'
 import { callAIMulti, callAIWithImageMulti, isAIReady, getActiveProvider, type ImageAttachment, type ImageMime, type MultiTurnMessage } from '@/lib/ai'
 import { useStore } from '@/store'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -270,6 +272,17 @@ function modeGreeting(mode: JarvisMode, domain: string): string {
   return `**BLACK-HAT mode activated.** No guardrails. Full aggression.\n\nI'll give you exact tools, workflows, and scale. I have full context on \`${site}\`. What's the target?`
 }
 
+// ── Analyze range options ─────────────────────────────────────────────────────
+
+type AnalyzeRange = '7d' | '28d' | '3m' | '6m' | '12m'
+const RANGE_OPTIONS: { label: string; value: AnalyzeRange; days: number; ga4: string }[] = [
+  { label: '7 days',    value: '7d',  days: 7,   ga4: '7daysAgo'   },
+  { label: '28 days',   value: '28d', days: 28,  ga4: '28daysAgo'  },
+  { label: '3 months',  value: '3m',  days: 90,  ga4: '90daysAgo'  },
+  { label: '6 months',  value: '6m',  days: 180, ga4: '180daysAgo' },
+  { label: '12 months', value: '12m', days: 365, ga4: '365daysAgo' },
+]
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY    = 'jarvis_conversations'
@@ -305,7 +318,8 @@ function MessageContent({ content }: { content: string }) {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function JarvisAI() {
-  const { domain, setSection, aiProvider, jarvisMode, setJarvisMode, setSettingsOpen } = useStore()
+  const { domain, setSection, aiProvider, jarvisMode, setJarvisMode, setSettingsOpen, psiKey } = useStore()
+  const orgId = useAuthStore(s => s.org?.id ?? '')
   const ready         = isAIReady()
   const provider      = getActiveProvider()
   const providerLabel = provider === 'openrouter' ? 'OpenRouter' : 'Claude Sonnet'
@@ -322,6 +336,12 @@ export function JarvisAI() {
   const [input,        setInput]        = useState('')
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null)
   const [copiedIdx,    setCopiedIdx]    = useState<number | null>(null)
+  const [analyzeStep,    setAnalyzeStep]    = useState<string | null>(null)
+  const [analyzeRange,   setAnalyzeRange]   = useState<AnalyzeRange>('3m')
+  const [gscSites,       setGscSites]       = useState<string[]>([])
+  const [selectedGscSite,setSelectedGscSite]= useState<string>('')
+  const [ga4Props,       setGa4Props]       = useState<{ id: string; name: string }[]>([])
+  const [selectedGa4Prop,setSelectedGa4Prop]= useState<string>('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileRef   = useRef<HTMLInputElement>(null)
 
@@ -370,6 +390,39 @@ export function JarvisAI() {
   useEffect(() => {
     if (messages.length > 1) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // ── Load GSC + GA4 connections for the analyze picker ────────────────────
+  useEffect(() => {
+    if (!orgId) return
+    supabase
+      .from('jarvis_gsc_connections')
+      .select('selected_site, available_sites')
+      .eq('org_id', orgId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        const sites: string[] = data.available_sites ?? []
+        setGscSites(sites)
+        setSelectedGscSite(data.selected_site || sites[0] || '')
+      })
+    supabase
+      .from('jarvis_ga4_connections')
+      .select('property_id, property_name, available_properties')
+      .eq('org_id', orgId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const avail: { id: string; name: string }[] = (data.available_properties ?? []).map((p: any) => ({
+          id: p.id, name: p.displayName || p.id,
+        }))
+        const props = avail.length > 0 ? avail
+          : data.property_id ? [{ id: data.property_id, name: data.property_name || data.property_id }]
+          : []
+        setGa4Props(props)
+        setSelectedGa4Prop(data.property_id || props[0]?.id || '')
+      })
+  }, [orgId])
 
   // ── Conversation actions ──────────────────────────────────────────────────
   function newConversation() {
@@ -460,6 +513,278 @@ export function JarvisAI() {
       const msg = raw === 'NO_KEY'
         ? 'No API key configured. Go to **Settings** to add your OpenRouter or Anthropic key.'
         : `**${providerLabel} error:** ${raw}`
+      setMessages(prev => [...prev, { role: 'assistant', content: msg, ts: time() }])
+    },
+  })
+
+  // ── Auto-site analysis ────────────────────────────────────────────────────
+  const analyze = useMutation({
+    mutationFn: async () => {
+      const rangeOpt   = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
+      const today      = new Date().toISOString().slice(0, 10)
+      const agoDate    = new Date(Date.now() - rangeOpt.days * 86_400_000).toISOString().slice(0, 10)
+      const ga4Range   = rangeOpt.ga4
+      const rangeLabel = rangeOpt.label
+      let gscData = ''
+      let ga4Data = ''
+      let psiData = ''
+
+      // ── Step 1: GSC ───────────────────────────────────────────────────────
+      if (orgId && selectedGscSite) {
+        setAnalyzeStep(`Reading GSC data (${rangeLabel})…`)
+        const [queriesRes, pagesRes] = await Promise.all([
+          supabase.functions.invoke('gsc-proxy', {
+            body: {
+              org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+              params: { startDate: agoDate, endDate: today, dimensions: ['query'], rowLimit: 25 },
+            },
+          }),
+          supabase.functions.invoke('gsc-proxy', {
+            body: {
+              org_id: orgId, site_url: selectedGscSite, endpoint: 'searchAnalytics',
+              params: { startDate: agoDate, endDate: today, dimensions: ['page'], rowLimit: 15 },
+            },
+          }),
+        ])
+
+        if (!queriesRes.error && !pagesRes.error) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const queries: { query: string; clicks: number; impressions: number; ctr: string; position: number }[] =
+            (queriesRes.data?.rows ?? []).slice(0, 20).map((r: any) => ({
+              query: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+              ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1),
+            }))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const pages: { url: string; clicks: number; impressions: number; ctr: string; position: number }[] =
+            (pagesRes.data?.rows ?? []).slice(0, 10).map((r: any) => ({
+              url: r.keys[0], clicks: r.clicks, impressions: r.impressions,
+              ctr: (r.ctr * 100).toFixed(1) + '%', position: +r.position.toFixed(1),
+            }))
+          const totals = queries.reduce(
+            (acc, q) => ({ clicks: acc.clicks + q.clicks, impressions: acc.impressions + q.impressions }),
+            { clicks: 0, impressions: 0 }
+          )
+          gscData = `
+=== GOOGLE SEARCH CONSOLE — Last ${rangeLabel} ===
+Site: ${selectedGscSite}
+Total Clicks: ${totals.clicks.toLocaleString()}
+Total Impressions: ${totals.impressions.toLocaleString()}
+
+Top Queries (by clicks):
+${queries.map(q => `• "${q.query}" — ${q.clicks} clicks, ${q.impressions} impr, CTR ${q.ctr}, Avg Pos ${q.position}`).join('\n')}
+
+Top Pages (by clicks):
+${pages.map(p => `• ${p.url} — ${p.clicks} clicks, ${p.impressions} impr, CTR ${p.ctr}, Pos ${p.position}`).join('\n')}`
+        }
+      }
+
+      // ── Step 2: GA4 ───────────────────────────────────────────────────────
+      if (orgId && selectedGa4Prop) {
+        setAnalyzeStep(`Reading GA4 data (${rangeLabel})…`)
+        const propName = ga4Props.find(p => p.id === selectedGa4Prop)?.name || selectedGa4Prop
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const parseRows = (data: any): Record<string, string>[] => {
+          if (!data?.rows) return []
+          const dims: string[] = (data.dimensionHeaders ?? []).map((h: any) => h.name)
+          const mets: string[] = (data.metricHeaders ?? []).map((h: any) => h.name)
+          return data.rows.map((row: any) => {
+            const obj: Record<string, string> = {}
+            row.dimensionValues?.forEach((v: any, i: number) => { obj[dims[i]] = v.value })
+            row.metricValues?.forEach((v: any, i: number) => { obj[mets[i]] = v.value })
+            return obj
+          })
+        }
+
+        const [kpiRes, channelRes, pagesRes] = await Promise.all([
+          supabase.functions.invoke('ga4-proxy', {
+            body: {
+              org_id: orgId, property_id: selectedGa4Prop,
+              report: {
+                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
+                metrics: [
+                  { name: 'sessions' }, { name: 'screenPageViews' },
+                  { name: 'engagementRate' }, { name: 'averageSessionDuration' },
+                ],
+              },
+            },
+          }),
+          supabase.functions.invoke('ga4-proxy', {
+            body: {
+              org_id: orgId, property_id: selectedGa4Prop,
+              report: {
+                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
+                dimensions: [{ name: 'sessionDefaultChannelGrouping' }],
+                metrics: [{ name: 'sessions' }],
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+                limit: 8,
+              },
+            },
+          }),
+          supabase.functions.invoke('ga4-proxy', {
+            body: {
+              org_id: orgId, property_id: selectedGa4Prop,
+              report: {
+                dateRanges: [{ startDate: ga4Range, endDate: 'today' }],
+                dimensions: [{ name: 'pagePath' }],
+                metrics: [{ name: 'sessions' }, { name: 'engagementRate' }],
+                orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+                limit: 10,
+              },
+            },
+          }),
+        ])
+
+        const kpiRows  = parseRows(kpiRes.data)
+        const channels = parseRows(channelRes.data).map(r => ({
+          channel: r.sessionDefaultChannelGrouping, sessions: Number(r.sessions),
+        }))
+        const topPages = parseRows(pagesRes.data).map(r => ({
+          page: r.pagePath, sessions: Number(r.sessions),
+          engagement: (Number(r.engagementRate) * 100).toFixed(0) + '%',
+        }))
+
+        if (kpiRows.length > 0) {
+          const k   = kpiRows[0]
+          const dur = Math.floor(Number(k.averageSessionDuration) / 60) + ':' +
+            String(Math.round(Number(k.averageSessionDuration) % 60)).padStart(2, '0')
+          ga4Data = `
+=== GOOGLE ANALYTICS 4 — Last ${rangeLabel} ===
+Property: ${propName}
+Sessions:             ${Number(k.sessions).toLocaleString()}
+Pageviews:            ${Number(k.screenPageViews).toLocaleString()}
+Engagement Rate:      ${(Number(k.engagementRate) * 100).toFixed(1)}%
+Avg Session Duration: ${dur}
+
+Traffic Channels:
+${channels.map(c => `• ${c.channel}: ${c.sessions.toLocaleString()} sessions`).join('\n')}
+
+Top Pages:
+${topPages.map(p => `• ${p.page} — ${p.sessions} sessions, ${p.engagement} engaged`).join('\n')}`
+        }
+      }
+
+      // ── Step 3: PageSpeed audit ───────────────────────────────────────────
+      if (psiKey && domain) {
+        setAnalyzeStep('Running PageSpeed audit (mobile)…')
+        try {
+          const url = domain.startsWith('http') ? domain : `https://${domain}`
+          const res = await fetch(
+            `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&strategy=mobile&key=${psiKey}`
+          )
+          if (res.ok) {
+            const psi    = await res.json()
+            const audits = psi.lighthouseResult.audits
+            const score  = Math.round((psi.lighthouseResult.categories.performance.score ?? 0) * 100)
+            const lcp    = Math.round((audits['largest-contentful-paint']?.numericValue ?? 0) / 10) / 100
+            const tbt    = Math.round(audits['total-blocking-time']?.numericValue ?? 0)
+            const cls    = Math.round((audits['cumulative-layout-shift']?.numericValue ?? 0) * 100) / 100
+            const fcp    = Math.round((audits['first-contentful-paint']?.numericValue ?? 0) / 10) / 100
+            const ttfb   = Math.round(audits['server-response-time']?.numericValue ?? 0)
+
+            const oppIds = [
+              'render-blocking-resources', 'unused-javascript', 'unused-css-rules',
+              'uses-optimized-images', 'uses-webp-images', 'uses-text-compression',
+              'server-response-time', 'total-byte-weight', 'dom-size',
+            ]
+            const opps = oppIds
+              .map(id => {
+                const a = audits[id]
+                if (!a || a.score === 1 || a.score === null) return null
+                const ms = Math.round(a.details?.overallSavingsMs ?? 0)
+                const kb = Math.round((a.details?.overallSavingsBytes ?? 0) / 1024)
+                const sv = ms >= 100 ? `${ms}ms` : kb > 0 ? `${kb}KB` : a.displayValue || 'fix needed'
+                return `• ${a.title}: ${sv}`
+              })
+              .filter((o): o is string => o !== null)
+
+            psiData = `
+=== SITE AUDIT — PageSpeed Insights Mobile ===
+URL:               ${url}
+Performance Score: ${score}/100 ${score >= 90 ? '(Good ✅)' : score >= 50 ? '(Needs improvement ⚠️)' : '(Poor ❌)'}
+
+Core Web Vitals:
+• LCP:  ${lcp}s  ${lcp <= 2.5 ? '✅' : lcp <= 4 ? '⚠️' : '❌'}  (target <2.5s)
+• TBT:  ${tbt}ms ${tbt <= 200 ? '✅' : tbt <= 600 ? '⚠️' : '❌'}  (target <200ms)
+• CLS:  ${cls}   ${cls <= 0.1 ? '✅' : cls <= 0.25 ? '⚠️' : '❌'}  (target <0.1)
+• FCP:  ${fcp}s
+• TTFB: ${ttfb}ms
+
+Opportunities:
+${opps.length > 0 ? opps.join('\n') : '• No major opportunities — site is well-optimised'}`
+          }
+        } catch { /* PSI unavailable — skip */ }
+      }
+
+      // ── Step 4: Build prompt & call AI ────────────────────────────────────
+      setAnalyzeStep('JARVIS is analyzing your data…')
+      const site    = selectedGscSite
+        ? selectedGscSite.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+        : (domain || 'your site')
+      const hasData = gscData || ga4Data || psiData
+
+      const prompt = hasData
+        ? `You are performing a full SEO analysis for ${site} using real data from the last ${rangeLabel}.
+${gscData}
+${ga4Data}
+${psiData}
+
+Based on this real data, produce a structured SEO analysis report with these exact sections:
+
+**KEY FINDINGS**
+List 3–5 specific, data-backed findings. Reference actual numbers from the data provided. For example: "7 queries ranking position 4–10 represent X impressions but only Y clicks — CTR wins available" or "Organic traffic is only X% of sessions — dangerous single-channel dependency."
+
+**TRAFFIC ANALYSIS**
+- GSC: Which queries are under-monetised (high impressions, low CTR or high position)? Which pages are strongest vs weakest?
+- GA4: What does the channel breakdown reveal about traffic diversification? Is engagement rate healthy?
+- What do the two data sets tell us together about user intent vs actual traffic behaviour?
+
+**TECHNICAL HEALTH**
+- Rate the site's current technical performance based on the PageSpeed score and Core Web Vitals
+- Which performance issues are most damaging to both rankings and conversions?
+- Priority fix order with expected impact
+
+**QUICK WINS — This Week**
+List exactly 5 specific, actionable tasks doable within 48–72 hours each with measurable impact. Reference actual pages or queries from the data where possible.
+
+**90-DAY STRATEGY ROADMAP**
+Month 1 — Foundation: [3–4 specific actions with clear outcomes]
+Month 2 — Growth: [3–4 specific actions building on Month 1]
+Month 3 — Scale: [3–4 specific actions to compound results]
+
+Be precise. Reference actual numbers, page URLs, and query strings from the data. No filler — every sentence must be actionable.`
+        : `The user has not yet connected GSC, GA4, or PageSpeed Insights for ${site}.
+
+Provide a concise onboarding guide:
+1. Explain what each data source provides and why it matters for iGaming SEO
+2. List the key metrics to monitor once each is connected
+3. Provide a general 90-day iGaming SEO starting strategy for this domain
+
+Keep it practical and specific to iGaming SEO.`
+
+      return callAIMulti(MODE_SYSTEM[jarvisMode], [{ role: 'user', content: prompt }], 4000)
+    },
+    onMutate: () => {
+      const rangeOpt = RANGE_OPTIONS.find(r => r.value === analyzeRange) ?? RANGE_OPTIONS[2]
+      const siteName = selectedGscSite
+        ? selectedGscSite.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')
+        : (domain || 'my site')
+      setAnalyzeStep('Starting analysis…')
+      setMessages(prev => [...prev, {
+        role: 'user',
+        content: `Analyze ${siteName} — last ${rangeOpt.label} · GSC + GA4 + PageSpeed Insights`,
+        ts: time(),
+      }])
+    },
+    onSuccess: (reply) => {
+      setAnalyzeStep(null)
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, ts: time() }])
+    },
+    onError: (err) => {
+      setAnalyzeStep(null)
+      const raw = err instanceof Error ? err.message : 'Analysis failed'
+      const msg = raw === 'NO_KEY'
+        ? 'No API key configured. Go to **Settings** to add your OpenRouter or Anthropic key.'
+        : `**Analysis error:** ${raw}`
       setMessages(prev => [...prev, { role: 'assistant', content: msg, ts: time() }])
     },
   })
@@ -659,14 +984,16 @@ export function JarvisAI() {
             </div>
           ))}
 
-          {send.isPending && (
+          {(send.isPending || analyze.isPending) && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
                 <img src="/jarvis-icon.png" alt="Jarvis" className="w-full h-full object-cover" />
               </div>
               <div className="bg-card border border-border rounded-2xl px-4 py-3">
                 <div className="flex gap-1 items-center">
-                  <span className="text-xs text-muted font-mono-jarvis">JARVIS THINKING</span>
+                  <span className="text-xs text-muted font-mono-jarvis">
+                    {analyzeStep || 'JARVIS THINKING'}
+                  </span>
                   <span className="flex gap-0.5 ml-1">
                     {[0, 1, 2].map(i => (
                       <span key={i} className="w-1 h-1 rounded-full bg-accent animate-bounce"
@@ -680,13 +1007,99 @@ export function JarvisAI() {
           <div ref={bottomRef} />
         </div>
 
+        {/* ── Auto-analyze panel ── */}
+        <div className="mb-3 border border-dashed border-accent/30 rounded-xl p-2.5 bg-accent/[0.03]">
+          <div className="flex items-center gap-2 flex-wrap">
+
+            {/* Date range chips */}
+            <span className="text-[10px] text-muted font-mono-jarvis tracking-widest shrink-0">RANGE</span>
+            <div className="flex gap-1 flex-wrap">
+              {RANGE_OPTIONS.map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => setAnalyzeRange(r.value)}
+                  disabled={analyze.isPending}
+                  className={cn(
+                    'px-2 py-0.5 rounded-md text-[11px] font-semibold transition-all cursor-pointer border',
+                    analyzeRange === r.value
+                      ? 'bg-accent/20 border-accent/50 text-accent'
+                      : 'border-border text-muted hover:text-tx hover:border-accent/30 disabled:opacity-40'
+                  )}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+
+            {/* GSC site picker — shown when multiple sites connected */}
+            {gscSites.length > 1 && (
+              <>
+                <span className="text-[10px] text-muted font-mono-jarvis tracking-widest shrink-0 ml-1">GSC</span>
+                <select
+                  value={selectedGscSite}
+                  onChange={e => setSelectedGscSite(e.target.value)}
+                  disabled={analyze.isPending}
+                  className="text-[11px] bg-surface border border-border rounded-lg px-2 py-0.5 text-tx outline-none cursor-pointer max-w-[200px] font-mono-jarvis"
+                >
+                  {gscSites.map(s => (
+                    <option key={s} value={s}>
+                      {s.replace('sc-domain:', '').replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {/* GA4 property picker — shown when multiple properties connected */}
+            {ga4Props.length > 1 && (
+              <>
+                <span className="text-[10px] text-muted font-mono-jarvis tracking-widest shrink-0 ml-1">GA4</span>
+                <select
+                  value={selectedGa4Prop}
+                  onChange={e => setSelectedGa4Prop(e.target.value)}
+                  disabled={analyze.isPending}
+                  className="text-[11px] bg-surface border border-border rounded-lg px-2 py-0.5 text-tx outline-none cursor-pointer max-w-[200px] font-mono-jarvis"
+                >
+                  {ga4Props.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {/* Run button */}
+            <button
+              onClick={() => analyze.mutate()}
+              disabled={analyze.isPending || send.isPending}
+              className={cn(
+                'ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border',
+                analyze.isPending
+                  ? 'border-accent/40 bg-accent/15 text-accent cursor-not-allowed'
+                  : 'border-accent/50 bg-accent/10 text-accent hover:bg-accent/20 disabled:opacity-40 disabled:cursor-not-allowed'
+              )}
+            >
+              {analyze.isPending ? (
+                <>
+                  <Loader2 size={11} className="animate-spin shrink-0" />
+                  <span className="font-mono-jarvis">{analyzeStep || 'Collecting…'}</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={11} className="shrink-0" />
+                  <span>Analyze My Site</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
         {/* ── Quick asks ── */}
         <div className="flex gap-2 flex-wrap mb-3">
           {MODE_QUICK_ASKS[jarvisMode].map((q) => (
             <button
               key={q}
               onClick={() => handleSend(q)}
-              disabled={send.isPending}
+              disabled={send.isPending || analyze.isPending}
               className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted hover:text-tx transition-all disabled:opacity-40 cursor-pointer"
               onMouseEnter={e => { e.currentTarget.style.borderColor = meta.color }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '' }}
@@ -754,10 +1167,10 @@ export function JarvisAI() {
                 <Zap size={13} />
               </Button>
               <Button
-                variant={send.isPending ? 'ghost' : 'ai'}
+                variant={(send.isPending || analyze.isPending) ? 'ghost' : 'ai'}
                 className="p-2"
                 onClick={() => handleSend()}
-                disabled={send.isPending || (!input.trim() && !pendingImage)}
+                disabled={send.isPending || analyze.isPending || (!input.trim() && !pendingImage)}
               >
                 {send.isPending ? <Brain size={14} className="animate-pulse" /> : <Send size={14} />}
               </Button>

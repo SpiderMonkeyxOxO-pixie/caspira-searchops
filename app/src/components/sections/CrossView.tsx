@@ -92,9 +92,11 @@ export function CrossView() {
   const orgId = useAuthStore().org?.id ?? ''
 
   // Connection state
-  const [gscConn,     setGscConn]     = useState<GSCConn | null>(null)
-  const [ga4Conn,     setGa4Conn]     = useState<GA4Conn | null>(null)
-  const [connLoading, setConnLoading] = useState(true)
+  const [gscConn,          setGscConn]          = useState<GSCConn | null>(null)
+  const [ga4Conn,          setGa4Conn]          = useState<GA4Conn | null>(null)
+  const [connLoading,      setConnLoading]      = useState(true)
+  const [selectedGscSite,  setSelectedGscSite]  = useState<string>('')
+  const [showSitePicker,   setShowSitePicker]   = useState(false)
 
   // Data state
   const [rows,         setRows]        = useState<CrossRow[]>([])
@@ -125,8 +127,14 @@ export function CrossView() {
         .select('property_id, property_name')
         .eq('org_id', orgId).maybeSingle(),
     ]).then(([gscRes, ga4Res]) => {
-      setGscConn((gscRes.data as GSCConn | null))
+      const conn = gscRes.data as GSCConn | null
+      setGscConn(conn)
       setGa4Conn((ga4Res.data as GA4Conn | null))
+      if (conn) {
+        const sites = conn.available_sites ?? []
+        const best  = (domain ? matchGscSite(domain, sites) : undefined) ?? conn.selected_site ?? sites[0] ?? ''
+        setSelectedGscSite(best)
+      }
       setConnLoading(false)
     })
   }, [orgId])
@@ -165,12 +173,7 @@ export function CrossView() {
       const startDate = new Date(Date.now() - parseInt(range) * 86_400_000).toISOString().slice(0, 10)
       const endDate   = new Date().toISOString().slice(0, 10)
 
-      // Resolve GSC site URL
-      const availableSites = gscConn.available_sites ?? []
-      const siteUrl = domain
-        ? (matchGscSite(domain, availableSites) ?? gscConn.selected_site)
-        : gscConn.selected_site
-
+      const siteUrl = selectedGscSite || gscConn.selected_site
       if (!siteUrl) throw new Error('No GSC site resolved')
 
       // Parallel: GSC pages + GA4 pages
@@ -260,13 +263,13 @@ export function CrossView() {
     } finally {
       setLoading(false)
     }
-  }, [orgId, gscConn, ga4Conn, domain])
+  }, [orgId, gscConn, ga4Conn, selectedGscSite])
 
   useEffect(() => { fetchDataRef.current = fetchData }, [fetchData])
 
   useEffect(() => {
-    if (!connLoading && gscConn && ga4Conn) fetchData(dateRange)
-  }, [connLoading, gscConn, ga4Conn])
+    if (!connLoading && gscConn && ga4Conn && selectedGscSite) fetchData(dateRange)
+  }, [connLoading, gscConn, ga4Conn, selectedGscSite])
 
   function changeRange(r: string) {
     setDateRange(r)
@@ -376,7 +379,30 @@ export function CrossView() {
                 <InfoTooltip text="Each row is a page ranked in Google. GSC columns show search visibility; GA4 columns show what visitors actually do. The Efficiency score is sessions ÷ clicks — low values mean clicks aren't turning into tracked sessions." />
               </CardTitle>
               <div className="flex items-center gap-3 mt-1 text-[10px] font-mono-jarvis">
-                <span className="flex items-center gap-1 text-accent3"><span className="w-1.5 h-1.5 rounded-full bg-accent3" /> GSC: {gscConn?.selected_site || gscConn?.available_sites?.[0]}</span>
+                {/* GSC site picker */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSitePicker(p => !p)}
+                    className="flex items-center gap-1 text-accent3 hover:text-accent cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent3 shrink-0" />
+                    GSC: {selectedGscSite || '—'}
+                    {(gscConn?.available_sites?.length ?? 0) > 1 && <ChevronDown size={9} className="ml-0.5" />}
+                  </button>
+                  {showSitePicker && (gscConn?.available_sites?.length ?? 0) > 1 && (
+                    <div className="absolute top-5 left-0 z-50 bg-card border border-border rounded-lg shadow-xl min-w-[260px] py-1">
+                      {(gscConn?.available_sites ?? []).map(s => (
+                        <button
+                          key={s}
+                          onClick={() => { setSelectedGscSite(s); setShowSitePicker(false) }}
+                          className={`w-full text-left px-3 py-1.5 text-[10px] font-mono-jarvis hover:bg-accent/10 transition-colors ${s === selectedGscSite ? 'text-accent font-bold' : 'text-tx/80'}`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <span className="text-muted">·</span>
                 <span className="flex items-center gap-1 text-accent"><span className="w-1.5 h-1.5 rounded-full bg-accent" /> GA4: {ga4Conn.property_name || ga4Conn.property_id}</span>
               </div>
@@ -399,7 +425,7 @@ export function CrossView() {
       {error && (() => {
         const isTokenErr = /token.*expired|expired.*token|token.*revoked|revoked.*token|refresh.*failed|Token refresh/i.test(error)
         const isPermErr  = /insufficient permission|does not have sufficient|403/i.test(error)
-        const siteUrl    = gscConn?.selected_site ?? ''
+        const siteUrl    = selectedGscSite || gscConn?.selected_site || ''
         const isDomain   = siteUrl.startsWith('sc-domain:')
         const urlPrefix  = isDomain ? `https://${siteUrl.replace('sc-domain:', '').replace(/\/$/, '')}/` : null
         if (isTokenErr) return (

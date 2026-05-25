@@ -43,6 +43,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
       { id: 'roadmap',    label: '12-Month Roadmap', icon: MapPin },
       { id: 'seonews',    label: 'SEO News',         icon: Newspaper, badge: 'LIVE', badgeColor: 'bg-danger' },
       { id: 'gsc',        label: 'Search Console',   icon: PlugZap },
+      { id: 'ga4',        label: 'GA4 Connector',    icon: Activity, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'crossview',  label: 'GSC × GA4 View',   icon: GitMerge },
     ],
   },
@@ -120,7 +121,6 @@ export const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: 'INTEGRATIONS',
     items: [
-      { id: 'ga4',         label: 'GA4 Connector',      icon: Activity, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'apisync',     label: 'Ahrefs / Semrush',   icon: RefreshCw },
       { id: 'crawlimport', label: 'Crawl Import',       icon: FolderUp },
       { id: 'wordpress',   label: 'WordPress Publisher', icon: Rss, badge: 'NEW', badgeColor: 'bg-accent3' },

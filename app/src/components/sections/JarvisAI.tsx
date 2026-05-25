@@ -409,54 +409,107 @@ function MessageContent({ content }: { content: string }) {
 // ── Export helpers ────────────────────────────────────────────────────────────
 
 function toExportHTML(content: string): string {
-  const lines = content.split('\n')
+  const lines  = content.split('\n')
   const out: string[] = []
-  let inList = false
-  let listTag = ''
+  let inList   = false
+  let listTag  = ''
+  let tblRows: string[][] = []
+  let tblHead  = false
+
   const closeList = () => { if (inList) { out.push(`</${listTag}>`); inList = false; listTag = '' } }
+
+  const flushTable = () => {
+    if (!tblRows.length) return
+    out.push('<table>')
+    tblRows.forEach((row, i) => {
+      if (i === 0 && tblHead) {
+        out.push('<thead><tr>' + row.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>')
+      } else {
+        out.push('<tr>' + row.map(c => `<td>${c}</td>`).join('') + '</tr>')
+      }
+    })
+    if (tblHead) out.push('</tbody>')
+    out.push('</table>')
+    tblRows = []; tblHead = false
+  }
+
   const inline = (t: string) =>
     t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
+     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+     .replace(/`([^`]+)`/g, '<code>$1</code>')
 
   for (const line of lines) {
+    // ── Markdown table row ────────────────────────────────────────────────
+    if (line.trim().startsWith('|')) {
+      // separator row (|---|---| or |:---|---:|) — marks previous row as header
+      if (/^\|[\s\-:|]+(\|[\s\-:|]+)+\|?\s*$/.test(line.trim())) {
+        tblHead = tblRows.length > 0
+        continue
+      }
+      closeList()
+      const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => inline(c.trim()))
+      tblRows.push(cells)
+      continue
+    }
+
+    // Flush any pending table before handling other elements
+    if (tblRows.length) flushTable()
+
     if (!line.trim()) { closeList(); continue }
     if (/^[-=]{3,}$/.test(line.trim())) { closeList(); out.push('<hr>'); continue }
+
+    // Headings — check longest prefix first
     if (line.startsWith('### ')) { closeList(); out.push(`<h3>${inline(line.slice(4))}</h3>`); continue }
     if (line.startsWith('## '))  { closeList(); out.push(`<h2>${inline(line.slice(3))}</h2>`); continue }
+    if (line.startsWith('# '))   { closeList(); out.push(`<h2 class="h1">${inline(line.slice(2))}</h2>`); continue }
+
+    // Bold-only line → section header
     const bh = line.match(/^\*\*([^*]+)\*\*$/)
     if (bh) { closeList(); out.push(`<div class="section-header">${bh[1]}</div>`); continue }
+
+    // Bullet list
     if (line.match(/^[•\-\*] /)) {
       if (!inList || listTag !== 'ul') { closeList(); out.push('<ul>'); inList = true; listTag = 'ul' }
       out.push(`<li>${inline(line.replace(/^[•\-\*] /, ''))}</li>`)
       continue
     }
+
+    // Numbered list
     const nm = line.match(/^(\d+)\.\s+(.+)/)
     if (nm) {
       if (!inList || listTag !== 'ol') { closeList(); out.push('<ol>'); inList = true; listTag = 'ol' }
       out.push(`<li>${inline(nm[2])}</li>`)
       continue
     }
+
     closeList()
     out.push(`<p>${inline(line)}</p>`)
   }
+
+  if (tblRows.length) flushTable()
   closeList()
   return out.join('\n')
 }
 
 const REPORT_CSS = `
-  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px 40px;color:#1a1a2e;font-size:13px;line-height:1.75}
-  h1{font-size:22px;color:#4f46e5;border-bottom:2px solid #4f46e5;padding-bottom:8px;margin-bottom:4px}
-  h2{font-size:16px;color:#4f46e5;margin-top:24px}
-  h3{font-size:14px;color:#4f46e5;margin-top:18px}
-  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:18px 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#3730a3}
+  body{font-family:'Segoe UI',Calibri,Arial,sans-serif;max-width:820px;margin:40px auto;padding:20px 48px;color:#1a1a2e;font-size:13px;line-height:1.75}
+  h1,h2.h1{font-size:20px;color:#4f46e5;border-bottom:2px solid #4f46e5;padding-bottom:8px;margin:28px 0 6px}
+  h2{font-size:16px;color:#4f46e5;margin:24px 0 6px}
+  h3{font-size:14px;color:#3730a3;margin:18px 0 4px}
+  .section-header{background:#eef0ff;border-left:4px solid #6366f1;padding:7px 14px;margin:20px 0 8px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#3730a3}
   ul{list-style:none;padding:0;margin:6px 0}
-  ul li{display:flex;gap:8px;margin:5px 0}
-  ul li::before{content:"▸";color:#6366f1;flex-shrink:0}
+  ul li{display:flex;gap:8px;margin:5px 0;align-items:flex-start}
+  ul li::before{content:"▸";color:#6366f1;flex-shrink:0;margin-top:1px}
   ol{padding-left:20px;margin:6px 0}
   ol li{margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+  th{background:#eef0ff;color:#3730a3;font-weight:700;padding:7px 10px;text-align:left;border:1px solid #c7d2fe}
+  td{padding:6px 10px;border:1px solid #e0e0f0;vertical-align:top;line-height:1.5}
+  tr:nth-child(even) td{background:#f8f8ff}
   code{background:#f1f1f3;padding:1px 5px;border-radius:3px;font-family:'Courier New',monospace;font-size:11px}
   hr{border:none;border-top:1px solid #d1d5db;margin:16px 0}
-  p{margin:5px 0}strong{font-weight:600}
+  p{margin:5px 0}
+  strong{font-weight:600}
   .meta{color:#6b7280;font-size:11px;margin-bottom:28px}
   @media print{body{margin:0;max-width:100%}}
 `

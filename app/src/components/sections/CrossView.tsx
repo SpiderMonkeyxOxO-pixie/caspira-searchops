@@ -9,7 +9,8 @@ import { useAuthStore } from '@/store/authStore'
 
 // ── Types ─────────────────────────────────────────────────────
 interface GSCConn  { selected_site: string; available_sites: string[] }
-interface GA4Conn  { property_id: string; property_name: string }
+interface GA4Prop  { id: string; displayName: string; accountName: string }
+interface GA4Conn  { property_id: string; property_name: string; available_properties: GA4Prop[] }
 
 interface CrossRow {
   page:        string
@@ -95,8 +96,11 @@ export function CrossView() {
   const [gscConn,          setGscConn]          = useState<GSCConn | null>(null)
   const [ga4Conn,          setGa4Conn]          = useState<GA4Conn | null>(null)
   const [connLoading,      setConnLoading]      = useState(true)
-  const [selectedGscSite,  setSelectedGscSite]  = useState<string>('')
-  const [showSitePicker,   setShowSitePicker]   = useState(false)
+  const [selectedGscSite,      setSelectedGscSite]      = useState<string>('')
+  const [showSitePicker,       setShowSitePicker]       = useState(false)
+  const [selectedGa4Id,        setSelectedGa4Id]        = useState<string>('')
+  const [selectedGa4Name,      setSelectedGa4Name]      = useState<string>('')
+  const [showGa4Picker,        setShowGa4Picker]        = useState(false)
 
   // Data state
   const [rows,         setRows]        = useState<CrossRow[]>([])
@@ -124,16 +128,21 @@ export function CrossView() {
         .select('selected_site, available_sites')
         .eq('org_id', orgId).maybeSingle(),
       supabase.from('jarvis_ga4_connections')
-        .select('property_id, property_name')
+        .select('property_id, property_name, available_properties')
         .eq('org_id', orgId).maybeSingle(),
     ]).then(([gscRes, ga4Res]) => {
       const conn = gscRes.data as GSCConn | null
+      const ga4 = ga4Res.data as GA4Conn | null
       setGscConn(conn)
-      setGa4Conn((ga4Res.data as GA4Conn | null))
+      setGa4Conn(ga4)
       if (conn) {
         const sites = conn.available_sites ?? []
         const best  = (domain ? matchGscSite(domain, sites) : undefined) ?? conn.selected_site ?? sites[0] ?? ''
         setSelectedGscSite(best)
+      }
+      if (ga4) {
+        setSelectedGa4Id(ga4.property_id ?? '')
+        setSelectedGa4Name(ga4.property_name ?? ga4.property_id ?? '')
       }
       setConnLoading(false)
     })
@@ -175,6 +184,8 @@ export function CrossView() {
 
       const siteUrl = selectedGscSite || gscConn.selected_site
       if (!siteUrl) throw new Error('No GSC site resolved')
+      const propId = selectedGa4Id || ga4Conn.property_id
+      if (!propId) throw new Error('No GA4 property resolved')
 
       // Parallel: GSC pages + GA4 pages
       const [gscRes, ga4Res] = await Promise.all([
@@ -187,7 +198,7 @@ export function CrossView() {
         supabase.functions.invoke('ga4-proxy', {
           body: {
             org_id: orgId,
-            property_id: ga4Conn.property_id,
+            property_id: propId,
             mode: 'runReport',
             report: {
               dateRanges: [{ startDate: range, endDate: 'today' }],
@@ -263,13 +274,13 @@ export function CrossView() {
     } finally {
       setLoading(false)
     }
-  }, [orgId, gscConn, ga4Conn, selectedGscSite])
+  }, [orgId, gscConn, ga4Conn, selectedGscSite, selectedGa4Id])
 
   useEffect(() => { fetchDataRef.current = fetchData }, [fetchData])
 
   useEffect(() => {
-    if (!connLoading && gscConn && ga4Conn && selectedGscSite) fetchData(dateRange)
-  }, [connLoading, gscConn, ga4Conn, selectedGscSite])
+    if (!connLoading && gscConn && ga4Conn && selectedGscSite && selectedGa4Id) fetchData(dateRange)
+  }, [connLoading, gscConn, ga4Conn, selectedGscSite, selectedGa4Id])
 
   function changeRange(r: string) {
     setDateRange(r)
@@ -404,7 +415,31 @@ export function CrossView() {
                   )}
                 </div>
                 <span className="text-muted">·</span>
-                <span className="flex items-center gap-1 text-accent"><span className="w-1.5 h-1.5 rounded-full bg-accent" /> GA4: {ga4Conn.property_name || ga4Conn.property_id}</span>
+                {/* GA4 property picker */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowGa4Picker(p => !p)}
+                    className="flex items-center gap-1 text-accent hover:text-accent3 cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                    GA4: {selectedGa4Name || selectedGa4Id || ga4Conn.property_name || ga4Conn.property_id}
+                    {(ga4Conn.available_properties?.length ?? 0) > 1 && <ChevronDown size={9} className="ml-0.5" />}
+                  </button>
+                  {showGa4Picker && (ga4Conn.available_properties?.length ?? 0) > 1 && (
+                    <div className="absolute top-5 left-0 z-50 bg-card border border-border rounded-lg shadow-xl min-w-[280px] py-1">
+                      {ga4Conn.available_properties.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setSelectedGa4Id(p.id); setSelectedGa4Name(p.displayName); setShowGa4Picker(false) }}
+                          className={`w-full text-left px-3 py-1.5 text-[10px] font-mono-jarvis hover:bg-accent/10 transition-colors ${p.id === selectedGa4Id ? 'text-accent font-bold' : 'text-tx/80'}`}
+                        >
+                          <div>{p.displayName}</div>
+                          <div className="text-muted/60 text-[9px]">{p.accountName} · {p.id}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import {
   Loader2, Download, RefreshCw, CheckCircle2, AlertCircle,
   Heading1, FileText, Link2, Zap, Search, AlignLeft,
   ClipboardList, Image, ShieldCheck, ExternalLink, History, BookOpen,
-  Wand2, Copy, Check,
+  Wand2, Copy, Check, Sparkles,
 } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -56,6 +56,7 @@ interface ReadStats {
   passivePct: number
   transCount: number
   kwDensity: number
+  fleschScore: number
 }
 
 interface ImageEntry {
@@ -151,16 +152,26 @@ Do not include explanations outside the JSON.`
 
 /* ── Utilities ─────────────────────────────────────────────────────── */
 
+function countSyllables(word: string): number {
+  const w = word.toLowerCase().replace(/[^a-z]/g, '')
+  if (!w) return 0
+  if (w.length <= 3) return 1
+  const stripped = w.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '').replace(/^y/, '')
+  const m = stripped.match(/[aeiouy]{1,2}/g)
+  return Math.max(1, m ? m.length : 1)
+}
+
 function calcReadability(text: string, kw: string): ReadStats | null {
   if (!text.trim()) return null
   const words = text.trim().split(/\s+/).filter(Boolean)
   const wordCount = words.length
   const readingTime = Math.max(1, Math.ceil(wordCount / 200))
   const sentences = text.split(/[.!?]+/).filter(s => s.trim().split(/\s+/).length > 1)
-  const avgSentLen = sentences.length ? Math.round(wordCount / sentences.length) : 0
+  const sentCount = sentences.length || 1
+  const avgSentLen = Math.round(wordCount / sentCount)
   const longSentences = sentences.filter(s => s.trim().split(/\s+/).length > 20).length
   const passiveMatches = (text.match(/\b(am|is|are|was|were|be|been|being)\s+\w+ed\b/gi) || []).length
-  const passivePct = sentences.length ? Math.round((passiveMatches / sentences.length) * 100) : 0
+  const passivePct = Math.round((passiveMatches / sentCount) * 100)
   const lc = text.toLowerCase()
   const transCount = TRANSITION_WORDS.filter(w => lc.includes(w)).length
   let kwDensity = 0
@@ -169,7 +180,11 @@ function calcReadability(text: string, kw: string): ReadStats | null {
     const matches = (lc.match(new RegExp(esc.toLowerCase(), 'g')) || []).length
     kwDensity = parseFloat(((matches / wordCount) * 100).toFixed(2))
   }
-  return { wordCount, readingTime, avgSentLen, longSentences, passivePct, transCount, kwDensity }
+  const totalSyllables = words.reduce((sum, w) => sum + countSyllables(w), 0)
+  const fleschScore = Math.max(0, Math.min(100,
+    Math.round(206.835 - 1.015 * (wordCount / sentCount) - 84.6 * (totalSyllables / wordCount))
+  ))
+  return { wordCount, readingTime, avgSentLen, longSentences, passivePct, transCount, kwDensity, fleschScore }
 }
 
 /* ── Traffic dot ───────────────────────────────────────────────────── */
@@ -259,6 +274,10 @@ function SerpPreview({ metaTitle, metaDesc, url, keyword }: {
 
 function ReadabilityPanel({ stats, cornerstone }: { stats: ReadStats; cornerstone: boolean }) {
   const minWords = cornerstone ? 2000 : 600
+  const fleschLevel: 'good' | 'warning' | 'poor' = stats.fleschScore >= 60 ? 'good' : stats.fleschScore >= 45 ? 'warning' : 'poor'
+  const fleschLabel = stats.fleschScore >= 80 ? 'Easy' : stats.fleschScore >= 60 ? 'Standard' : stats.fleschScore >= 45 ? 'Fairly Hard' : 'Difficult'
+  const fleschColor = fleschLevel === 'good' ? '#10b981' : fleschLevel === 'warning' ? '#f59e0b' : '#ef4444'
+
   const tiles: { label: string; value: string; level: 'good' | 'warning' | 'poor'; hint: string }[] = [
     {
       label: 'Word Count',
@@ -299,19 +318,51 @@ function ReadabilityPanel({ stats, cornerstone }: { stats: ReadStats; cornerston
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      {tiles.map(t => (
-        <div key={t.label} className="bg-bg border border-border rounded-xl p-3 flex flex-col gap-1.5 group relative">
-          <div className="flex items-center gap-1.5">
-            <TrafficDot level={t.level} />
-            <span className="text-[10px] text-muted font-mono-jarvis tracking-wide truncate">{t.label}</span>
+    <div className="space-y-3">
+      {/* Flesch Reading Ease — featured tile */}
+      <div className="flex items-center gap-5 p-4 bg-bg border border-border rounded-xl">
+        <div className="text-center shrink-0">
+          <div className="font-display font-black text-4xl leading-none" style={{ color: fleschColor }}>{stats.fleschScore}</div>
+          <div className="text-[9px] text-muted mt-0.5">/ 100</div>
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <TrafficDot level={fleschLevel} />
+            <span className="text-xs font-bold text-tx">Flesch Reading Ease — <span style={{ color: fleschColor }}>{fleschLabel}</span></span>
           </div>
-          <div className="font-display font-black text-lg text-tx">{t.value}</div>
-          <div className="absolute bottom-full left-0 mb-1 w-48 bg-bg border border-border rounded-lg p-2 text-[10px] text-muted leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-            {t.hint}
+          <div className="text-[10px] text-muted leading-relaxed">
+            Ideal web content: <strong className="text-tx">60–70</strong> · 80+ = too simple · Below 45 = too academic.
+            {stats.fleschScore < 60 && stats.fleschScore >= 45 && ' Shorten sentences and use simpler words.'}
+            {stats.fleschScore < 45 && ' Significantly simplify — split long sentences, replace jargon.'}
+            {stats.fleschScore >= 80 && ' Consider adding more depth and technical detail.'}
           </div>
         </div>
-      ))}
+        {/* Mini scale bar */}
+        <div className="hidden sm:flex flex-col gap-1 shrink-0 w-28">
+          <div className="h-2 rounded-full bg-border overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${stats.fleschScore}%`, background: fleschColor }} />
+          </div>
+          <div className="flex justify-between text-[9px] text-muted font-mono-jarvis">
+            <span>Hard</span><span>Easy</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 6-metric grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {tiles.map(t => (
+          <div key={t.label} className="bg-bg border border-border rounded-xl p-3 flex flex-col gap-1.5 group relative">
+            <div className="flex items-center gap-1.5">
+              <TrafficDot level={t.level} />
+              <span className="text-[10px] text-muted font-mono-jarvis tracking-wide truncate">{t.label}</span>
+            </div>
+            <div className="font-display font-black text-lg text-tx">{t.value}</div>
+            <div className="absolute bottom-full left-0 mb-1 w-48 bg-bg border border-border rounded-lg p-2 text-[10px] text-muted leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+              {t.hint}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -357,7 +408,7 @@ export function ArticleAudit() {
   const [metaTitle,  setMetaTitle]  = useState('')
   const [metaDesc,   setMetaDesc]   = useState('')
   const [audience,   setAudience]   = useState('')
-  const [type,       setType]       = useState('')
+  const [type,       setType]       = useState<'Post' | 'Page'>('Post')
   const [content,    setContent]    = useState('')
   const [cornerstone,setCornerstone]= useState(false)
   const [result,     setResult]     = useState<AuditResult | null>(null)
@@ -365,8 +416,9 @@ export function ArticleAudit() {
   const [error,      setError]      = useState<string | null>(null)
   const [rewritten,  setRewritten]  = useState<string | null>(null)
   const [copied,     setCopied]     = useState(false)
-  const [images,     setImages]     = useState<ImageEntry[]>([])
-  const [rewriteResult, setRewriteResult] = useState<AuditResult | null>(null)
+  const [images,       setImages]       = useState<ImageEntry[]>([])
+  const [rewriteResult,setRewriteResult] = useState<AuditResult | null>(null)
+  const [lsiTerms,     setLsiTerms]     = useState<string[] | null>(null)
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
 
@@ -379,7 +431,11 @@ export function ArticleAudit() {
 
   const runAudit = useMutation({
     mutationFn: async () => {
+      const typeNote = type === 'Post'
+        ? 'Post Type: Blog Post — evaluate for recency signals, category/tag structure, RSS discoverability, and reader engagement hooks. Date freshness matters.'
+        : 'Post Type: Article (Page) — evaluate as evergreen static content. Prioritise depth, breadcrumb/navigation context, internal linking from site nav, and URL permanence. No recency expectation.'
       const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
+${typeNote}
 ${cornerstone ? 'Cornerstone Content: YES — apply stricter evaluation, 2000+ words expected, must be highly comprehensive.' : ''}
 Google Docs URL: ${docsUrl || 'N/A'}
 Published URL: ${pubUrl || 'N/A'}
@@ -387,7 +443,6 @@ Target Keyword: ${keyword || 'N/A'}
 Meta Title: ${metaTitle || 'N/A'}
 Meta Description: ${metaDesc || 'N/A'}
 Audience: ${audience || 'N/A'}
-Article Type: ${type || 'N/A'}
 
 ARTICLE CONTENT:
 ${content.slice(0, 4000) || '[No content provided — evaluate based on available metadata only]'}
@@ -466,7 +521,11 @@ Return this exact JSON structure (no markdown, no extra text):
             return `  Image ${i + 1}: "${img.name}" Alt: "${img.altText || 'MISSING'}"${hasKw !== null ? ` KW in alt: ${hasKw ? 'YES' : 'NO'}` : ''}`
           }).join('\n')
         : '  No images uploaded.'
+      const reauditTypeNote = type === 'Post'
+        ? 'Post Type: Blog Post — evaluate for recency signals, category/tag structure, and engagement hooks.'
+        : 'Post Type: Article (Page) — evergreen static content; prioritise depth, internal nav links, and URL permanence.'
       const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
+${reauditTypeNote}
 ${cornerstone ? 'Cornerstone Content: YES — stricter evaluation, 2000+ words expected.' : ''}
 Google Docs URL: ${docsUrl || 'N/A'}
 Published URL: ${pubUrl || 'N/A'}
@@ -474,7 +533,6 @@ Target Keyword: ${keyword || 'N/A'}
 Meta Title: ${metaTitle || 'N/A'}
 Meta Description: ${metaDesc || 'N/A'}
 Audience: ${audience || 'N/A'}
-Article Type: ${type || 'N/A'}
 
 ARTICLE CONTENT (AI REWRITTEN VERSION — re-evaluate thoroughly):
 ${rewrittenContent.slice(0, 4000)}
@@ -530,7 +588,7 @@ Return this exact JSON structure (no markdown, no extra text):
 
 TARGET KEYWORD: ${keyword || 'N/A'}
 AUDIENCE: ${audience || 'N/A'}
-ARTICLE TYPE: ${type || 'N/A'}
+POST TYPE: ${type === 'Post' ? 'Blog Post' : 'Article (Page)'}
 ${cornerstone ? 'CORNERSTONE CONTENT: Yes — must be comprehensive, 2000+ words.' : ''}
 
 ORIGINAL ARTICLE:
@@ -572,6 +630,40 @@ INSTRUCTIONS:
     },
     onError: (e: Error) => {
       setError(e.message || 'Rewrite failed. Try again.')
+    },
+  })
+
+  /* ── LSI / Semantic keyword suggestion ─────────────────────────── */
+
+  const runLSI = useMutation({
+    mutationFn: async () => {
+      if (!keyword.trim()) throw new Error('Enter a target keyword first.')
+      const userMsg = `Target keyword: "${keyword}"
+Post type: ${type === 'Post' ? 'Blog Post' : 'Article (Page)'}
+Audience: ${audience || 'general'}
+${content.trim() ? `Article excerpt:\n${content.slice(0, 2000)}` : ''}
+
+Return a JSON object with exactly 10 LSI and semantically related keywords or phrases that a well-optimised, top-ranking article on this topic should include. Include: NLP entities, co-occurring terms, topic cluster keywords, long-tail variants. Do NOT repeat the main keyword.
+
+Return only: {"terms": ["term 1", "term 2", "term 3", "term 4", "term 5", "term 6", "term 7", "term 8", "term 9", "term 10"]}`
+      return callClaude(
+        'You are an SEO semantic keyword expert. Return only valid JSON. No markdown, no explanations.',
+        userMsg,
+        600,
+      )
+    },
+    onSuccess: (data) => {
+      if (!data) return
+      try {
+        const cleaned = data.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+        const match = cleaned.match(/\{[\s\S]*\}/)
+        if (!match) return
+        const parsed = JSON.parse(match[0])
+        if (Array.isArray(parsed.terms)) setLsiTerms(parsed.terms as string[])
+      } catch { /* ignore parse errors */ }
+    },
+    onError: (e: Error) => {
+      setError(e.message || 'LSI generation failed. Check your API key.')
     },
   })
 
@@ -821,18 +913,28 @@ INSTRUCTIONS:
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">AUDIENCE</div>
-                  <input value={audience} onChange={e => setAudience(e.target.value)}
-                    placeholder="e.g. India"
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">AUDIENCE</div>
+                <input value={audience} onChange={e => setAudience(e.target.value)}
+                  placeholder="e.g. India"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+              </div>
+
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">POST TYPE</div>
+                <div className="flex p-1 bg-bg border border-border rounded-lg w-fit gap-1">
+                  {(['Post', 'Page'] as const).map(t => (
+                    <button key={t} onClick={() => setType(t)}
+                      className={cn('px-5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                        type === t ? 'bg-tx text-bg' : 'text-muted hover:text-tx')}>
+                      {t === 'Post' ? 'Post' : 'Article (Page)'}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TYPE</div>
-                  <input value={type} onChange={e => setType(e.target.value)}
-                    placeholder="e.g. Review"
-                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+                <div className="text-[10px] text-muted mt-1.5 leading-relaxed">
+                  {type === 'Post'
+                    ? 'Blog post — evaluated for recency, categories/tags, RSS, and date signals.'
+                    : 'Static page — evaluated for evergreen depth, navigation links, and URL structure.'}
                 </div>
               </div>
 
@@ -987,6 +1089,82 @@ INSTRUCTIONS:
               <ReadabilityPanel stats={readStats} cornerstone={cornerstone} />
             </Card>
           )}
+
+          {/* LSI & Semantic Keywords */}
+          <Card>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <CardTitle>LSI &amp; Semantic Keywords</CardTitle>
+                <div className="text-[10px] text-muted mt-0.5">
+                  Terms your article should include to match Google's semantic understanding of the topic.
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                onClick={() => runLSI.mutate()}
+                disabled={runLSI.isPending || !keyword.trim()}
+                className="flex items-center gap-1.5 text-xs shrink-0"
+              >
+                {runLSI.isPending
+                  ? <><Loader2 size={12} className="animate-spin" /> Generating…</>
+                  : <><Sparkles size={12} /> Generate</>}
+              </Button>
+            </div>
+
+            {runLSI.isPending ? (
+              <div className="flex items-center gap-2 py-4 text-xs text-muted">
+                <Loader2 size={14} className="animate-spin text-accent2" /> Analysing keyword and article context…
+              </div>
+            ) : lsiTerms ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {lsiTerms.map(term => {
+                    const found = !!content && content.toLowerCase().includes(term.toLowerCase())
+                    return (
+                      <span
+                        key={term}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors',
+                          found
+                            ? 'bg-accent3/10 text-accent3 border-accent3/20'
+                            : 'bg-surface text-muted border-border'
+                        )}
+                      >
+                        {found && <span className="mr-1">✓</span>}{term}
+                      </span>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted font-mono-jarvis">
+                  <span>
+                    <span className="text-accent3 font-bold">
+                      {lsiTerms.filter(t => content && content.toLowerCase().includes(t.toLowerCase())).length}
+                    </span>
+                    /{lsiTerms.length} terms found in article
+                    {lsiTerms.filter(t => content && content.toLowerCase().includes(t.toLowerCase())).length < lsiTerms.length && (
+                      <span className="ml-2 text-accent4">· Add missing terms naturally into the content</span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => runLSI.mutate()}
+                    disabled={runLSI.isPending}
+                    className="text-[10px] text-muted hover:text-tx transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                <Sparkles size={24} className="text-muted" strokeWidth={1} />
+                <div className="text-xs text-muted">
+                  {keyword.trim()
+                    ? 'Click Generate to get 10 semantic keywords for this topic.'
+                    : 'Enter a target keyword above, then click Generate.'}
+                </div>
+              </div>
+            )}
+          </Card>
 
           {/* Checklist */}
           {result && (

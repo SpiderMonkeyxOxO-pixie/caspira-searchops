@@ -434,9 +434,14 @@ export function ArticleAudit() {
       const typeNote = type === 'Post'
         ? 'Post Type: Blog Post — evaluate for recency signals, category/tag structure, RSS discoverability, and reader engagement hooks. Date freshness matters.'
         : 'Post Type: Article (Page) — evaluate as evergreen static content. Prioritise depth, breadcrumb/navigation context, internal linking from site nav, and URL permanence. No recency expectation.'
+      const wordCountNote = cornerstone
+        ? 'Cornerstone Content: YES — apply stricter evaluation, 2000+ words expected, must be highly comprehensive.'
+        : type === 'Post'
+          ? 'Word Count Expectation: 600–1500 words is standard and acceptable for a Blog Post. Do NOT recommend 2000+ words — that threshold only applies to Cornerstone content.'
+          : 'Word Count Expectation: 800–2000 words is appropriate for an Article/Page. Do NOT recommend 2000+ words unless Cornerstone is enabled.'
       const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
 ${typeNote}
-${cornerstone ? 'Cornerstone Content: YES — apply stricter evaluation, 2000+ words expected, must be highly comprehensive.' : ''}
+${wordCountNote}
 Google Docs URL: ${docsUrl || 'N/A'}
 Published URL: ${pubUrl || 'N/A'}
 Target Keyword: ${keyword || 'N/A'}
@@ -524,9 +529,14 @@ Return this exact JSON structure (no markdown, no extra text):
       const reauditTypeNote = type === 'Post'
         ? 'Post Type: Blog Post — evaluate for recency signals, category/tag structure, and engagement hooks.'
         : 'Post Type: Article (Page) — evergreen static content; prioritise depth, internal nav links, and URL permanence.'
+      const reauditWordCount = cornerstone
+        ? 'Cornerstone Content: YES — stricter evaluation, 2000+ words expected.'
+        : type === 'Post'
+          ? 'Word Count Expectation: 600–1500 words is standard for a Blog Post. Do NOT recommend 2000+ words — only applies to Cornerstone.'
+          : 'Word Count Expectation: 800–2000 words is appropriate for an Article/Page. Do NOT recommend 2000+ words unless Cornerstone is enabled.'
       const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
 ${reauditTypeNote}
-${cornerstone ? 'Cornerstone Content: YES — stricter evaluation, 2000+ words expected.' : ''}
+${reauditWordCount}
 Google Docs URL: ${docsUrl || 'N/A'}
 Published URL: ${pubUrl || 'N/A'}
 Target Keyword: ${keyword || 'N/A'}
@@ -630,7 +640,7 @@ CONTENT HELPFULNESS (15 pts — most important, must score 13+):
 • Answer the reader's query completely — no vague advice
 • Include specific examples, steps, or comparisons
 • Each section must add unique value — remove padding
-• Minimum 800 words; cornerstone: 2000+ words
+• Word count target: ${cornerstone ? '2000+ words (Cornerstone)' : type === 'Post' ? '600–1500 words (Blog Post) — do not pad to 2000' : '800–2000 words (Article/Page)'}
 • Think: what would a 5-star expert answer look like?
 
 GRAMMAR, REDUNDANCY & REPETITION (10 pts — must score 9+):

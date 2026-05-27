@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import {
   Loader2, Download, RefreshCw, CheckCircle2, AlertCircle,
   Heading1, FileText, Link2, Zap, Search, AlignLeft,
-  ClipboardList, Image, ShieldCheck, ExternalLink, History,
+  ClipboardList, Image, ShieldCheck, ExternalLink, History, BookOpen,
 } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -18,7 +18,7 @@ interface CheckItem {
   label: string
   score: number
   max: number
-  status: 'Good' | 'Needs Work'
+  status: 'Good' | 'Needs Work' | 'Poor'
   note: string
 }
 
@@ -45,20 +45,30 @@ interface AuditRecord {
   result: AuditResult
 }
 
+interface ReadStats {
+  wordCount: number
+  readingTime: number
+  avgSentLen: number
+  longSentences: number
+  passivePct: number
+  transCount: number
+  kwDensity: number
+}
+
 /* ── Constants ─────────────────────────────────────────────────────── */
 
 const CHECKLIST_ICONS: Record<string, React.ReactNode> = {
-  'Title / H1':                       <Heading1   size={14} />,
-  'Meta Title & Description':          <FileText   size={14} />,
-  'URL Slug':                          <Link2      size={14} />,
-  'Introduction':                      <Zap        size={14} />,
-  'Keyword Usage':                     <Search     size={14} />,
-  'Heading Structure':                 <AlignLeft  size={14} />,
+  'Title / H1':                       <Heading1      size={14} />,
+  'Meta Title & Description':          <FileText      size={14} />,
+  'URL Slug':                          <Link2         size={14} />,
+  'Introduction':                      <Zap           size={14} />,
+  'Keyword Usage':                     <Search        size={14} />,
+  'Heading Structure':                 <AlignLeft     size={14} />,
   'Content Helpfulness':               <ClipboardList size={14} />,
-  'Grammar, Redundancy & Repetition':  <FileText   size={14} />,
-  'Internal / External Links':         <ExternalLink size={14} />,
-  'Images & Alt Text':                 <Image      size={14} />,
-  'Trust & Accuracy':                  <ShieldCheck size={14} />,
+  'Grammar, Redundancy & Repetition':  <FileText      size={14} />,
+  'Internal / External Links':         <ExternalLink  size={14} />,
+  'Images & Alt Text':                 <Image         size={14} />,
+  'Trust & Accuracy':                  <ShieldCheck   size={14} />,
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -66,6 +76,15 @@ const PRIORITY_COLOR: Record<string, string> = {
   Medium: 'bg-accent4/10 text-accent4 border-accent4/20',
   Low:    'bg-border text-muted border-border',
 }
+
+const TRANSITION_WORDS = [
+  'however','therefore','furthermore','additionally','moreover','consequently',
+  'nevertheless','meanwhile','subsequently','although','because','since','while',
+  'whereas','thus','hence','accordingly','besides','likewise','similarly',
+  'in contrast','on the other hand','for example','for instance','in addition',
+  'as a result','in conclusion','to summarize','first','second','third',
+  'finally','next','then','also','yet','still','instead','otherwise',
+]
 
 const SYSTEM_PROMPT = `You are Jarvis SEO Article Auditor, an expert SEO content editor and article quality evaluator.
 
@@ -106,6 +125,38 @@ Return only valid JSON.
 Do not include markdown.
 Do not include explanations outside the JSON.`
 
+/* ── Utilities ─────────────────────────────────────────────────────── */
+
+function calcReadability(text: string, kw: string): ReadStats | null {
+  if (!text.trim()) return null
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  const wordCount = words.length
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200))
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().split(/\s+/).length > 1)
+  const avgSentLen = sentences.length ? Math.round(wordCount / sentences.length) : 0
+  const longSentences = sentences.filter(s => s.trim().split(/\s+/).length > 20).length
+  const passiveMatches = (text.match(/\b(am|is|are|was|were|be|been|being)\s+\w+ed\b/gi) || []).length
+  const passivePct = sentences.length ? Math.round((passiveMatches / sentences.length) * 100) : 0
+  const lc = text.toLowerCase()
+  const transCount = TRANSITION_WORDS.filter(w => lc.includes(w)).length
+  let kwDensity = 0
+  if (kw.trim() && wordCount) {
+    const esc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const matches = (lc.match(new RegExp(esc.toLowerCase(), 'g')) || []).length
+    kwDensity = parseFloat(((matches / wordCount) * 100).toFixed(2))
+  }
+  return { wordCount, readingTime, avgSentLen, longSentences, passivePct, transCount, kwDensity }
+}
+
+/* ── Traffic dot ───────────────────────────────────────────────────── */
+
+function TrafficDot({ level }: { level: 'good' | 'warning' | 'poor' }) {
+  return (
+    <span className={cn('inline-block w-2.5 h-2.5 rounded-full shrink-0',
+      level === 'good' ? 'bg-accent3' : level === 'warning' ? 'bg-accent4' : 'bg-danger')} />
+  )
+}
+
 /* ── Score ring ────────────────────────────────────────────────────── */
 
 function ScoreRing({ score }: { score: number }) {
@@ -125,11 +176,124 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-/* ── Checklist card ────────────────────────────────────────────────── */
+/* ── SERP Preview ──────────────────────────────────────────────────── */
+
+function SerpPreview({ metaTitle, metaDesc, url, keyword }: {
+  metaTitle: string; metaDesc: string; url: string; keyword: string
+}) {
+  const domain = (() => { try { return new URL(url).hostname } catch { return url || 'yoursite.com' } })()
+  const slug   = (() => { try { const p = new URL(url).pathname.replace(/^\/|\/$/g, ''); return p || 'article-slug' } catch { return 'article-slug' } })()
+  const displayTitle = metaTitle || keyword || 'Your Article Title'
+  const displayDesc  = metaDesc  || 'Your meta description will appear here. Write a compelling 120–160 character description.'
+
+  const hilite = (text: string) => {
+    if (!keyword.trim()) return <>{text}</>
+    const esc = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const parts = text.split(new RegExp(`(${esc})`, 'gi'))
+    return <>{parts.map((p, i) =>
+      p.toLowerCase() === keyword.toLowerCase()
+        ? <strong key={i} className="font-bold">{p}</strong>
+        : p
+    )}</>
+  }
+
+  const titleHasKw = keyword ? displayTitle.toLowerCase().includes(keyword.toLowerCase()) : null
+  const descHasKw  = keyword ? displayDesc.toLowerCase().includes(keyword.toLowerCase())  : null
+
+  return (
+    <div className="space-y-2">
+      <div className="bg-white rounded-xl p-4 border border-[#dadce0]">
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="w-5 h-5 rounded-full bg-[#f1f3f4] flex items-center justify-center">
+            <span className="text-[8px] font-black text-[#5f6368]">G</span>
+          </div>
+          <span className="text-[12px] text-[#202124] font-medium">{domain}</span>
+          <span className="text-[12px] text-[#70757a]">› {slug.replace(/\//g, ' › ')}</span>
+        </div>
+        <div className="text-[19px] text-[#1a0dab] font-normal leading-tight mb-1 line-clamp-1">
+          {hilite(displayTitle.slice(0, 70))}
+        </div>
+        <div className="text-[13px] text-[#4d5156] leading-snug line-clamp-2">
+          {hilite(displayDesc.slice(0, 165))}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono-jarvis px-1">
+        <span>Title <span className={metaTitle.length > 60 ? 'text-danger' : metaTitle.length > 50 ? 'text-accent4' : metaTitle.length > 0 ? 'text-accent3' : 'text-muted'}>{metaTitle.length}/60</span></span>
+        <span>Desc <span className={metaDesc.length > 160 ? 'text-danger' : metaDesc.length > 140 ? 'text-accent4' : metaDesc.length > 0 ? 'text-accent3' : 'text-muted'}>{metaDesc.length}/160</span></span>
+        {titleHasKw !== null && <span>KW in title <span className={titleHasKw ? 'text-accent3' : 'text-danger'}>{titleHasKw ? '✓' : '✗'}</span></span>}
+        {descHasKw  !== null && <span>KW in desc <span className={descHasKw  ? 'text-accent3' : 'text-danger'}>{descHasKw  ? '✓' : '✗'}</span></span>}
+      </div>
+    </div>
+  )
+}
+
+/* ── Readability panel ─────────────────────────────────────────────── */
+
+function ReadabilityPanel({ stats, cornerstone }: { stats: ReadStats; cornerstone: boolean }) {
+  const minWords = cornerstone ? 2000 : 600
+  const tiles: { label: string; value: string; level: 'good' | 'warning' | 'poor'; hint: string }[] = [
+    {
+      label: 'Word Count',
+      value: stats.wordCount.toLocaleString(),
+      level: stats.wordCount >= minWords ? 'good' : stats.wordCount >= minWords * 0.6 ? 'warning' : 'poor',
+      hint: cornerstone ? `Cornerstone: >${minWords} words required` : `>${minWords} words recommended`,
+    },
+    {
+      label: 'Reading Time',
+      value: `${stats.readingTime} min`,
+      level: 'good',
+      hint: 'Estimated at 200 words per minute',
+    },
+    {
+      label: 'Avg Sentence',
+      value: `${stats.avgSentLen} words`,
+      level: stats.avgSentLen <= 20 ? 'good' : stats.avgSentLen <= 26 ? 'warning' : 'poor',
+      hint: stats.longSentences > 0 ? `${stats.longSentences} sentences exceed 20 words` : 'All sentences within ideal range',
+    },
+    {
+      label: 'Passive Voice',
+      value: `${stats.passivePct}%`,
+      level: stats.passivePct <= 10 ? 'good' : stats.passivePct <= 20 ? 'warning' : 'poor',
+      hint: stats.passivePct > 10 ? 'Keep passive voice below 10% of sentences' : 'Passive voice within acceptable range',
+    },
+    {
+      label: 'Transitions',
+      value: `${stats.transCount} found`,
+      level: stats.transCount >= 5 ? 'good' : stats.transCount >= 2 ? 'warning' : 'poor',
+      hint: stats.transCount < 5 ? 'Use more transition words for better flow' : 'Good use of transition words',
+    },
+    {
+      label: 'KW Density',
+      value: stats.kwDensity > 0 ? `${stats.kwDensity}%` : '—',
+      level: stats.kwDensity >= 0.5 && stats.kwDensity <= 3 ? 'good' : stats.kwDensity > 0 && stats.kwDensity < 4 ? 'warning' : 'poor',
+      hint: stats.kwDensity === 0 ? 'Enter a keyword above to measure density' : stats.kwDensity < 0.5 ? 'Under-optimised — below 0.5%' : stats.kwDensity > 3 ? 'Risk of keyword stuffing — above 3%' : 'Optimal density range (0.5–3%)',
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {tiles.map(t => (
+        <div key={t.label} className="bg-bg border border-border rounded-xl p-3 flex flex-col gap-1.5 group relative">
+          <div className="flex items-center gap-1.5">
+            <TrafficDot level={t.level} />
+            <span className="text-[10px] text-muted font-mono-jarvis tracking-wide truncate">{t.label}</span>
+          </div>
+          <div className="font-display font-black text-lg text-tx">{t.value}</div>
+          <div className="absolute bottom-full left-0 mb-1 w-48 bg-bg border border-border rounded-lg p-2 text-[10px] text-muted leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+            {t.hint}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ── Check card ────────────────────────────────────────────────────── */
 
 function CheckCard({ item }: { item: CheckItem }) {
-  const pct = (item.score / item.max) * 100
-  const isGood = item.status === 'Good'
+  const pct   = (item.score / item.max) * 100
+  const level: 'good' | 'warning' | 'poor' = pct >= 70 ? 'good' : pct >= 40 ? 'warning' : 'poor'
+  const color = level === 'good' ? '#10b981' : level === 'warning' ? '#f59e0b' : '#ef4444'
   return (
     <div className="bg-bg border border-border rounded-xl p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
@@ -139,16 +303,14 @@ function CheckCard({ item }: { item: CheckItem }) {
           </div>
           <span className="text-xs font-semibold text-tx leading-tight">{item.label}</span>
         </div>
-        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0',
-          isGood ? 'bg-accent3/10 text-accent3' : 'bg-accent4/10 text-accent4')}>
-          {item.status}
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <TrafficDot level={level} />
+          <span className="text-[10px] font-bold" style={{ color }}>{item.status}</span>
+        </div>
       </div>
-      <div className="text-[11px] font-semibold" style={{ color: isGood ? '#10b981' : '#f59e0b' }}>
-        {item.score}/{item.max} points
-      </div>
+      <div className="text-[11px] font-semibold" style={{ color }}>{item.score}/{item.max} points</div>
       <div className="h-1.5 bg-border rounded-full overflow-hidden">
-        <div className="h-full rounded-full bg-tx transition-all" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
       </div>
       <p className="text-[11px] text-muted leading-relaxed">{item.note}</p>
     </div>
@@ -158,26 +320,39 @@ function CheckCard({ item }: { item: CheckItem }) {
 /* ── Main component ────────────────────────────────────────────────── */
 
 export function ArticleAudit() {
-  const [tab, setTab]           = useState<'tool' | 'history'>('tool')
-  const [mode, setMode]         = useState<'pre' | 'post'>('pre')
-  const [docsUrl, setDocsUrl]   = useState('')
-  const [pubUrl, setPubUrl]     = useState('')
-  const [keyword, setKeyword]   = useState('')
-  const [audience, setAudience] = useState('')
-  const [type, setType]         = useState('')
-  const [content, setContent]   = useState('')
-  const [result, setResult]     = useState<AuditResult | null>(null)
-  const [fixed, setFixed]       = useState<Set<number>>(new Set())
-  const [error, setError]       = useState<string | null>(null)
+  const [tab,        setTab]        = useState<'tool' | 'history'>('tool')
+  const [mode,       setMode]       = useState<'pre' | 'post'>('pre')
+  const [docsUrl,    setDocsUrl]    = useState('')
+  const [pubUrl,     setPubUrl]     = useState('')
+  const [keyword,    setKeyword]    = useState('')
+  const [metaTitle,  setMetaTitle]  = useState('')
+  const [metaDesc,   setMetaDesc]   = useState('')
+  const [audience,   setAudience]   = useState('')
+  const [type,       setType]       = useState('')
+  const [content,    setContent]    = useState('')
+  const [cornerstone,setCornerstone]= useState(false)
+  const [result,     setResult]     = useState<AuditResult | null>(null)
+  const [fixed,      setFixed]      = useState<Set<number>>(new Set())
+  const [error,      setError]      = useState<string | null>(null)
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
+
+  const readStats = useMemo(() => calcReadability(content, keyword), [content, keyword])
+
+  const passed    = result?.checklist.filter(c => c.status === 'Good').length ?? 0
+  const needsWork = result?.checklist.filter(c => c.status !== 'Good').length ?? 0
+
+  /* ── AI call ────────────────────────────────────────────────────── */
 
   const runAudit = useMutation({
     mutationFn: async () => {
       const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
+${cornerstone ? 'Cornerstone Content: YES — apply stricter evaluation, 2000+ words expected, must be highly comprehensive.' : ''}
 Google Docs URL: ${docsUrl || 'N/A'}
 Published URL: ${pubUrl || 'N/A'}
 Target Keyword: ${keyword || 'N/A'}
+Meta Title: ${metaTitle || 'N/A'}
+Meta Description: ${metaDesc || 'N/A'}
 Audience: ${audience || 'N/A'}
 Article Type: ${type || 'N/A'}
 
@@ -189,17 +364,17 @@ Return this exact JSON structure (no markdown, no extra text):
   "score": <0-100 integer>,
   "status": "<Good|Needs Work|Poor>",
   "checklist": [
-    { "label": "Title / H1", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Meta Title & Description", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "URL Slug", "score": <0-5>, "max": 5, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Introduction", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Keyword Usage", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Heading Structure", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Content Helpfulness", "score": <0-15>, "max": 15, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Grammar, Redundancy & Repetition", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Internal / External Links", "score": <0-10>, "max": 10, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Images & Alt Text", "score": <0-5>, "max": 5, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" },
-    { "label": "Trust & Accuracy", "score": <0-5>, "max": 5, "status": "<Good|Needs Work>", "note": "<specific 1-sentence finding>" }
+    { "label": "Title / H1", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Meta Title & Description", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "URL Slug", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Introduction", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Keyword Usage", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Heading Structure", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Content Helpfulness", "score": <0-15>, "max": 15, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Grammar, Redundancy & Repetition", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Internal / External Links", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Images & Alt Text", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
+    { "label": "Trust & Accuracy", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" }
   ],
   "recommendations": [
     { "priority": "<High|Medium|Low>", "title": "<short action title>", "detail": "<1-sentence specific instruction>" }
@@ -227,7 +402,7 @@ Return this exact JSON structure (no markdown, no extra text):
           result: parsed,
         })
       } catch (e) {
-        console.error('[ArticleAudit] parse error:', e, '\nRaw response:', data)
+        console.error('[ArticleAudit] parse error:', e, '\nRaw:', data)
         setError('Failed to parse AI response. Try again.')
       }
     },
@@ -236,9 +411,12 @@ Return this exact JSON structure (no markdown, no extra text):
     },
   })
 
+  /* ── PDF export ─────────────────────────────────────────────────── */
+
   function exportPDF() {
     if (!result) return
     const scoreColor = result.score >= 70 ? '#10b981' : result.score >= 45 ? '#f59e0b' : '#ef4444'
+    const rs = readStats
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -249,42 +427,43 @@ Return this exact JSON structure (no markdown, no extra text):
     body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:860px;margin:0 auto}
     h1{font-size:22px;font-weight:900;margin-bottom:4px}
     .sub{font-size:11px;color:#666;margin-bottom:24px}
-    .hero{display:flex;align-items:center;gap:32px;margin-bottom:28px;padding:20px;border:1px solid #e5e7eb;border-radius:12px}
+    .hero{display:flex;align-items:center;gap:32px;margin-bottom:20px;padding:20px;border:1px solid #e5e7eb;border-radius:12px}
     .score{font-size:56px;font-weight:900;line-height:1;color:${scoreColor}}
     .score span{font-size:18px;color:#999;font-weight:400}
     .status{font-size:14px;font-weight:700;color:${scoreColor};margin-top:4px}
     .stats{display:flex;gap:12px;flex:1}
-    .stat{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
-    .stat-n{font-size:26px;font-weight:900}
+    .stat{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center}
+    .stat-n{font-size:22px;font-weight:900}
     .stat-l{font-size:10px;color:#666;margin-top:2px}
-    h2{font-size:14px;font-weight:700;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:.05em}
-    table{width:100%;border-collapse:collapse;font-size:11.5px}
-    th{background:#f9fafb;text-align:left;padding:8px 10px;font-weight:600;border-bottom:2px solid #e5e7eb}
-    td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
-    .good{color:#10b981;font-weight:700}
-    .bad{color:#f59e0b;font-weight:700}
-    .pts{color:#6b7280;font-size:11px}
-    .rec{margin-bottom:8px;padding:10px 14px;border-left:3px solid;border-radius:0 6px 6px 0;font-size:12px}
-    .High{border-color:#ef4444;background:#fef2f2}
-    .Medium{border-color:#f59e0b;background:#fffbeb}
-    .Low{border-color:#9ca3af;background:#f9fafb}
-    .rec-title{font-weight:700;margin-bottom:3px}
-    .rec-tag{font-size:10px;font-weight:700;margin-right:6px;padding:1px 6px;border-radius:4px;display:inline-block}
-    .tag-High{background:#fee2e2;color:#ef4444}
-    .tag-Medium{background:#fef3c7;color:#d97706}
-    .tag-Low{background:#f3f4f6;color:#6b7280}
-    footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #e5e7eb;padding-top:12px}
+    .read-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
+    .read-tile{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px}
+    .read-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .read-val{font-size:15px;font-weight:900}
+    .dot-good{display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:4px}
+    .dot-warn{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px}
+    .dot-poor{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px}
+    h2{font-size:13px;font-weight:700;margin:20px 0 8px;padding-bottom:5px;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:.05em}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#f9fafb;text-align:left;padding:7px 10px;font-weight:600;border-bottom:2px solid #e5e7eb}
+    td{padding:7px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+    .good{color:#10b981;font-weight:700}.bad{color:#f59e0b;font-weight:700}.poor{color:#ef4444;font-weight:700}
+    .rec{margin-bottom:7px;padding:9px 12px;border-left:3px solid;border-radius:0 6px 6px 0;font-size:11.5px}
+    .High{border-color:#ef4444;background:#fef2f2}.Medium{border-color:#f59e0b;background:#fffbeb}.Low{border-color:#9ca3af;background:#f9fafb}
+    .rec-title{font-weight:700;margin-bottom:2px}
+    .tag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;display:inline-block;margin-right:5px}
+    .tag-High{background:#fee2e2;color:#ef4444}.tag-Medium{background:#fef3c7;color:#d97706}.tag-Low{background:#f3f4f6;color:#6b7280}
+    footer{margin-top:28px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #e5e7eb;padding-top:10px}
     @media print{body{padding:16px}@page{margin:1cm}}
   </style>
 </head>
 <body>
-  <h1>Article SEO Audit Report</h1>
+  <h1>Article SEO Audit Report${cornerstone ? ' — Cornerstone' : ''}</h1>
   <div class="sub">
     Mode: <strong>${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}</strong>
-    ${keyword ? ` &nbsp;·&nbsp; Keyword: <strong>${keyword}</strong>` : ''}
-    ${pubUrl ? ` &nbsp;·&nbsp; URL: ${pubUrl}` : ''}
-    ${audience ? ` &nbsp;·&nbsp; Audience: ${audience}` : ''}
-    &nbsp;·&nbsp; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+    ${keyword  ? ` · Keyword: <strong>${keyword}</strong>` : ''}
+    ${pubUrl   ? ` · URL: ${pubUrl}` : ''}
+    ${audience ? ` · Audience: ${audience}` : ''}
+    · Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
   </div>
 
   <div class="hero">
@@ -293,23 +472,32 @@ Return this exact JSON structure (no markdown, no extra text):
       <div class="status">${result.status}</div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="stat-n" style="color:#10b981">${passed}</div><div class="stat-l">Passed Checks</div></div>
+      <div class="stat"><div class="stat-n" style="color:#10b981">${passed}</div><div class="stat-l">Passed</div></div>
       <div class="stat"><div class="stat-n" style="color:#f59e0b">${needsWork}</div><div class="stat-l">Needs Work</div></div>
       <div class="stat"><div class="stat-n">${result.checklist.length}</div><div class="stat-l">Total Checks</div></div>
     </div>
   </div>
 
+  ${rs ? `
+  <h2>Readability Analysis</h2>
+  <div class="read-grid">
+    <div class="read-tile"><div class="read-label">Words</div><div class="read-val">${rs.wordCount.toLocaleString()}</div></div>
+    <div class="read-tile"><div class="read-label">Reading</div><div class="read-val">${rs.readingTime} min</div></div>
+    <div class="read-tile"><div class="read-label">Avg Sentence</div><div class="read-val">${rs.avgSentLen}w</div></div>
+    <div class="read-tile"><div class="read-label">Passive Voice</div><div class="read-val">${rs.passivePct}%</div></div>
+    <div class="read-tile"><div class="read-label">Transitions</div><div class="read-val">${rs.transCount}</div></div>
+    <div class="read-tile"><div class="read-label">KW Density</div><div class="read-val">${rs.kwDensity > 0 ? rs.kwDensity + '%' : '—'}</div></div>
+  </div>` : ''}
+
   <h2>Checklist Evaluation</h2>
   <table>
     <thead><tr><th>Category</th><th>Score</th><th>Status</th><th>Finding</th></tr></thead>
     <tbody>
-      ${result.checklist.map(c => `
-      <tr>
-        <td><strong>${c.label}</strong></td>
-        <td class="pts">${c.score}/${c.max}</td>
-        <td class="${c.status === 'Good' ? 'good' : 'bad'}">${c.status}</td>
-        <td>${c.note}</td>
-      </tr>`).join('')}
+      ${result.checklist.map(c => {
+        const pct = (c.score / c.max) * 100
+        const cls = pct >= 70 ? 'good' : pct >= 40 ? 'bad' : 'poor'
+        return `<tr><td><strong>${c.label}</strong></td><td style="color:#6b7280">${c.score}/${c.max}</td><td class="${cls}">${c.status}</td><td>${c.note}</td></tr>`
+      }).join('')}
     </tbody>
   </table>
 
@@ -317,8 +505,8 @@ Return this exact JSON structure (no markdown, no extra text):
   <h2>Recommendations</h2>
   ${result.recommendations.map(r => `
   <div class="rec ${r.priority}">
-    <div class="rec-title"><span class="rec-tag tag-${r.priority}">${r.priority}</span>${r.title}</div>
-    <div style="color:#555">${r.detail}</div>
+    <div class="rec-title"><span class="tag tag-${r.priority}">${r.priority}</span>${r.title}</div>
+    <div style="color:#555;margin-top:2px">${r.detail}</div>
   </div>`).join('')}` : ''}
 
   <footer>Generated by Jarvis SEO · Article SEO Audit Tool</footer>
@@ -333,8 +521,7 @@ Return this exact JSON structure (no markdown, no extra text):
     setTimeout(() => win.print(), 400)
   }
 
-  const passed    = result?.checklist.filter(c => c.status === 'Good').length ?? 0
-  const needsWork = result?.checklist.filter(c => c.status === 'Needs Work').length ?? 0
+  /* ── JSX ────────────────────────────────────────────────────────── */
 
   return (
     <div className="space-y-5">
@@ -342,13 +529,11 @@ Return this exact JSON structure (no markdown, no extra text):
       <Card>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] text-muted font-mono-jarvis tracking-widest">SEO Article Audit Tool</span>
-            </div>
+            <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">SEO Article Audit Tool</div>
             <h1 className="font-display font-black text-2xl text-tx mb-1">Article SEO Scoring Dashboard</h1>
             <p className="text-xs text-muted leading-relaxed max-w-xl">
               Audit unpublished Google Docs drafts before publishing, then audit the live site URL after publishing.
-              The tool checks SEO quality, grammar, readability, redundancy, repetition, links, images, and recommendations.
+              Includes live SERP preview, readability analysis, traffic-light scoring, and PDF export.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -387,9 +572,10 @@ Return this exact JSON structure (no markdown, no extra text):
         />
       ) : (
         <>
-          {/* Input + Result row */}
+          {/* Main row: Input + Right column */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            {/* Input panel */}
+
+            {/* ── Input panel ────────────────────────────────────── */}
             <Card className="lg:col-span-2 space-y-3">
               <CardTitle>Audit Input</CardTitle>
 
@@ -423,12 +609,28 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              {/* Keyword */}
+              {/* Target Keyword */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TARGET KEYWORD</div>
                 <input value={keyword} onChange={e => setKeyword(e.target.value)}
                   placeholder="e.g. online casino safety checklist"
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+              </div>
+
+              {/* Meta Title */}
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META TITLE <span className="text-accent3/70">(for SERP preview)</span></div>
+                <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)}
+                  placeholder="e.g. ABC Rummy App Review 2025 — Safe to Play?"
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
+              </div>
+
+              {/* Meta Description */}
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META DESCRIPTION <span className="text-accent3/70">(for SERP preview)</span></div>
+                <textarea value={metaDesc} onChange={e => setMetaDesc(e.target.value)} rows={2}
+                  placeholder="Write a 120–160 character description…"
+                  className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
               {/* Audience + Type */}
@@ -442,7 +644,7 @@ Return this exact JSON structure (no markdown, no extra text):
                 <div>
                   <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TYPE</div>
                   <input value={type} onChange={e => setType(e.target.value)}
-                    placeholder="e.g. Checklist Guide"
+                    placeholder="e.g. Review"
                     className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
                 </div>
               </div>
@@ -450,18 +652,52 @@ Return this exact JSON structure (no markdown, no extra text):
               {/* Article Content */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">ARTICLE CONTENT</div>
-                <textarea value={content} onChange={e => setContent(e.target.value)} rows={8}
+                <textarea value={content} onChange={e => setContent(e.target.value)} rows={7}
                   placeholder="Paste the full article text here for a complete audit…"
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
+              {/* Cornerstone toggle */}
+              <button
+                onClick={() => setCornerstone(c => !c)}
+                className={cn(
+                  'w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer',
+                  cornerstone ? 'bg-accent3/5 border-accent3/30' : 'bg-bg border-border hover:border-accent3/30'
+                )}>
+                <div className="text-left">
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={13} className={cornerstone ? 'text-accent3' : 'text-muted'} />
+                    <span className="text-xs font-semibold text-tx">Cornerstone Content</span>
+                  </div>
+                  <div className="text-[10px] text-muted mt-0.5 ml-5">Pillar article — applies stricter SEO standards</div>
+                </div>
+                <div className={cn('w-9 h-5 rounded-full transition-colors relative shrink-0',
+                  cornerstone ? 'bg-accent3' : 'bg-border')}>
+                  <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                    cornerstone ? 'translate-x-4' : 'translate-x-0.5')} />
+                </div>
+              </button>
+
               {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding.</div>}
             </Card>
 
-            {/* Result panel */}
-            <div className="lg:col-span-3">
+            {/* ── Right column ────────────────────────────────────── */}
+            <div className="lg:col-span-3 flex flex-col gap-4">
+
+              {/* SERP Preview — always visible */}
+              <Card>
+                <CardTitle className="mb-3">SERP Preview</CardTitle>
+                <SerpPreview
+                  metaTitle={metaTitle}
+                  metaDesc={metaDesc}
+                  url={pubUrl}
+                  keyword={keyword}
+                />
+              </Card>
+
+              {/* Audit Result or empty state */}
               {error && result && (
-                <div className="mb-3 flex items-center gap-2 p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger">
+                <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger">
                   <AlertCircle size={13} className="shrink-0" /> {error}
                 </div>
               )}
@@ -469,18 +705,16 @@ Return this exact JSON structure (no markdown, no extra text):
                 <Card>
                   <CardTitle className="mb-2">Audit Result</CardTitle>
                   <div className="text-[11px] text-muted font-mono-jarvis space-y-0.5 mb-3">
-                    <div>Mode: <span className="text-tx">{mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}</span></div>
-                    {docsUrl && <div>Google Docs checked: <span className="text-accent truncate">{docsUrl}</span></div>}
-                    {pubUrl  && <div>Published URL checked: <span className="text-accent truncate">{pubUrl}</span></div>}
+                    <div>Mode: <span className="text-tx">{mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}</span>{cornerstone && <span className="ml-2 text-accent3">· Cornerstone</span>}</div>
+                    {pubUrl  && <div>URL: <span className="text-accent truncate">{pubUrl}</span></div>}
                     {keyword && <div>Keyword: <span className="text-tx">{keyword}</span></div>}
                   </div>
-
-                  <div className="flex items-center gap-6 mb-3">
+                  <div className="flex items-center gap-4 mb-1">
                     <ScoreRing score={result.score} />
-                    <div className="grid grid-cols-3 gap-3 flex-1">
+                    <div className="grid grid-cols-3 gap-2 flex-1">
                       <div className="bg-accent3/5 border border-accent3/20 rounded-xl p-3 text-center">
                         <div className="font-display font-black text-2xl text-accent3">{passed}</div>
-                        <div className="text-[10px] text-muted mt-0.5">Passed Checks</div>
+                        <div className="text-[10px] text-muted mt-0.5">Passed</div>
                       </div>
                       <div className="bg-accent4/5 border border-accent4/20 rounded-xl p-3 text-center">
                         <div className="font-display font-black text-2xl text-accent4">{needsWork}</div>
@@ -488,24 +722,23 @@ Return this exact JSON structure (no markdown, no extra text):
                       </div>
                       <div className="bg-surface border border-border rounded-xl p-3 text-center">
                         <div className="font-display font-black text-xl text-tx">{result.status}</div>
-                        <div className="text-[10px] text-muted mt-0.5">Article Status</div>
+                        <div className="text-[10px] text-muted mt-0.5">Status</div>
                       </div>
                     </div>
                   </div>
                 </Card>
               ) : (
-                <Card className="flex flex-col items-center justify-center text-center min-h-48">
+                <Card className="flex flex-col items-center justify-center text-center min-h-36">
                   {error ? (
                     <>
-                      <AlertCircle size={36} className="mb-3 text-danger" strokeWidth={1.5} />
+                      <AlertCircle size={32} className="mb-2 text-danger" strokeWidth={1.5} />
                       <div className="text-sm font-semibold text-danger mb-1">Audit Failed</div>
                       <div className="text-xs text-muted max-w-xs leading-relaxed">{error}</div>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 size={40} className="mb-3 text-muted" strokeWidth={1} />
+                      <CheckCircle2 size={36} className="mb-2 text-muted" strokeWidth={1} />
                       <div className="text-sm text-muted">Fill in the inputs and click Run Audit</div>
-                      <div className="text-xs text-muted mt-1">Results will appear here after analysis</div>
                     </>
                   )}
                 </Card>
@@ -513,7 +746,18 @@ Return this exact JSON structure (no markdown, no extra text):
             </div>
           </div>
 
-          {/* Checklist Evaluation */}
+          {/* Readability Panel — live, shown when content exists */}
+          {readStats && (
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <CardTitle>Readability Analysis</CardTitle>
+                <span className="text-[10px] text-muted font-mono-jarvis">Live · updates as you type</span>
+              </div>
+              <ReadabilityPanel stats={readStats} cornerstone={cornerstone} />
+            </Card>
+          )}
+
+          {/* Checklist */}
           {result && (
             <Card>
               <CardTitle className="mb-4">Checklist Evaluation</CardTitle>

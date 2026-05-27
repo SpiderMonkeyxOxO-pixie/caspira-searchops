@@ -580,45 +580,91 @@ Return this exact JSON structure (no markdown, no extra text):
   const rewriteArticle = useMutation({
     mutationFn: async () => {
       if (!result) throw new Error('No audit result available.')
-      const highFixes = result.recommendations.filter(r => r.priority === 'High').map(r => `- ${r.title}: ${r.detail}`).join('\n')
-      const medFixes  = result.recommendations.filter(r => r.priority === 'Medium').map(r => `- ${r.title}: ${r.detail}`).join('\n')
-      const issues    = result.checklist.filter(c => c.status !== 'Good').map(c => `- ${c.label} (${c.score}/${c.max}): ${c.note}`).join('\n')
+      const issues = result.checklist.map(c => `- ${c.label} scored ${c.score}/${c.max} (${c.status}): ${c.note}`).join('\n')
 
-      const userMsg = `You are rewriting an article that scored ${result.score}/100 (${result.status}) in an SEO audit.
+      const userMsg = `You are a senior SEO content editor. The article below scored ${result.score}/100. Your rewrite must score 80 or higher on the same audit rubric. Do not polish — rebuild where needed.
 
 TARGET KEYWORD: ${keyword || 'N/A'}
 AUDIENCE: ${audience || 'N/A'}
 POST TYPE: ${type === 'Post' ? 'Blog Post' : 'Article (Page)'}
-${cornerstone ? 'CORNERSTONE CONTENT: Yes — must be comprehensive, 2000+ words.' : ''}
+${cornerstone ? 'CORNERSTONE: Yes — 2000+ words required. Must be the most comprehensive resource on this topic.' : ''}
 
 ORIGINAL ARTICLE:
 ${content || '[No content provided]'}
 
-AUDIT SCORE: ${result.score}/100 — ${result.status}
+CURRENT AUDIT FINDINGS (all 11 items):
+${issues}
+
 OVERALL ASSESSMENT: ${result.aiRecommendation || 'N/A'}
 
-HIGH PRIORITY FIXES:
-${highFixes || 'None'}
+── SCORING RULES — hit these to reach 80+ ──
 
-MEDIUM PRIORITY FIXES:
-${medFixes || 'None'}
+TITLE / H1 (10 pts — must score 9+):
+• Keyword in first 3 words of H1
+• Specific and compelling — not generic
+• One H1 only
 
-CHECKLIST ISSUES TO FIX:
-${issues || 'None'}
+META TITLE & DESCRIPTION (10 pts — must score 8+):
+• Output as: Meta Title: [50–60 chars with keyword]
+• Output as: Meta Description: [120–160 chars, keyword present, ends with a CTA]
 
-INSTRUCTIONS:
-- Rewrite the full article addressing ALL the above issues.
-- Keep all accurate facts from the original.
-- Improve the introduction, headings, keyword usage, and readability.
-- Remove redundancy, repetition, and weak sentences.
-- Add transition words for better flow.
-- Do NOT add unverifiable claims.
-- Output ONLY the rewritten article. No preamble, no commentary.`
+URL SLUG (5 pts — must score 5):
+• Output as: Suggested Slug: [keyword-first, hyphens, no stop words, under 6 words]
+
+INTRODUCTION (10 pts — must score 9+):
+• Keyword appears within the first 50 words
+• Opens with a reader problem, striking fact, or direct question — not a generic definition
+• Clearly signals what the article delivers
+
+KEYWORD USAGE (10 pts — must score 9+):
+• Natural keyword usage 3–5 times in body
+• Keyword or close variant in at least 2 H2 or H3 headings
+• Density 0.5–3% — never stuffed
+
+HEADING STRUCTURE (10 pts — must score 9+):
+• Logical H2 → H3 hierarchy — no skipped levels
+• Each H2 covers a distinct topic section
+• Headings are descriptive, not vague ("Step 1" alone is not enough)
+
+CONTENT HELPFULNESS (15 pts — most important, must score 13+):
+• Answer the reader's query completely — no vague advice
+• Include specific examples, steps, or comparisons
+• Each section must add unique value — remove padding
+• Minimum 800 words; cornerstone: 2000+ words
+• Think: what would a 5-star expert answer look like?
+
+GRAMMAR, REDUNDANCY & REPETITION (10 pts — must score 9+):
+• Cut all filler phrases: "it is important to note", "in today's world", "needless to say"
+• No sentence repeats an idea already made — every sentence earns its place
+• Keep average sentence length under 20 words
+• Active voice throughout — passive only where it reads more naturally
+
+INTERNAL / EXTERNAL LINKS (10 pts — must score 8+):
+• Add 2–3 contextual internal link placeholders: [Internal Link: Anchor Text → /suggested-url]
+• Add 1–2 external source references: [External Source: Publication Name → topic]
+
+IMAGES & ALT TEXT (5 pts — must score 4+):
+• Add image placeholders at natural visual breaks: [Image: alt text containing keyword]
+• At least one image per major H2 section
+
+TRUST & ACCURACY (5 pts — must score 5):
+• Remove or qualify any unverifiable claims
+• No guaranteed results, guaranteed income, or misleading bonus language
+• Cite sources inline where statistics or facts are stated
+
+── OUTPUT FORMAT (follow exactly) ──
+Meta Title: [title]
+Meta Description: [description]
+Suggested Slug: [slug]
+
+[Full rewritten article starting with H1, then H2/H3 sections, body, placeholders]
+
+No commentary. No "Here is the rewrite". Start directly with "Meta Title:".`
 
       return callClaude(
-        'You are an expert SEO content writer. Rewrite articles to fix all audit issues. Output only the rewritten article — no preamble, no explanations.',
+        'You are a senior SEO content editor. Rewrite articles to score 80+ on a strict SEO audit rubric. Follow the output format exactly. No preamble.',
         userMsg,
-        6000,
+        8000,
       )
     },
     onSuccess: (data) => {

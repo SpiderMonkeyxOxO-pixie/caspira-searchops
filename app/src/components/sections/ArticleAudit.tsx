@@ -483,7 +483,8 @@ Return this exact JSON structure (no markdown, no extra text):
     { "priority": "<High|Medium|Low>", "title": "<short action title>", "detail": "<1-sentence specific instruction>" }
   ]
 }`
-      return callClaude(SYSTEM_PROMPT, userMsg, 4000)
+      const yr = new Date().getFullYear()
+      return callClaude(`Current year: ${yr}. Never reference past years in any output.\n\n${SYSTEM_PROMPT}`, userMsg, 4000)
     },
     onSuccess: (data) => {
       if (!data) { setError('No response received. Check your API key in Onboarding.'); return }
@@ -572,7 +573,8 @@ Return this exact JSON structure (no markdown, no extra text):
     { "priority": "<High|Medium|Low>", "title": "<action>", "detail": "<instruction>" }
   ]
 }`
-      return callClaude(SYSTEM_PROMPT, userMsg, 4000)
+      const yr = new Date().getFullYear()
+      return callClaude(`Current year: ${yr}. Never reference past years in any output.\n\n${SYSTEM_PROMPT}`, userMsg, 4000)
     },
     onSuccess: (data) => {
       if (!data) return
@@ -671,8 +673,9 @@ Suggested Slug: [slug]
 
 No commentary. No "Here is the rewrite". Start directly with "Meta Title:".`
 
+      const currentYear = new Date().getFullYear()
       return callClaude(
-        'You are a senior SEO content editor. Rewrite articles to score 80+ on a strict SEO audit rubric. Follow the output format exactly. No preamble.',
+        `Current year: ${currentYear}. All year references in your output must use ${currentYear} or later — never use past years. You are a senior SEO content editor. Rewrite articles to score 80+ on a strict SEO audit rubric. Follow the output format exactly. No preamble.`,
         userMsg,
         8000,
       )

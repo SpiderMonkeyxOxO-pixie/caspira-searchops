@@ -168,6 +168,7 @@ export function ArticleAudit() {
   const [content, setContent]   = useState('')
   const [result, setResult]     = useState<AuditResult | null>(null)
   const [fixed, setFixed]       = useState<Set<number>>(new Set())
+  const [error, setError]       = useState<string | null>(null)
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
 
@@ -207,12 +208,13 @@ Return this exact JSON structure (no markdown, no extra text):
       return callClaude(SYSTEM_PROMPT, userMsg, 2000)
     },
     onSuccess: (data) => {
-      if (!data) return
+      if (!data) { setError('No response received. Check your API key in Onboarding.'); return }
       try {
         const match = data.match(/\{[\s\S]*\}/)
-        if (!match) return
+        if (!match) { setError('AI returned an unexpected format. Try again.'); return }
         const parsed = JSON.parse(match[0]) as AuditResult
         setResult(parsed)
+        setError(null)
         setFixed(new Set())
         save({
           id: crypto.randomUUID(),
@@ -223,7 +225,10 @@ Return this exact JSON structure (no markdown, no extra text):
           keyword,
           result: parsed,
         })
-      } catch { /* keep */ }
+      } catch { setError('Failed to parse AI response. Try again.') }
+    },
+    onError: (e: Error) => {
+      setError(e.message || 'AI call failed. Check your API key in Onboarding.')
     },
   })
 
@@ -377,6 +382,11 @@ Return this exact JSON structure (no markdown, no extra text):
 
             {/* Result panel */}
             <div className="lg:col-span-3">
+              {error && result && (
+                <div className="mb-3 flex items-center gap-2 p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger">
+                  <AlertCircle size={13} className="shrink-0" /> {error}
+                </div>
+              )}
               {result ? (
                 <Card>
                   <CardTitle className="mb-2">Audit Result</CardTitle>
@@ -407,9 +417,19 @@ Return this exact JSON structure (no markdown, no extra text):
                 </Card>
               ) : (
                 <Card className="flex flex-col items-center justify-center text-center min-h-48">
-                  <CheckCircle2 size={40} className="mb-3 text-muted" strokeWidth={1} />
-                  <div className="text-sm text-muted">Fill in the inputs and click Run Audit</div>
-                  <div className="text-xs text-muted mt-1">Results will appear here after analysis</div>
+                  {error ? (
+                    <>
+                      <AlertCircle size={36} className="mb-3 text-danger" strokeWidth={1.5} />
+                      <div className="text-sm font-semibold text-danger mb-1">Audit Failed</div>
+                      <div className="text-xs text-muted max-w-xs leading-relaxed">{error}</div>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={40} className="mb-3 text-muted" strokeWidth={1} />
+                      <div className="text-sm text-muted">Fill in the inputs and click Run Audit</div>
+                      <div className="text-xs text-muted mt-1">Results will appear here after analysis</div>
+                    </>
+                  )}
                 </Card>
               )}
             </div>

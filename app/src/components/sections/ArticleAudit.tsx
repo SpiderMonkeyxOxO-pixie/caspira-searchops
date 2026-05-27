@@ -58,6 +58,13 @@ interface ReadStats {
   kwDensity: number
 }
 
+interface ImageEntry {
+  id: string
+  name: string
+  preview: string
+  altText: string
+}
+
 /* ── Constants ─────────────────────────────────────────────────────── */
 
 const CHECKLIST_ICONS: Record<string, React.ReactNode> = {
@@ -84,7 +91,7 @@ const CHECK_INFO: Record<string, string> = {
   'Content Helpfulness':              'Measures depth, actionability, unique value, and whether it fully answers the reader\'s query. Max 15 pts.',
   'Grammar, Redundancy & Repetition': 'Flags grammar errors, repeated phrases, filler sentences, and redundant ideas that dilute quality. Max 10 pts.',
   'Internal / External Links':        'Counts contextual internal links and credible external sources. Flags missing or broken link opportunities. Max 10 pts.',
-  'Images & Alt Text':                'Checks if images have descriptive alt text containing the keyword and support the content. Max 5 pts.',
+  'Images & Alt Text':                'Checks if images have descriptive alt text containing the keyword. Upload images above with alt text for a more accurate score. Max 5 pts.',
   'Trust & Accuracy':                 'Flags unverifiable claims, misleading stats, risky language, or content that could harm reader trust. Max 5 pts.',
 }
 
@@ -354,6 +361,7 @@ export function ArticleAudit() {
   const [error,      setError]      = useState<string | null>(null)
   const [rewritten,  setRewritten]  = useState<string | null>(null)
   const [copied,     setCopied]     = useState(false)
+  const [images,     setImages]     = useState<ImageEntry[]>([])
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
 
@@ -378,6 +386,15 @@ Article Type: ${type || 'N/A'}
 
 ARTICLE CONTENT:
 ${content.slice(0, 4000) || '[No content provided — evaluate based on available metadata only]'}
+
+IMAGES IN ARTICLE (${images.length}):
+${images.length > 0
+  ? images.map((img, idx) => {
+      const kw = keyword.trim().toLowerCase()
+      const hasKw = kw ? img.altText.toLowerCase().includes(kw) : null
+      return `  Image ${idx + 1}: "${img.name}" — Alt text: "${img.altText || 'MISSING — no alt text provided'}"${hasKw !== null ? ` — Keyword in alt: ${hasKw ? 'YES' : 'NO'}` : ''}`
+    }).join('\n')
+  : '  No images uploaded. Score based on any img/markdown image syntax found in article text, or 0/5 if none detected.'}
 
 Return this exact JSON structure (no markdown, no extra text):
 {
@@ -492,6 +509,23 @@ INSTRUCTIONS:
     navigator.clipboard.writeText(rewritten).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  function handleImageFiles(files: FileList | null) {
+    if (!files) return
+    Array.from(files).slice(0, 5 - images.length).forEach(file => {
+      if (!file.type.startsWith('image/')) return
+      const reader = new FileReader()
+      reader.onload = e => {
+        setImages(prev => [...prev, {
+          id: crypto.randomUUID(),
+          name: file.name,
+          preview: e.target?.result as string,
+          altText: '',
+        }])
+      }
+      reader.readAsDataURL(file)
     })
   }
 
@@ -736,6 +770,48 @@ INSTRUCTIONS:
                 <textarea value={content} onChange={e => setContent(e.target.value)} rows={7}
                   placeholder="Paste the full article text here for a complete audit…"
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
+              </div>
+
+              {/* Images */}
+              <div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
+                  IMAGES &amp; ALT TEXT
+                  <span className="text-accent3/70 ml-1">({images.length}/5 · add alt text for accurate scoring)</span>
+                </div>
+                {images.length < 5 && (
+                  <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-accent3/50 hover:bg-accent3/5 transition-all mb-2">
+                    <Image size={16} className="text-muted mb-1" />
+                    <span className="text-[10px] text-muted">Click to upload images (JPG, PNG, WebP)</span>
+                    <input type="file" accept="image/*" multiple className="hidden"
+                      onChange={e => handleImageFiles(e.target.files)} />
+                  </label>
+                )}
+                {images.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {images.map(img => (
+                      <div key={img.id} className="bg-surface border border-border rounded-xl p-2 space-y-1.5">
+                        <div className="relative">
+                          <img src={img.preview} alt={img.altText || img.name}
+                            className="w-full h-24 object-cover rounded-lg" />
+                          <button
+                            onClick={() => setImages(prev => prev.filter(i => i.id !== img.id))}
+                            className="absolute top-1 right-1 w-5 h-5 bg-danger text-white rounded-full text-xs flex items-center justify-center hover:bg-danger/80 transition-colors leading-none">
+                            ×
+                          </button>
+                          {img.altText && keyword && img.altText.toLowerCase().includes(keyword.toLowerCase()) && (
+                            <span className="absolute bottom-1 left-1 text-[8px] font-bold bg-accent3 text-white px-1.5 py-0.5 rounded">KW ✓</span>
+                          )}
+                        </div>
+                        <div className="text-[9px] text-muted truncate font-mono-jarvis">{img.name}</div>
+                        <input
+                          value={img.altText}
+                          onChange={e => setImages(prev => prev.map(i => i.id === img.id ? { ...i, altText: e.target.value } : i))}
+                          placeholder="Enter alt text…"
+                          className="w-full bg-bg border border-border rounded-lg px-2 py-1 text-[10px] text-tx outline-none focus:border-accent transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <button

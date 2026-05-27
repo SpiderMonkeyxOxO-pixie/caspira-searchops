@@ -4,10 +4,12 @@ import {
   Loader2, Download, RefreshCw, CheckCircle2, AlertCircle,
   Heading1, FileText, Link2, Zap, Search, AlignLeft,
   ClipboardList, Image, ShieldCheck, ExternalLink, History, BookOpen,
+  Wand2, Copy, Check,
 } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { HistoryPanel } from '@/components/ui/HistoryPanel'
 import { useHistory } from '@/lib/history'
 import { cn } from '@/lib/utils'
@@ -31,6 +33,7 @@ interface Recommendation {
 interface AuditResult {
   score: number
   status: 'Good' | 'Needs Work' | 'Poor'
+  aiRecommendation: string
   checklist: CheckItem[]
   recommendations: Recommendation[]
 }
@@ -69,6 +72,20 @@ const CHECKLIST_ICONS: Record<string, React.ReactNode> = {
   'Internal / External Links':         <ExternalLink  size={14} />,
   'Images & Alt Text':                 <Image         size={14} />,
   'Trust & Accuracy':                  <ShieldCheck   size={14} />,
+}
+
+const CHECK_INFO: Record<string, string> = {
+  'Title / H1':                      'Evaluates whether the H1 exists, contains the target keyword, and matches search intent. Max 10 pts.',
+  'Meta Title & Description':         'Checks meta title (50–60 chars) and meta description (120–160 chars) both contain the keyword. Max 10 pts.',
+  'URL Slug':                         'Reviews if the slug is short, contains the keyword, uses hyphens, and avoids stop words. Max 5 pts.',
+  'Introduction':                     'Assesses if the keyword appears in the first 100 words, hooks the reader, and matches search intent. Max 10 pts.',
+  'Keyword Usage':                    'Checks keyword density (0.5–3%), natural placement in subheadings, and avoidance of stuffing. Max 10 pts.',
+  'Heading Structure':                'Evaluates H2/H3 hierarchy, keyword inclusion in headings, and logical section organisation. Max 10 pts.',
+  'Content Helpfulness':              'Measures depth, actionability, unique value, and whether it fully answers the reader\'s query. Max 15 pts.',
+  'Grammar, Redundancy & Repetition': 'Flags grammar errors, repeated phrases, filler sentences, and redundant ideas that dilute quality. Max 10 pts.',
+  'Internal / External Links':        'Counts contextual internal links and credible external sources. Flags missing or broken link opportunities. Max 10 pts.',
+  'Images & Alt Text':                'Checks if images have descriptive alt text containing the keyword and support the content. Max 5 pts.',
+  'Trust & Accuracy':                 'Flags unverifiable claims, misleading stats, risky language, or content that could harm reader trust. Max 5 pts.',
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -297,11 +314,12 @@ function CheckCard({ item }: { item: CheckItem }) {
   return (
     <div className="bg-bg border border-border rounded-xl p-4 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-lg bg-surface border border-border flex items-center justify-center text-muted shrink-0">
             {CHECKLIST_ICONS[item.label] ?? <FileText size={14} />}
           </div>
-          <span className="text-xs font-semibold text-tx leading-tight">{item.label}</span>
+          <span className="text-xs font-semibold text-tx leading-tight truncate">{item.label}</span>
+          <InfoTooltip text={CHECK_INFO[item.label] ?? item.label} />
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <TrafficDot level={level} />
@@ -334,6 +352,8 @@ export function ArticleAudit() {
   const [result,     setResult]     = useState<AuditResult | null>(null)
   const [fixed,      setFixed]      = useState<Set<number>>(new Set())
   const [error,      setError]      = useState<string | null>(null)
+  const [rewritten,  setRewritten]  = useState<string | null>(null)
+  const [copied,     setCopied]     = useState(false)
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
 
@@ -342,7 +362,7 @@ export function ArticleAudit() {
   const passed    = result?.checklist.filter(c => c.status === 'Good').length ?? 0
   const needsWork = result?.checklist.filter(c => c.status !== 'Good').length ?? 0
 
-  /* ── AI call ────────────────────────────────────────────────────── */
+  /* ── Audit AI call ──────────────────────────────────────────────── */
 
   const runAudit = useMutation({
     mutationFn: async () => {
@@ -363,6 +383,7 @@ Return this exact JSON structure (no markdown, no extra text):
 {
   "score": <0-100 integer>,
   "status": "<Good|Needs Work|Poor>",
+  "aiRecommendation": "<2-3 sentence overall assessment: what the article does well, what its biggest weakness is, and the single most important action to improve it>",
   "checklist": [
     { "label": "Title / H1", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
     { "label": "Meta Title & Description", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<specific 1-sentence finding>" },
@@ -390,6 +411,7 @@ Return this exact JSON structure (no markdown, no extra text):
         if (!match) { setError('AI returned an unexpected format. Try again.'); return }
         const parsed = JSON.parse(match[0]) as AuditResult
         setResult(parsed)
+        setRewritten(null)
         setError(null)
         setFixed(new Set())
         save({
@@ -410,6 +432,68 @@ Return this exact JSON structure (no markdown, no extra text):
       setError(e.message || 'AI call failed. Check your API key in Onboarding.')
     },
   })
+
+  /* ── Rewrite AI call ────────────────────────────────────────────── */
+
+  const rewriteArticle = useMutation({
+    mutationFn: async () => {
+      if (!result) throw new Error('No audit result available.')
+      const highFixes = result.recommendations.filter(r => r.priority === 'High').map(r => `- ${r.title}: ${r.detail}`).join('\n')
+      const medFixes  = result.recommendations.filter(r => r.priority === 'Medium').map(r => `- ${r.title}: ${r.detail}`).join('\n')
+      const issues    = result.checklist.filter(c => c.status !== 'Good').map(c => `- ${c.label} (${c.score}/${c.max}): ${c.note}`).join('\n')
+
+      const userMsg = `You are rewriting an article that scored ${result.score}/100 (${result.status}) in an SEO audit.
+
+TARGET KEYWORD: ${keyword || 'N/A'}
+AUDIENCE: ${audience || 'N/A'}
+ARTICLE TYPE: ${type || 'N/A'}
+${cornerstone ? 'CORNERSTONE CONTENT: Yes — must be comprehensive, 2000+ words.' : ''}
+
+ORIGINAL ARTICLE:
+${content || '[No content provided]'}
+
+AUDIT SCORE: ${result.score}/100 — ${result.status}
+OVERALL ASSESSMENT: ${result.aiRecommendation || 'N/A'}
+
+HIGH PRIORITY FIXES:
+${highFixes || 'None'}
+
+MEDIUM PRIORITY FIXES:
+${medFixes || 'None'}
+
+CHECKLIST ISSUES TO FIX:
+${issues || 'None'}
+
+INSTRUCTIONS:
+- Rewrite the full article addressing ALL the above issues.
+- Keep all accurate facts from the original.
+- Improve the introduction, headings, keyword usage, and readability.
+- Remove redundancy, repetition, and weak sentences.
+- Add transition words for better flow.
+- Do NOT add unverifiable claims.
+- Output ONLY the rewritten article. No preamble, no commentary.`
+
+      return callClaude(
+        'You are an expert SEO content writer. Rewrite articles to fix all audit issues. Output only the rewritten article — no preamble, no explanations.',
+        userMsg,
+        6000,
+      )
+    },
+    onSuccess: (data) => {
+      if (data) setRewritten(data.trim())
+    },
+    onError: (e: Error) => {
+      setError(e.message || 'Rewrite failed. Try again.')
+    },
+  })
+
+  function copyRewritten() {
+    if (!rewritten) return
+    navigator.clipboard.writeText(rewritten).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
 
   /* ── PDF export ─────────────────────────────────────────────────── */
 
@@ -435,13 +519,12 @@ Return this exact JSON structure (no markdown, no extra text):
     .stat{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:10px;text-align:center}
     .stat-n{font-size:22px;font-weight:900}
     .stat-l{font-size:10px;color:#666;margin-top:2px}
+    .ai-rec{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#166534;line-height:1.6}
+    .ai-rec strong{font-size:10px;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;color:#15803d}
     .read-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
     .read-tile{border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px}
     .read-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     .read-val{font-size:15px;font-weight:900}
-    .dot-good{display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:4px}
-    .dot-warn{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:4px}
-    .dot-poor{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-right:4px}
     h2{font-size:13px;font-weight:700;margin:20px 0 8px;padding-bottom:5px;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:.05em}
     table{width:100%;border-collapse:collapse;font-size:11px}
     th{background:#f9fafb;text-align:left;padding:7px 10px;font-weight:600;border-bottom:2px solid #e5e7eb}
@@ -477,6 +560,12 @@ Return this exact JSON structure (no markdown, no extra text):
       <div class="stat"><div class="stat-n">${result.checklist.length}</div><div class="stat-l">Total Checks</div></div>
     </div>
   </div>
+
+  ${result.aiRecommendation ? `
+  <div class="ai-rec">
+    <strong>AI Overall Assessment</strong>
+    ${result.aiRecommendation}
+  </div>` : ''}
 
   ${rs ? `
   <h2>Readability Analysis</h2>
@@ -565,7 +654,7 @@ Return this exact JSON structure (no markdown, no extra text):
       {tab === 'history' ? (
         <HistoryPanel
           records={records}
-          onLoad={r => { setKeyword(r.keyword); setResult(r.result); setFixed(new Set()); setTab('tool') }}
+          onLoad={r => { setKeyword(r.keyword); setResult(r.result); setFixed(new Set()); setRewritten(null); setTab('tool') }}
           onDelete={remove}
           onClear={clear}
           emptyText="No audit history yet. Run your first audit to save results."
@@ -575,11 +664,10 @@ Return this exact JSON structure (no markdown, no extra text):
           {/* Main row: Input + Right column */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-            {/* ── Input panel ────────────────────────────────────── */}
+            {/* ── Input panel ──────────────────────────────────── */}
             <Card className="lg:col-span-2 space-y-3">
               <CardTitle>Audit Input</CardTitle>
 
-              {/* Mode toggle */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">AUDIT MODE</div>
                 <div className="flex p-1 bg-bg border border-border rounded-lg w-fit gap-1">
@@ -593,7 +681,6 @@ Return this exact JSON structure (no markdown, no extra text):
                 </div>
               </div>
 
-              {/* Google Docs Link */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">GOOGLE DOCS LINK</div>
                 <input value={docsUrl} onChange={e => setDocsUrl(e.target.value)}
@@ -601,7 +688,6 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              {/* Published URL */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">PUBLISHED ARTICLE URL</div>
                 <input value={pubUrl} onChange={e => setPubUrl(e.target.value)}
@@ -609,7 +695,6 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              {/* Target Keyword */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">TARGET KEYWORD</div>
                 <input value={keyword} onChange={e => setKeyword(e.target.value)}
@@ -617,23 +702,20 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              {/* Meta Title */}
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META TITLE <span className="text-accent3/70">(for SERP preview)</span></div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META TITLE <span className="text-accent3/70">(SERP preview)</span></div>
                 <input value={metaTitle} onChange={e => setMetaTitle(e.target.value)}
                   placeholder="e.g. ABC Rummy App Review 2025 — Safe to Play?"
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 
-              {/* Meta Description */}
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META DESCRIPTION <span className="text-accent3/70">(for SERP preview)</span></div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">META DESCRIPTION <span className="text-accent3/70">(SERP preview)</span></div>
                 <textarea value={metaDesc} onChange={e => setMetaDesc(e.target.value)} rows={2}
                   placeholder="Write a 120–160 character description…"
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
-              {/* Audience + Type */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">AUDIENCE</div>
@@ -649,7 +731,6 @@ Return this exact JSON structure (no markdown, no extra text):
                 </div>
               </div>
 
-              {/* Article Content */}
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">ARTICLE CONTENT</div>
                 <textarea value={content} onChange={e => setContent(e.target.value)} rows={7}
@@ -657,7 +738,6 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
-              {/* Cornerstone toggle */}
               <button
                 onClick={() => setCornerstone(c => !c)}
                 className={cn(
@@ -681,26 +761,19 @@ Return this exact JSON structure (no markdown, no extra text):
               {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding.</div>}
             </Card>
 
-            {/* ── Right column ────────────────────────────────────── */}
+            {/* ── Right column ──────────────────────────────────── */}
             <div className="lg:col-span-3 flex flex-col gap-4">
-
-              {/* SERP Preview — always visible */}
               <Card>
                 <CardTitle className="mb-3">SERP Preview</CardTitle>
-                <SerpPreview
-                  metaTitle={metaTitle}
-                  metaDesc={metaDesc}
-                  url={pubUrl}
-                  keyword={keyword}
-                />
+                <SerpPreview metaTitle={metaTitle} metaDesc={metaDesc} url={pubUrl} keyword={keyword} />
               </Card>
 
-              {/* Audit Result or empty state */}
               {error && result && (
                 <div className="flex items-center gap-2 p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger">
                   <AlertCircle size={13} className="shrink-0" /> {error}
                 </div>
               )}
+
               {result ? (
                 <Card>
                   <CardTitle className="mb-2">Audit Result</CardTitle>
@@ -709,7 +782,7 @@ Return this exact JSON structure (no markdown, no extra text):
                     {pubUrl  && <div>URL: <span className="text-accent truncate">{pubUrl}</span></div>}
                     {keyword && <div>Keyword: <span className="text-tx">{keyword}</span></div>}
                   </div>
-                  <div className="flex items-center gap-4 mb-1">
+                  <div className="flex items-center gap-4 mb-3">
                     <ScoreRing score={result.score} />
                     <div className="grid grid-cols-3 gap-2 flex-1">
                       <div className="bg-accent3/5 border border-accent3/20 rounded-xl p-3 text-center">
@@ -726,6 +799,17 @@ Return this exact JSON structure (no markdown, no extra text):
                       </div>
                     </div>
                   </div>
+
+                  {/* AI Overall Recommendation */}
+                  {result.aiRecommendation && (
+                    <div className="p-3 bg-accent3/5 border border-accent3/20 rounded-xl">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent3 animate-pulse inline-block" />
+                        <span className="text-[10px] font-bold text-accent3 font-mono-jarvis tracking-widest">AI OVERALL ASSESSMENT</span>
+                      </div>
+                      <p className="text-[11px] text-tx leading-relaxed">{result.aiRecommendation}</p>
+                    </div>
+                  )}
                 </Card>
               ) : (
                 <Card className="flex flex-col items-center justify-center text-center min-h-36">
@@ -746,7 +830,7 @@ Return this exact JSON structure (no markdown, no extra text):
             </div>
           </div>
 
-          {/* Readability Panel — live, shown when content exists */}
+          {/* Readability Panel */}
           {readStats && (
             <Card>
               <div className="flex items-center justify-between mb-3">
@@ -772,9 +856,21 @@ Return this exact JSON structure (no markdown, no extra text):
           {/* Recommendations */}
           {result && result.recommendations.length > 0 && (
             <Card>
-              <div className="flex items-center gap-2 mb-4">
-                <AlertCircle size={16} className="text-accent4" />
-                <CardTitle>Recommendations</CardTitle>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} className="text-accent4" />
+                  <CardTitle>Recommendations</CardTitle>
+                </div>
+                <Button
+                  variant="primary"
+                  onClick={() => rewriteArticle.mutate()}
+                  disabled={rewriteArticle.isPending || !content.trim()}
+                  className="flex items-center gap-1.5 text-xs"
+                >
+                  {rewriteArticle.isPending
+                    ? <><Loader2 size={12} className="animate-spin" /> Rewriting…</>
+                    : <><Wand2 size={12} /> Rewrite Article with AI</>}
+                </Button>
               </div>
               <div className="space-y-2.5">
                 {result.recommendations.map((rec, i) => (
@@ -804,6 +900,45 @@ Return this exact JSON structure (no markdown, no extra text):
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {/* Rewritten Article Output */}
+          {(rewriteArticle.isPending || rewritten) && (
+            <Card>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Wand2 size={15} className="text-accent2" />
+                  <CardTitle>AI Rewritten Article</CardTitle>
+                  {result && rewritten && (
+                    <span className="text-[10px] font-mono-jarvis text-muted ml-1">
+                      · Based on {result.score}/100 audit · {result.recommendations.length} fixes applied
+                    </span>
+                  )}
+                </div>
+                {rewritten && (
+                  <button
+                    onClick={copyRewritten}
+                    className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-border bg-surface text-muted hover:text-tx hover:border-accent cursor-pointer transition-all">
+                    {copied ? <><Check size={12} className="text-accent3" /> Copied!</> : <><Copy size={12} /> Copy Article</>}
+                  </button>
+                )}
+              </div>
+
+              {rewriteArticle.isPending ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <Loader2 size={28} className="animate-spin text-accent2" />
+                  <div className="text-sm text-muted">Rewriting article with all recommendations applied…</div>
+                  <div className="text-xs text-muted">This may take 20–40 seconds</div>
+                </div>
+              ) : rewritten ? (
+                <textarea
+                  readOnly
+                  value={rewritten}
+                  rows={20}
+                  className="w-full bg-bg border border-border rounded-xl p-4 text-xs text-tx font-mono-jarvis leading-relaxed outline-none resize-none scrollbar-thin"
+                />
+              ) : null}
             </Card>
           )}
         </>

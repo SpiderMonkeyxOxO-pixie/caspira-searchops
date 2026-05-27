@@ -7,7 +7,6 @@ import {
 } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { HistoryPanel } from '@/components/ui/HistoryPanel'
 import { useHistory } from '@/lib/history'

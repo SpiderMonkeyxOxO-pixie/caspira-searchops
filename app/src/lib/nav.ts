@@ -71,6 +71,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
     items: [
       { id: 'articlewriter', label: 'Article Writer',    icon: PenLine, badge: 'AI', badgeColor: 'bg-accent2' },
       { id: 'contentgrader', label: 'Content Grader',    icon: GraduationCap },
+      { id: 'articleaudit',  label: 'Article SEO Audit', icon: ClipboardList, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'answerpublic',  label: 'Answer the Public', icon: BookOpen, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'topicalmap',    label: 'Topical Map',       icon: Compass },
       { id: 'serpsim',       label: 'SERP Simulator',    icon: MonitorSmartphone },

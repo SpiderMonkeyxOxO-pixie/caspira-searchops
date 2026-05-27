@@ -68,7 +68,7 @@ export type NavSection =
   | 'casestudy' | 'gsc'
   | 'ga4'       | 'apisync'   | 'crawlimport'
   | 'crossview'
-  | 'articlewriter' | 'contentgrader' | 'autorefresh' | 'topicalmap'
+  | 'articlewriter' | 'contentgrader' | 'articleaudit' | 'autorefresh' | 'topicalmap'
   | 'serpsim'       | 'contentspy'    | 'faqgen'
   | 'redirectmgr'   | 'loganalyzer'   | 'hreflang'   | 'robotstxt'
   | 'sitemapgen'    | 'jsseo'    | 'indexnow'

@@ -47,6 +47,7 @@ const CrawlImport   = load(() => import('@/components/sections/CrawlImport'))
 const CrossView     = load(() => import('@/components/sections/CrossView'))
 const ArticleWriter  = load(() => import('@/components/sections/ArticleWriter'))
 const ContentGrader  = load(() => import('@/components/sections/ContentGrader'))
+const ArticleAudit   = load(() => import('@/components/sections/ArticleAudit'))
 const AutoRefresh    = load(() => import('@/components/sections/AutoRefresh'))
 const TopicalMap     = load(() => import('@/components/sections/TopicalMap'))
 const SerpSimulator  = load(() => import('@/components/sections/SerpSimulator'))
@@ -115,6 +116,7 @@ const SECTION_MAP: Partial<Record<NavSection, React.LazyExoticComponent<React.Co
   crossview:    CrossView,
   articlewriter: ArticleWriter,
   contentgrader: ContentGrader,
+  articleaudit:  ArticleAudit,
   autorefresh:   AutoRefresh,
   topicalmap:    TopicalMap,
   serpsim:       SerpSimulator,

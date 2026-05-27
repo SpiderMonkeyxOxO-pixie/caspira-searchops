@@ -205,12 +205,13 @@ Return this exact JSON structure (no markdown, no extra text):
     { "priority": "<High|Medium|Low>", "title": "<short action title>", "detail": "<1-sentence specific instruction>" }
   ]
 }`
-      return callClaude(SYSTEM_PROMPT, userMsg, 2000)
+      return callClaude(SYSTEM_PROMPT, userMsg, 4000)
     },
     onSuccess: (data) => {
       if (!data) { setError('No response received. Check your API key in Onboarding.'); return }
       try {
-        const match = data.match(/\{[\s\S]*\}/)
+        const cleaned = data.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+        const match = cleaned.match(/\{[\s\S]*\}/)
         if (!match) { setError('AI returned an unexpected format. Try again.'); return }
         const parsed = JSON.parse(match[0]) as AuditResult
         setResult(parsed)
@@ -225,7 +226,10 @@ Return this exact JSON structure (no markdown, no extra text):
           keyword,
           result: parsed,
         })
-      } catch { setError('Failed to parse AI response. Try again.') }
+      } catch (e) {
+        console.error('[ArticleAudit] parse error:', e, '\nRaw response:', data)
+        setError('Failed to parse AI response. Try again.')
+      }
     },
     onError: (e: Error) => {
       setError(e.message || 'AI call failed. Check your API key in Onboarding.')

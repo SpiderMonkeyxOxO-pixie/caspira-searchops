@@ -372,29 +372,22 @@ Return this exact JSON structure (no markdown, no extra text):
                   className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
               </div>
 
-              <div className="p-3 bg-surface border border-border rounded-lg">
-                <p className="text-[10px] text-muted leading-relaxed">
-                  <span className="font-bold text-tx">Mock mode:</span> Use Pre-Publish for Google Docs drafts
-                  and Post-Publish for live article URLs. The scores are sample results for visualization.
-                </p>
-              </div>
-
               {!isAIReady() && <div className="text-[10px] text-muted">Add an AI key in Onboarding.</div>}
             </Card>
 
             {/* Result panel */}
             <div className="lg:col-span-3">
               {result ? (
-                <Card className="h-full">
-                  <CardTitle className="mb-3">Audit Result</CardTitle>
-                  <div className="text-[11px] text-muted font-mono-jarvis space-y-0.5 mb-4">
+                <Card>
+                  <CardTitle className="mb-2">Audit Result</CardTitle>
+                  <div className="text-[11px] text-muted font-mono-jarvis space-y-0.5 mb-3">
                     <div>Mode: <span className="text-tx">{mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}</span></div>
                     {docsUrl && <div>Google Docs checked: <span className="text-accent truncate">{docsUrl}</span></div>}
                     {pubUrl  && <div>Published URL checked: <span className="text-accent truncate">{pubUrl}</span></div>}
                     {keyword && <div>Keyword: <span className="text-tx">{keyword}</span></div>}
                   </div>
 
-                  <div className="flex items-center gap-6 mb-6">
+                  <div className="flex items-center gap-6 mb-3">
                     <ScoreRing score={result.score} />
                     <div className="grid grid-cols-3 gap-3 flex-1">
                       <div className="bg-accent3/5 border border-accent3/20 rounded-xl p-3 text-center">
@@ -413,7 +406,7 @@ Return this exact JSON structure (no markdown, no extra text):
                   </div>
                 </Card>
               ) : (
-                <Card className="h-full flex flex-col items-center justify-center text-center min-h-64">
+                <Card className="flex flex-col items-center justify-center text-center min-h-48">
                   <CheckCircle2 size={40} className="mb-3 text-muted" strokeWidth={1} />
                   <div className="text-sm text-muted">Fill in the inputs and click Run Audit</div>
                   <div className="text-xs text-muted mt-1">Results will appear here after analysis</div>

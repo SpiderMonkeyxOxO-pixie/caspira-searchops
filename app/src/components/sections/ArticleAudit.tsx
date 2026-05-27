@@ -236,27 +236,101 @@ Return this exact JSON structure (no markdown, no extra text):
     },
   })
 
-  function exportReport() {
+  function exportPDF() {
     if (!result) return
-    const lines: string[] = [
-      `# Article SEO Audit Report`,
-      `**Mode:** ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}`,
-      `**Keyword:** ${keyword}`,
-      `**Score:** ${result.score}/100 — ${result.status}`,
-      '',
-      '## Checklist',
-      ...result.checklist.map(c => `- **${c.label}** ${c.score}/${c.max} (${c.status}): ${c.note}`),
-      '',
-      '## Recommendations',
-      ...result.recommendations.map(r => `- [${r.priority}] **${r.title}**: ${r.detail}`),
-    ]
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `article-audit-${Date.now()}.md`
-    a.click()
-    URL.revokeObjectURL(url)
+    const scoreColor = result.score >= 70 ? '#10b981' : result.score >= 45 ? '#f59e0b' : '#ef4444'
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <title>Article SEO Audit — ${keyword || 'Report'}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,sans-serif;color:#111;padding:32px;max-width:860px;margin:0 auto}
+    h1{font-size:22px;font-weight:900;margin-bottom:4px}
+    .sub{font-size:11px;color:#666;margin-bottom:24px}
+    .hero{display:flex;align-items:center;gap:32px;margin-bottom:28px;padding:20px;border:1px solid #e5e7eb;border-radius:12px}
+    .score{font-size:56px;font-weight:900;line-height:1;color:${scoreColor}}
+    .score span{font-size:18px;color:#999;font-weight:400}
+    .status{font-size:14px;font-weight:700;color:${scoreColor};margin-top:4px}
+    .stats{display:flex;gap:12px;flex:1}
+    .stat{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:12px;text-align:center}
+    .stat-n{font-size:26px;font-weight:900}
+    .stat-l{font-size:10px;color:#666;margin-top:2px}
+    h2{font-size:14px;font-weight:700;margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;text-transform:uppercase;letter-spacing:.05em}
+    table{width:100%;border-collapse:collapse;font-size:11.5px}
+    th{background:#f9fafb;text-align:left;padding:8px 10px;font-weight:600;border-bottom:2px solid #e5e7eb}
+    td{padding:8px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+    .good{color:#10b981;font-weight:700}
+    .bad{color:#f59e0b;font-weight:700}
+    .pts{color:#6b7280;font-size:11px}
+    .rec{margin-bottom:8px;padding:10px 14px;border-left:3px solid;border-radius:0 6px 6px 0;font-size:12px}
+    .High{border-color:#ef4444;background:#fef2f2}
+    .Medium{border-color:#f59e0b;background:#fffbeb}
+    .Low{border-color:#9ca3af;background:#f9fafb}
+    .rec-title{font-weight:700;margin-bottom:3px}
+    .rec-tag{font-size:10px;font-weight:700;margin-right:6px;padding:1px 6px;border-radius:4px;display:inline-block}
+    .tag-High{background:#fee2e2;color:#ef4444}
+    .tag-Medium{background:#fef3c7;color:#d97706}
+    .tag-Low{background:#f3f4f6;color:#6b7280}
+    footer{margin-top:32px;font-size:10px;color:#aaa;text-align:center;border-top:1px solid #e5e7eb;padding-top:12px}
+    @media print{body{padding:16px}@page{margin:1cm}}
+  </style>
+</head>
+<body>
+  <h1>Article SEO Audit Report</h1>
+  <div class="sub">
+    Mode: <strong>${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}</strong>
+    ${keyword ? ` &nbsp;·&nbsp; Keyword: <strong>${keyword}</strong>` : ''}
+    ${pubUrl ? ` &nbsp;·&nbsp; URL: ${pubUrl}` : ''}
+    ${audience ? ` &nbsp;·&nbsp; Audience: ${audience}` : ''}
+    &nbsp;·&nbsp; Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+  </div>
+
+  <div class="hero">
+    <div>
+      <div class="score">${result.score}<span>/100</span></div>
+      <div class="status">${result.status}</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" style="color:#10b981">${passed}</div><div class="stat-l">Passed Checks</div></div>
+      <div class="stat"><div class="stat-n" style="color:#f59e0b">${needsWork}</div><div class="stat-l">Needs Work</div></div>
+      <div class="stat"><div class="stat-n">${result.checklist.length}</div><div class="stat-l">Total Checks</div></div>
+    </div>
+  </div>
+
+  <h2>Checklist Evaluation</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Score</th><th>Status</th><th>Finding</th></tr></thead>
+    <tbody>
+      ${result.checklist.map(c => `
+      <tr>
+        <td><strong>${c.label}</strong></td>
+        <td class="pts">${c.score}/${c.max}</td>
+        <td class="${c.status === 'Good' ? 'good' : 'bad'}">${c.status}</td>
+        <td>${c.note}</td>
+      </tr>`).join('')}
+    </tbody>
+  </table>
+
+  ${result.recommendations.length > 0 ? `
+  <h2>Recommendations</h2>
+  ${result.recommendations.map(r => `
+  <div class="rec ${r.priority}">
+    <div class="rec-title"><span class="rec-tag tag-${r.priority}">${r.priority}</span>${r.title}</div>
+    <div style="color:#555">${r.detail}</div>
+  </div>`).join('')}` : ''}
+
+  <footer>Generated by Jarvis SEO · Article SEO Audit Tool</footer>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => win.print(), 400)
   }
 
   const passed    = result?.checklist.filter(c => c.status === 'Good').length ?? 0
@@ -278,8 +352,8 @@ Return this exact JSON structure (no markdown, no extra text):
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="ghost" onClick={exportReport} disabled={!result} className="flex items-center gap-1.5 text-xs">
-              <Download size={13} /> Export Report
+            <Button variant="ghost" onClick={exportPDF} disabled={!result} className="flex items-center gap-1.5 text-xs">
+              <Download size={13} /> Export PDF
             </Button>
             <Button variant="primary" onClick={() => runAudit.mutate()} disabled={runAudit.isPending} className="flex items-center gap-1.5 text-xs">
               {runAudit.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}

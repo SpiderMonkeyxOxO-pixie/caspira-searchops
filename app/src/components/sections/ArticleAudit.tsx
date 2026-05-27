@@ -671,10 +671,10 @@ Return this exact JSON structure (no markdown, no extra text):
                   </div>
                   <div className="text-[10px] text-muted mt-0.5 ml-5">Pillar article — applies stricter SEO standards</div>
                 </div>
-                <div className={cn('w-9 h-5 rounded-full transition-colors relative shrink-0',
+                <div className={cn('w-10 h-[22px] rounded-full transition-colors relative shrink-0',
                   cornerstone ? 'bg-accent3' : 'bg-border')}>
-                  <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
-                    cornerstone ? 'translate-x-4' : 'translate-x-0.5')} />
+                  <span className={cn('absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow transition-transform',
+                    cornerstone ? 'translate-x-[18px]' : 'translate-x-0')} />
                 </div>
               </button>
 

@@ -181,6 +181,10 @@ function TrafficDot({ level }: { level: 'good' | 'warning' | 'poor' }) {
   )
 }
 
+function scoreColor(n: number): string {
+  return n >= 70 ? '#10b981' : n >= 45 ? '#f59e0b' : '#ef4444'
+}
+
 /* ── Score ring ────────────────────────────────────────────────────── */
 
 function ScoreRing({ score }: { score: number }) {
@@ -362,6 +366,7 @@ export function ArticleAudit() {
   const [rewritten,  setRewritten]  = useState<string | null>(null)
   const [copied,     setCopied]     = useState(false)
   const [images,     setImages]     = useState<ImageEntry[]>([])
+  const [rewriteResult, setRewriteResult] = useState<AuditResult | null>(null)
 
   const { records, save, remove, clear } = useHistory<AuditRecord>('jarvis_article_audit_history')
 
@@ -429,6 +434,7 @@ Return this exact JSON structure (no markdown, no extra text):
         const parsed = JSON.parse(match[0]) as AuditResult
         setResult(parsed)
         setRewritten(null)
+        setRewriteResult(null)
         setError(null)
         setFixed(new Set())
         save({
@@ -447,6 +453,67 @@ Return this exact JSON structure (no markdown, no extra text):
     },
     onError: (e: Error) => {
       setError(e.message || 'AI call failed. Check your API key in Onboarding.')
+    },
+  })
+
+  /* ── Re-audit rewritten article ────────────────────────────────── */
+
+  const reaudit = useMutation({
+    mutationFn: async (rewrittenContent: string) => {
+      const imgLines = images.length > 0
+        ? images.map((img, i) => {
+            const hasKw = keyword && img.altText ? img.altText.toLowerCase().includes(keyword.toLowerCase()) : null
+            return `  Image ${i + 1}: "${img.name}" Alt: "${img.altText || 'MISSING'}"${hasKw !== null ? ` KW in alt: ${hasKw ? 'YES' : 'NO'}` : ''}`
+          }).join('\n')
+        : '  No images uploaded.'
+      const userMsg = `Audit Mode: ${mode === 'pre' ? 'Pre-Publish' : 'Post-Publish'}
+${cornerstone ? 'Cornerstone Content: YES — stricter evaluation, 2000+ words expected.' : ''}
+Google Docs URL: ${docsUrl || 'N/A'}
+Published URL: ${pubUrl || 'N/A'}
+Target Keyword: ${keyword || 'N/A'}
+Meta Title: ${metaTitle || 'N/A'}
+Meta Description: ${metaDesc || 'N/A'}
+Audience: ${audience || 'N/A'}
+Article Type: ${type || 'N/A'}
+
+ARTICLE CONTENT (AI REWRITTEN VERSION — re-evaluate thoroughly):
+${rewrittenContent.slice(0, 4000)}
+
+IMAGES (${images.length}):
+${imgLines}
+
+Return this exact JSON structure (no markdown, no extra text):
+{
+  "score": <0-100 integer>,
+  "status": "<Good|Needs Work|Poor>",
+  "aiRecommendation": "<2-3 sentence assessment of this rewritten version specifically>",
+  "checklist": [
+    { "label": "Title / H1", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Meta Title & Description", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "URL Slug", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Introduction", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Keyword Usage", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Heading Structure", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Content Helpfulness", "score": <0-15>, "max": 15, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Grammar, Redundancy & Repetition", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Internal / External Links", "score": <0-10>, "max": 10, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Images & Alt Text", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<finding>" },
+    { "label": "Trust & Accuracy", "score": <0-5>, "max": 5, "status": "<Good|Needs Work|Poor>", "note": "<finding>" }
+  ],
+  "recommendations": [
+    { "priority": "<High|Medium|Low>", "title": "<action>", "detail": "<instruction>" }
+  ]
+}`
+      return callClaude(SYSTEM_PROMPT, userMsg, 4000)
+    },
+    onSuccess: (data) => {
+      if (!data) return
+      try {
+        const cleaned = data.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+        const match = cleaned.match(/\{[\s\S]*\}/)
+        if (!match) return
+        setRewriteResult(JSON.parse(match[0]) as AuditResult)
+      } catch { /* ignore parse errors on re-audit */ }
     },
   })
 
@@ -497,7 +564,11 @@ INSTRUCTIONS:
       )
     },
     onSuccess: (data) => {
-      if (data) setRewritten(data.trim())
+      if (data) {
+        const trimmed = data.trim()
+        setRewritten(trimmed)
+        reaudit.mutate(trimmed)
+      }
     },
     onError: (e: Error) => {
       setError(e.message || 'Rewrite failed. Try again.')
@@ -983,12 +1054,12 @@ INSTRUCTIONS:
           {(rewriteArticle.isPending || rewritten) && (
             <Card>
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Wand2 size={15} className="text-accent2" />
                   <CardTitle>AI Rewritten Article</CardTitle>
                   {result && rewritten && (
                     <span className="text-[10px] font-mono-jarvis text-muted ml-1">
-                      · Based on {result.score}/100 audit · {result.recommendations.length} fixes applied
+                      · {result.recommendations.length} fixes applied
                     </span>
                   )}
                 </div>
@@ -1000,6 +1071,65 @@ INSTRUCTIONS:
                   </button>
                 )}
               </div>
+
+              {/* Score comparison block */}
+              {result && rewritten && (
+                <div className="mb-4 p-4 bg-surface border border-border rounded-xl">
+                  <div className="flex items-center gap-6">
+                    {/* Original score */}
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">ORIGINAL</div>
+                      <div className="font-display font-black text-3xl" style={{ color: scoreColor(result.score) }}>{result.score}</div>
+                      <div className="text-[9px] text-muted">/100</div>
+                    </div>
+                    <div className="text-2xl text-muted font-light">→</div>
+                    {/* Re-audit score */}
+                    <div className="text-center">
+                      <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">REWRITTEN</div>
+                      {reaudit.isPending ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <Loader2 size={20} className="animate-spin text-accent2" />
+                          <div className="text-[9px] text-muted">Scoring…</div>
+                        </div>
+                      ) : rewriteResult ? (
+                        <div className="font-display font-black text-3xl" style={{ color: scoreColor(rewriteResult.score) }}>{rewriteResult.score}</div>
+                      ) : (
+                        <div className="text-[10px] text-muted">—</div>
+                      )}
+                      <div className="text-[9px] text-muted">/100</div>
+                    </div>
+                    {/* Delta */}
+                    {rewriteResult && (
+                      <div className={cn('font-display font-black text-2xl', rewriteResult.score > result.score ? 'text-accent3' : rewriteResult.score < result.score ? 'text-danger' : 'text-muted')}>
+                        {rewriteResult.score > result.score ? `+${rewriteResult.score - result.score}` : rewriteResult.score < result.score ? `${rewriteResult.score - result.score}` : '±0'}
+                      </div>
+                    )}
+                    {/* Mini stats for rewritten */}
+                    {rewriteResult && (
+                      <div className="flex gap-3 ml-auto">
+                        <div className="text-center">
+                          <div className="font-display font-black text-xl text-accent3">{rewriteResult.checklist.filter(c => c.status === 'Good').length}</div>
+                          <div className="text-[9px] text-muted">Passed</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-display font-black text-xl text-accent4">{rewriteResult.checklist.filter(c => c.status !== 'Good').length}</div>
+                          <div className="text-[9px] text-muted">Still Needs Work</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Re-audit AI assessment */}
+                  {rewriteResult?.aiRecommendation && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent3 inline-block" />
+                        <span className="text-[10px] font-bold text-accent3 font-mono-jarvis tracking-widest">REWRITTEN VERSION ASSESSMENT</span>
+                      </div>
+                      <p className="text-[11px] text-tx leading-relaxed">{rewriteResult.aiRecommendation}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {rewriteArticle.isPending ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">

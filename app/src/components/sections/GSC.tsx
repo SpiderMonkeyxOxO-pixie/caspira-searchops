@@ -255,6 +255,9 @@ export function GSC() {
   const [showCustom,   setShowCustom]   = useState(false)
   const dateRangeRef = useRef(getDateRange('28d'))
   const moreMenuRef  = useRef<HTMLDivElement>(null)
+  // Which calendar date "Latest day" actually resolved to — Google's processing
+  // lag varies day to day, so this is discovered per-fetch, not assumed.
+  const [resolvedLatestDay, setResolvedLatestDay] = useState<string | null>(null)
 
   // ── UI state
   const [contentTab,    setContentTab]    = useState<ContentTab>('overview')
@@ -301,13 +304,40 @@ export function GSC() {
   }, [fetchConn])
 
   // ── Fetch GSC data ────────────────────────────────────────
-  const fetchData = useCallback(async (siteUrl: string) => {
+  const fetchData = useCallback(async (siteUrl: string, presetOverride?: DatePreset) => {
     if (!orgId) return
     setDataLoading(true)
     setDataErr(null)
     try {
+      const preset = presetOverride ?? datePreset
+      if (preset === '24h') {
+        // Google's processing lag isn't a fixed number of days — ask which
+        // day is actually ready instead of assuming one. Rows come back only
+        // for dates Google has finished processing, sorted ascending, so the
+        // last row is the most recent available day.
+        const fmt = (d: Date) => d.toISOString().slice(0, 10)
+        const weekAgo = fmt(new Date(Date.now() - 7 * 86_400_000))
+        const today   = fmt(new Date())
+        const probeRes = await supabase.functions.invoke('gsc-proxy', {
+          body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
+            params: { startDate: weekAgo, endDate: today, dimensions: ['date'], rowLimit: 10 } },
+        })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const probeRows = (probeRes.data?.rows ?? []) as any[]
+        const latestDay = probeRows.length ? probeRows[probeRows.length - 1].keys[0] as string : null
+        if (latestDay) {
+          dateRangeRef.current = { startDate: latestDay, endDate: latestDay }
+          setResolvedLatestDay(latestDay)
+        } else {
+          setResolvedLatestDay(null)
+          throw new Error('No processed data yet for the last 7 days — try again shortly, or pick 7 days.')
+        }
+      } else {
+        setResolvedLatestDay(null)
+      }
+
       const range    = dateRangeRef.current
-      const rowLimit = trendRowLimit(datePreset, customStart, customEnd)
+      const rowLimit = trendRowLimit(preset, customStart, customEnd)
       const [trendRes, queriesRes, pagesRes, countriesRes] = await Promise.all([
         supabase.functions.invoke('gsc-proxy', {
           body: { org_id: orgId, site_url: siteUrl, endpoint: 'searchAnalytics',
@@ -374,8 +404,7 @@ export function GSC() {
     } finally {
       setDataLoading(false)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId])
+  }, [orgId, datePreset, customStart, customEnd])
 
   // ── Fetch Sitemaps ────────────────────────────────────────
   const fetchSitemaps = useCallback(async (siteUrl: string) => {
@@ -515,7 +544,7 @@ export function GSC() {
     setDatePreset(preset)
     setShowMoreMenu(false)
     setDataCache(new Map())
-    if (activeUrl) fetchData(activeUrl)
+    if (activeUrl) fetchData(activeUrl, preset)
   }
 
   function applyCustom() {
@@ -526,7 +555,7 @@ export function GSC() {
     setShowMoreMenu(false)
     setShowCustom(false)
     setDataCache(new Map())
-    if (activeUrl) fetchData(activeUrl)
+    if (activeUrl) fetchData(activeUrl, 'custom')
   }
 
   function switchContentTab(tab: ContentTab) {
@@ -841,7 +870,10 @@ export function GSC() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[11px] text-muted font-mono-jarvis">{PRESET_LABELS[datePreset]}</span>
+          <span className="text-[11px] text-muted font-mono-jarvis">
+            {PRESET_LABELS[datePreset]}
+            {datePreset === '24h' && resolvedLatestDay && ` (${resolvedLatestDay})`}
+          </span>
           {data && (
             <Button variant="ghost" onClick={() => fetchData(activeUrl)}>
               <RefreshCw size={11} /> Refresh

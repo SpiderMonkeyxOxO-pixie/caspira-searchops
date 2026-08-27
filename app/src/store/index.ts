@@ -138,7 +138,7 @@ export const useStore = create<JarvisState>()(
       anthropicKey:    '',
       geminiKey:       '',
       openRouterKey:   '',
-      openRouterModel: 'deepseek/deepseek-chat-v3-0324:free',
+      openRouterModel: 'minimax/minimax-m3:free',
       setOpenRouterKey:   (openRouterKey)   => set({ openRouterKey }),
       setOpenRouterModel: (openRouterModel) => set({ openRouterModel }),
       openPageRankKey: '',

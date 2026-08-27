@@ -105,7 +105,7 @@ async function callOpenRouterDirect(system: string, user: string, maxTokens: num
       'X-Title':       'Caspira SearchOps',
     },
     body: JSON.stringify({
-      model:      openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      model:      openRouterModel || 'minimax/minimax-m3:free',
       messages:   [
         { role: 'system', content: system },
         { role: 'user',   content: user   },
@@ -139,7 +139,7 @@ async function callOpenRouterMultiDirect(system: string, msgs: MultiTurnMessage[
       'X-Title':       'Caspira SearchOps',
     },
     body: JSON.stringify({
-      model:      openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      model:      openRouterModel || 'minimax/minimax-m3:free',
       messages:   [
         { role: 'system', content: system },
         ...msgs.map(m => ({ role: m.role, content: m.content })),
@@ -172,7 +172,7 @@ async function callOpenRouterWithImage(system: string, user: string, image: Imag
       'X-Title':       'Caspira SearchOps',
     },
     body: JSON.stringify({
-      model: openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      model: openRouterModel || 'minimax/minimax-m3:free',
       messages: [
         { role: 'system', content: system },
         {
@@ -216,7 +216,7 @@ async function callOpenRouterWithImageMultiDirect(
       'X-Title':       'Caspira SearchOps',
     },
     body: JSON.stringify({
-      model: openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      model: openRouterModel || 'minimax/minimax-m3:free',
       messages: [
         { role: 'system', content: system },
         ...history.map(m => ({ role: m.role, content: m.content })),
@@ -337,7 +337,7 @@ async function streamOpenRouterDirect(
       'X-Title': 'Caspira SearchOps',
     },
     body: JSON.stringify({
-      model: openRouterModel || 'deepseek/deepseek-chat-v3-0324:free',
+      model: openRouterModel || 'minimax/minimax-m3:free',
       messages: [{ role: 'system', content: system }, ...msgs.map(m => ({ role: m.role, content: m.content }))],
       max_tokens: maxTokens,
       stream: true,

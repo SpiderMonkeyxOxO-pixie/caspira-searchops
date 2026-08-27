@@ -1310,9 +1310,12 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 const ModeIcon  = MODE_META[conv.mode]?.icon ?? ShieldCheck
                 const modeColor = MODE_META[conv.mode]?.color ?? '#10b981'
                 return (
-                  <button
+                  <div
                     key={conv.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => loadConversation(conv)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadConversation(conv) } }}
                     className={cn(
                       'group/item w-full flex items-start gap-2 px-2.5 py-2 rounded-lg text-left transition-all cursor-pointer',
                       isActive ? 'bg-accent/10 border border-accent/20' : 'hover:bg-surface border border-transparent'
@@ -1332,7 +1335,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                     >
                       <Trash2 size={10} />
                     </button>
-                  </button>
+                  </div>
                 )
               })}
             </div>
@@ -1461,7 +1464,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
           </span>
           {(jarvisMode === 'gray' || jarvisMode === 'black') && aiProvider !== 'openrouter' && (
             <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#f59e0b40] bg-[#f59e0b10] text-[#f59e0b] font-mono-jarvis">
-              Use OpenRouter + DeepSeek for best results in this mode
+              Use OpenRouter for best results in this mode
             </span>
           )}
           {mcpTools.length > 0 && (

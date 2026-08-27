@@ -136,11 +136,11 @@ interface ApiCard {
 
 const API_CARDS: ApiCard[] = [
   {
-    id: 'openrouter', label: 'OpenRouter', description: 'Multi-model gateway — access 200+ LLMs including free Llama, DeepSeek, Gemini & more.',
+    id: 'openrouter', label: 'OpenRouter', description: 'Multi-model gateway — access 200+ LLMs, including a rotating selection of free models.',
     badge: 'FREE', badgeColor: 'green', placeholder: 'sk-or-v1-...',
     docsUrl: 'https://openrouter.ai/keys',
     Icon: Zap, storeKey: 'openRouterKey', setter: 'setOpenRouterKey',
-    hint: 'Free tier available · Llama 3.3 70B, DeepSeek R1, Gemini Flash & 200+ models',
+    hint: 'Free tier available · rotating selection of free models plus 200+ paid ones',
   },
   {
     id: 'anthropic', label: 'Anthropic Claude', description: 'Powers all AI writing, analysis, and Caspira AI chat.',
@@ -375,13 +375,16 @@ function SerperCard() {
 }
 
 // ── OpenRouter Model Picker ─────────────────────────────────────
+// OpenRouter rotates its free-tier lineup as providers change their offerings —
+// these were verified working directly against the API when last updated
+// (2026-08-27). If a model here starts erroring, check
+// https://openrouter.ai/models?max_price=0 for the current free list.
 const FREE_MODELS = [
-  { id: 'deepseek/deepseek-chat-v3-0324:free',      label: 'DeepSeek Chat V3 (Free) ★' },
-  { id: 'deepseek/deepseek-r1:free',                label: 'DeepSeek R1 (Free)'         },
-  { id: 'google/gemini-2.0-flash-exp:free',         label: 'Gemini 2.0 Flash (Free)'    },
-  { id: 'meta-llama/llama-3.3-70b-instruct:free',  label: 'Llama 3.3 70B (Free)'       },
-  { id: 'qwen/qwen-2.5-72b-instruct:free',          label: 'Qwen 2.5 72B (Free)'        },
-  { id: 'microsoft/phi-4:free',                     label: 'Microsoft Phi-4 (Free)'     },
+  { id: 'minimax/minimax-m3:free',                  label: 'MiniMax M3 (Free) ★'        },
+  { id: 'minimax/minimax-m2.7:free',                label: 'MiniMax M2.7 (Free)'         },
+  { id: 'nvidia/nemotron-3-super-120b-a12b:free',   label: 'Nemotron 3 Super 120B (Free)' },
+  { id: 'liquid/lfm-2.5-2.6b:free',                 label: 'LFM 2.5 2.6B (Free)'         },
+  { id: 'dots-studio/dots-3-note-preview:free',     label: 'Dots 3 Note Preview (Free)'  },
   { id: 'anthropic/claude-3.5-sonnet',              label: 'Claude 3.5 Sonnet (Paid)'   },
   { id: 'openai/gpt-4o-mini',                       label: 'GPT-4o Mini (Paid)'         },
 ]

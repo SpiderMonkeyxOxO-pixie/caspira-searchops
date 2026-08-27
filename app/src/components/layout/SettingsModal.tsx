@@ -325,7 +325,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 type="text"
                 value={openRouterModelIn}
                 onChange={e => setOpenRouterModelIn(e.target.value)}
-                placeholder="deepseek/deepseek-chat-v3-0324:free"
+                placeholder="minimax/minimax-m3:free"
                 autoComplete="off"
                 className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors"
               />

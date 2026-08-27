@@ -13,6 +13,7 @@ import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { getDataProvider } from '@/lib/backend'
+import { gscDateRange } from '@/lib/gscDate'
 import { downloadCSV } from '@/lib/csv'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -153,8 +154,7 @@ export function RankTracker() {
 
       if (!conn?.selected_site) { setGscImporting(false); return }
 
-      const endDate   = new Date().toISOString().slice(0, 10)
-      const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
+      const { startDate, endDate } = gscDateRange(28)
 
       const { data: gscData } = await supabase.functions.invoke('gsc-proxy', {
         body: { org_id: orgId, site_url: conn.selected_site, endpoint: 'searchAnalytics',

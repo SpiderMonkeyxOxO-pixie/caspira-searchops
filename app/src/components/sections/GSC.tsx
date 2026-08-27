@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
 import { getDataProvider } from '@/lib/backend'
+import { GSC_DATA_LAG_DAYS } from '@/lib/gscDate'
 import { downloadCSV } from '@/lib/csv'
 import { useAuthStore } from '@/store/authStore'
 import { useStore } from '@/store'
@@ -114,7 +115,7 @@ function shortUrl(url: string): string {
 type DatePreset = '24h' | '7d' | '28d' | '3m' | '6m' | '12m' | '16m' | 'custom'
 
 const PRESET_LABELS: Record<DatePreset, string> = {
-  '24h': '24 hours', '7d': '7 days', '28d': '28 days', '3m': '3 months',
+  '24h': 'Latest day', '7d': '7 days', '28d': '28 days', '3m': '3 months',
   '6m': 'Last 6 months', '12m': 'Last 12 months', '16m': 'Last 16 months', 'custom': 'Custom',
 }
 
@@ -124,15 +125,15 @@ const QUICK_PRESETS: DatePreset[] = ['24h', '7d', '28d', '3m']
 function getDateRange(preset: DatePreset, customStart = '', customEnd = '') {
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
   const ago = (days: number) => fmt(new Date(Date.now() - days * 86_400_000))
-  const today = fmt(new Date())
+  const recentEnd = ago(GSC_DATA_LAG_DAYS)
   switch (preset) {
-    case '24h':    return { startDate: ago(1),   endDate: today }
-    case '7d':     return { startDate: ago(7),   endDate: today }
-    case '28d':    return { startDate: ago(28),  endDate: today }
-    case '3m':     return { startDate: ago(90),  endDate: today }
-    case '6m':     return { startDate: ago(180), endDate: today }
-    case '12m':    return { startDate: ago(365), endDate: today }
-    case '16m':    return { startDate: ago(485), endDate: today }
+    case '24h':    return { startDate: recentEnd,      endDate: recentEnd }
+    case '7d':     return { startDate: ago(7 + GSC_DATA_LAG_DAYS),   endDate: recentEnd }
+    case '28d':    return { startDate: ago(28 + GSC_DATA_LAG_DAYS),  endDate: recentEnd }
+    case '3m':     return { startDate: ago(90 + GSC_DATA_LAG_DAYS),  endDate: recentEnd }
+    case '6m':     return { startDate: ago(180 + GSC_DATA_LAG_DAYS), endDate: recentEnd }
+    case '12m':    return { startDate: ago(365 + GSC_DATA_LAG_DAYS), endDate: recentEnd }
+    case '16m':    return { startDate: ago(485 + GSC_DATA_LAG_DAYS), endDate: recentEnd }
     case 'custom': return { startDate: customStart, endDate: customEnd }
   }
 }
@@ -142,7 +143,7 @@ function trendRowLimit(preset: DatePreset, start: string, end: string): number {
     return Math.min(500, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000) + 1)
   }
   const map: Record<DatePreset, number> = {
-    '24h': 2, '7d': 7, '28d': 28, '3m': 90, '6m': 180, '12m': 365, '16m': 485, 'custom': 90,
+    '24h': 1, '7d': 7, '28d': 28, '3m': 90, '6m': 180, '12m': 365, '16m': 485, 'custom': 90,
   }
   return map[preset]
 }

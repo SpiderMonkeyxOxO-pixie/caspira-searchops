@@ -10,6 +10,7 @@ import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { getDataProvider } from '@/lib/backend'
+import { gscDateRange } from '@/lib/gscDate'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -183,8 +184,7 @@ export function AgencyDashboard() {
       }) as { data: { available_sites: string[] | null } | null }
 
       const availableSites = conn?.available_sites ?? []
-      const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)
-      const endDate   = new Date().toISOString().slice(0, 10)
+      const { startDate, endDate } = gscDateRange(28)
 
       // 3. Parallel: GSC queries, GSC countries, OPR DR
       const [queryResults, countryResults, oprResults] = await Promise.all([

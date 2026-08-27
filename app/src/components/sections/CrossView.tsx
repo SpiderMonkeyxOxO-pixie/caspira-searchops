@@ -5,6 +5,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { getDataProvider } from '@/lib/backend'
+import { gscDateRange } from '@/lib/gscDate'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 
@@ -184,8 +185,7 @@ export function CrossView() {
     setError(null)
 
     try {
-      const startDate = new Date(Date.now() - parseInt(range) * 86_400_000).toISOString().slice(0, 10)
-      const endDate   = new Date().toISOString().slice(0, 10)
+      const { startDate, endDate } = gscDateRange(parseInt(range))
 
       const siteUrl = selectedGscSite || gscConn.selected_site
       if (!siteUrl) throw new Error('No GSC site resolved')

@@ -14,8 +14,7 @@ import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { getDataProvider } from '@/lib/backend'
-
-function fmt(d: Date) { return d.toISOString().slice(0, 10) }
+import { gscDateRange } from '@/lib/gscDate'
 
 interface GSCRow { keys: string[]; clicks: number; impressions: number; ctr: number; position: number }
 interface TrendRow { date: string; clicks: number; impressions: number }
@@ -81,8 +80,7 @@ export function Dashboard() {
         if (!siteUrl) return
         setGscSite(siteUrl)
 
-        const startDate = fmt(new Date(Date.now() - 28 * 86_400_000))
-        const endDate   = fmt(new Date())
+        const { startDate, endDate } = gscDateRange(28)
 
         const [trendRes, queryRes] = await Promise.all([
           supabase.functions.invoke('gsc-proxy', {

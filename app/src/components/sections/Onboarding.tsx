@@ -8,7 +8,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { getSerperStatus, resetExhaustedKeys } from '@/lib/serper'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
-import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { isAIReady } from '@/lib/ai'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -465,10 +465,15 @@ export function Onboarding() {
   useEffect(() => {
     const orgId = org?.id
     if (!orgId) return
+    const dp = getDataProvider()
     Promise.all([
-      supabase.from('jarvis_gsc_connections').select('org_id').eq('org_id', orgId).maybeSingle(),
-      supabase.from('jarvis_ga4_connections').select('org_id').eq('org_id', orgId).maybeSingle(),
-      supabase.from('jarvis_crawl_jobs').select('id').eq('org_id', orgId).eq('status', 'completed').limit(1),
+      dp.select('jarvis_gsc_connections', { columns: 'org_id', filters: [{ column: 'org_id', op: 'eq', value: orgId }], mode: 'maybeSingle' }),
+      dp.select('jarvis_ga4_connections', { columns: 'org_id', filters: [{ column: 'org_id', op: 'eq', value: orgId }], mode: 'maybeSingle' }),
+      dp.select('jarvis_crawl_jobs', {
+        columns: 'id',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }, { column: 'status', op: 'eq', value: 'completed' }],
+        limit: 1,
+      }),
     ]).then(([gscRes, ga4Res, auditRes]) => {
       setGscConnected(!!gscRes.data)
       setGa4Connected(!!ga4Res.data)

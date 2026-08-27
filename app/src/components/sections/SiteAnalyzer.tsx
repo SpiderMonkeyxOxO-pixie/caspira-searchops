@@ -9,6 +9,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider, type Filter } from '@/lib/backend'
 import { downloadCSV } from '@/lib/csv'
 import { exportToPDF } from '@/lib/exportPDF'
 import { useStore } from '@/store'
@@ -124,12 +125,11 @@ export function SiteAnalyzer() {
   const loadLatest = useCallback(async () => {
     if (!orgId) { setJobLoading(false); return }
     setJobLoading(true)
-    const { data: jobs } = await supabase
-      .from('jarvis_crawl_jobs')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('started_at', { ascending: false })
-      .limit(1) as { data: CrawlJob[] | null }
+    const { data: jobs } = await getDataProvider().select('jarvis_crawl_jobs', {
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      order: { column: 'started_at', ascending: false },
+      limit: 1,
+    }) as { data: CrawlJob[] | null }
 
     if (!jobs?.length) {
       // No crawl history yet — pre-fill URL from active site in store
@@ -142,11 +142,10 @@ export function SiteAnalyzer() {
     if (latest.site_url) setUrl(latest.site_url)
 
     if (latest.status === 'completed') {
-      const { data: pageRows } = await supabase
-        .from('jarvis_crawl_pages')
-        .select('*')
-        .eq('job_id', latest.id)
-        .order('url') as { data: CrawlPage[] | null }
+      const { data: pageRows } = await getDataProvider().select('jarvis_crawl_pages', {
+        filters: [{ column: 'job_id', op: 'eq', value: latest.id }],
+        order: { column: 'url' },
+      }) as { data: CrawlPage[] | null }
       setPages(pageRows ?? [])
     }
     setJobLoading(false)
@@ -244,13 +243,14 @@ export function SiteAnalyzer() {
     setHistoryLoading(true)
     const from = page * HISTORY_PAGE_SIZE
     const to   = from + HISTORY_PAGE_SIZE - 1
-    const base = supabase
-      .from('jarvis_crawl_jobs')
-      .select('*', { count: 'exact' })
-      .eq('org_id', orgId)
-      .order('started_at', { ascending: false })
-    const q = filter !== 'all' ? base.eq('audit_status', filter) : base
-    const { data, count } = await q.range(from, to) as unknown as { data: CrawlJob[] | null; count: number | null }
+    const filters: Filter[] = [{ column: 'org_id', op: 'eq', value: orgId }]
+    if (filter !== 'all') filters.push({ column: 'audit_status', op: 'eq', value: filter })
+    const { data, count } = await getDataProvider().select('jarvis_crawl_jobs', {
+      filters,
+      order: { column: 'started_at', ascending: false },
+      range: { from, to },
+      count: 'exact',
+    }) as unknown as { data: CrawlJob[] | null; count: number | null }
     setAllJobs(data ?? [])
     setHistoryTotal(count ?? 0)
     setHistoryPage(page)
@@ -265,10 +265,10 @@ export function SiteAnalyzer() {
   async function downloadJobIssues(job: CrawlJob) {
     setDownloading(prev => new Set(prev).add(job.id))
     try {
-      const { data: pageRows } = await supabase
-        .from('jarvis_crawl_pages')
-        .select('url, issues, status_code, title, title_len, h1_count, word_count, response_time, crawl_depth, inbound_links')
-        .eq('job_id', job.id) as { data: (Pick<CrawlPage, 'url' | 'issues' | 'status_code' | 'title' | 'title_len' | 'h1_count' | 'word_count' | 'response_time' | 'crawl_depth' | 'inbound_links'>)[] | null }
+      const { data: pageRows } = await getDataProvider().select('jarvis_crawl_pages', {
+        columns: 'url, issues, status_code, title, title_len, h1_count, word_count, response_time, crawl_depth, inbound_links',
+        filters: [{ column: 'job_id', op: 'eq', value: job.id }],
+      }) as { data: (Pick<CrawlPage, 'url' | 'issues' | 'status_code' | 'title' | 'title_len' | 'h1_count' | 'word_count' | 'response_time' | 'crawl_depth' | 'inbound_links'>)[] | null }
       const rows = pageRows ?? []
       const site = job.site_url.replace(/^https?:\/\//, '').replace(/\/$/, '')
       const date = new Date(job.started_at).toISOString().slice(0, 10)
@@ -325,23 +325,23 @@ export function SiteAnalyzer() {
 
   async function deleteSelected() {
     if (selectedIds.size === 0) return
-    await supabase.from('jarvis_crawl_jobs').delete().in('id', [...selectedIds])
+    await getDataProvider().remove('jarvis_crawl_jobs', [{ column: 'id', op: 'in', value: [...selectedIds] }])
     setSelectedIds(new Set())
     loadAllJobs(historyPage, statusFilter)
   }
 
   async function updateAuditStatus(jobId: string, status: AuditStatus) {
-    await supabase
-      .from('jarvis_crawl_jobs')
-      .update({ audit_status: status } as never)
-      .eq('id', jobId)
+    await getDataProvider().update('jarvis_crawl_jobs', [{ column: 'id', op: 'eq', value: jobId }], { audit_status: status })
     setAllJobs(prev => prev.map(j => j.id === jobId ? { ...j, audit_status: status } : j))
   }
 
   async function exportHistoryCSV() {
-    const base = supabase.from('jarvis_crawl_jobs').select('*').eq('org_id', orgId).order('started_at', { ascending: false })
-    const q = statusFilter !== 'all' ? base.eq('audit_status', statusFilter) : base
-    const { data: rows } = await q as { data: CrawlJob[] | null }
+    const filters: Filter[] = [{ column: 'org_id', op: 'eq', value: orgId }]
+    if (statusFilter !== 'all') filters.push({ column: 'audit_status', op: 'eq', value: statusFilter })
+    const { data: rows } = await getDataProvider().select('jarvis_crawl_jobs', {
+      filters,
+      order: { column: 'started_at', ascending: false },
+    }) as { data: CrawlJob[] | null }
     downloadCSV(
       `audit-history-${new Date().toISOString().slice(0, 10)}.csv`,
       ['Site URL', 'Pages Crawled', 'Issues Found', 'Audit Status', 'Crawl Status', 'Date Audited'],

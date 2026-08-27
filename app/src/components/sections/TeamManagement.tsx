@@ -5,6 +5,7 @@ import {
   Lock,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { useAuthStore } from '@/store/authStore'
 import type { RolePermissions } from '@/store/authStore'
 import { Card, CardTitle } from '@/components/ui/Card'
@@ -148,15 +149,12 @@ export function TeamManagement() {
   async function savePermissions() {
     if (!org) return
     setSavingPerms(true)
-    const { error } = await supabase
-      .from('jarvis_organizations')
-      .update({ role_permissions: localPerms } as never)
-      .eq('id', org.id)
-    if (!error) {
+    try {
+      await getDataProvider().update('jarvis_organizations', [{ column: 'id', op: 'eq', value: org.id }], { role_permissions: localPerms })
       setRolePermissions(localPerms)
       setPermsSaved(true)
       setTimeout(() => setPermsSaved(false), 2500)
-    }
+    } catch { /* leave UI unchanged on failure */ }
     setSavingPerms(false)
   }
 
@@ -179,8 +177,7 @@ export function TeamManagement() {
 
     try {
       // Members — use security-definer RPC to get real emails from auth.users
-      const { data: rawMembers } = await supabase
-        .rpc('jarvis_get_org_members', { p_org_id: org.id }) as { data: RawMember[] | null; error: unknown }
+      const rawMembers = await getDataProvider().callProcedure<RawMember[] | null>('jarvis_get_org_members', { p_org_id: org.id })
 
       if (rawMembers) {
         setMembers(rawMembers.map(m => ({
@@ -194,15 +191,16 @@ export function TeamManagement() {
       }
 
       // Pending invites
-      const { data: rawInvites } = await supabase
-        .from('jarvis_org_invites')
-        .select('*')
-        .eq('org_id', org.id)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false }) as { data: OrgInvite[] | null; error: unknown }
+      const { data: rawInvites } = await getDataProvider().select('jarvis_org_invites', {
+        filters: [
+          { column: 'org_id', op: 'eq', value: org.id },
+          { column: 'status', op: 'eq', value: 'pending' },
+        ],
+        order: { column: 'created_at', ascending: false },
+      }) as { data: OrgInvite[] | null }
 
       setInvites(rawInvites ?? [])
-    } finally {
+    } catch { /* leave members/invites as-is on failure */ } finally {
       setLoading(false)
     }
   }, [org])
@@ -221,18 +219,20 @@ export function TeamManagement() {
     setInviteLink(null)
 
     // Insert and read back the generated token
-    const { data: newInvite, error } = await supabase
-      .from('jarvis_org_invites')
-      .insert({ org_id: org.id, email: inviteEmail.trim(), role: inviteRole, invited_by: user?.id } as never)
-      .select('token')
-      .single() as { data: { token: string } | null; error: { message: string } | null }
+    let newInvite: { token: string } | null = null
+    try {
+      const res = await getDataProvider().insert<{ token: string }>('jarvis_org_invites',
+        { org_id: org.id, email: inviteEmail.trim(), role: inviteRole, invited_by: user?.id })
+      newInvite = (res.data ?? null) as { token: string } | null
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to create invite'
+      setInviteError(msg.includes('unique') ? 'An invite for this email is already pending.' : msg)
+      setSending(false)
+      return
+    }
 
-    if (error || !newInvite) {
-      setInviteError(
-        error?.message?.includes('unique')
-          ? 'An invite for this email is already pending.'
-          : (error?.message ?? 'Failed to create invite')
-      )
+    if (!newInvite) {
+      setInviteError('Failed to create invite')
       setSending(false)
       return
     }
@@ -269,18 +269,18 @@ export function TeamManagement() {
   }
 
   async function revokeInvite(id: string) {
-    await supabase.from('jarvis_org_invites').update({ status: 'revoked' } as never).eq('id', id)
+    await getDataProvider().update('jarvis_org_invites', [{ column: 'id', op: 'eq', value: id }], { status: 'revoked' })
     load()
   }
 
   async function changeRole(memberId: string, newRole: OrgRole) {
-    await supabase.from('jarvis_org_members').update({ role: newRole } as never).eq('id', memberId)
+    await getDataProvider().update('jarvis_org_members', [{ column: 'id', op: 'eq', value: memberId }], { role: newRole })
     load()
   }
 
   async function removeMember(memberId: string, userId: string) {
     if (userId === org?.owner_id) return
-    await supabase.from('jarvis_org_members').delete().eq('id', memberId)
+    await getDataProvider().remove('jarvis_org_members', [{ column: 'id', op: 'eq', value: memberId }])
     load()
   }
 

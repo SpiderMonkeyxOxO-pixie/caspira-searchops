@@ -12,6 +12,7 @@ import { callDFS, isDFSReady, LOCATION_CODES, COUNTRIES } from '@/lib/dataforseo
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { downloadCSV } from '@/lib/csv'
 
 // ── Types ─────────────────────────────────────────────────────
@@ -107,11 +108,10 @@ export function RankTracker() {
   const loadKeywords = useCallback(async () => {
     if (!orgId) { setLoading(false); return }
     setLoading(true)
-    const { data } = await supabase
-      .from('jarvis_rank_keywords')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: true }) as { data: DbKW[] | null }
+    const { data } = await getDataProvider().select('jarvis_rank_keywords', {
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      order: { column: 'created_at', ascending: true },
+    }) as { data: DbKW[] | null }
     setTracked((data ?? []).map(r => ({ id: r.id, kw: r.kw, positions: r.positions ?? [] })))
     setLoading(false)
   }, [orgId])
@@ -119,17 +119,14 @@ export function RankTracker() {
   useEffect(() => { loadKeywords() }, [loadKeywords])
 
   async function savePositions(id: string, positions: Position[]) {
-    await supabase.from('jarvis_rank_keywords').update({ positions } as never).eq('id', id)
+    await getDataProvider().update('jarvis_rank_keywords', [{ column: 'id', op: 'eq', value: id }], { positions })
     setTracked(prev => prev.map(t => t.id === id ? { ...t, positions } : t))
   }
 
   async function addKeyword() {
     const kw = newKw.trim()
     if (!kw || !orgId || tracked.some(t => t.kw.toLowerCase() === kw.toLowerCase())) return
-    const { data } = await supabase
-      .from('jarvis_rank_keywords')
-      .insert({ org_id: orgId, kw, positions: [] } as never)
-      .select().single() as { data: DbKW | null }
+    const { data } = await getDataProvider().insert('jarvis_rank_keywords', { org_id: orgId, kw, positions: [] }) as { data: DbKW | null }
     if (data) setTracked(prev => [...prev, { id: data.id, kw: data.kw, positions: [] }])
     setNewKw('')
   }
@@ -139,10 +136,7 @@ export function RankTracker() {
       .map(k => k.trim()).filter(Boolean)
       .filter(k => !tracked.some(t => t.kw.toLowerCase() === k.toLowerCase()))
     if (!kws.length || !orgId) return
-    const { data } = await supabase
-      .from('jarvis_rank_keywords')
-      .insert(kws.map(kw => ({ org_id: orgId, kw, positions: [] })) as never)
-      .select() as { data: DbKW[] | null }
+    const { data } = await getDataProvider().insert('jarvis_rank_keywords', kws.map(kw => ({ org_id: orgId, kw, positions: [] }))) as { data: DbKW[] | null }
     if (data) setTracked(prev => [...prev, ...data.map(r => ({ id: r.id, kw: r.kw, positions: [] }))])
     setBulkText(''); setShowBulk(false)
   }
@@ -151,11 +145,11 @@ export function RankTracker() {
     if (!orgId) return
     setGscImporting(true)
     try {
-      const { data: conn } = await supabase
-        .from('jarvis_gsc_connections')
-        .select('selected_site')
-        .eq('org_id', orgId)
-        .maybeSingle() as { data: { selected_site: string | null } | null }
+      const { data: conn } = await getDataProvider().select('jarvis_gsc_connections', {
+        columns: 'selected_site',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        mode: 'maybeSingle',
+      }) as { data: { selected_site: string | null } | null }
 
       if (!conn?.selected_site) { setGscImporting(false); return }
 
@@ -172,10 +166,7 @@ export function RankTracker() {
         .filter(k => k && !tracked.some(t => t.kw.toLowerCase() === k.toLowerCase()))
 
       if (queries.length > 0) {
-        const { data: inserted } = await supabase
-          .from('jarvis_rank_keywords')
-          .insert(queries.map(kw => ({ org_id: orgId, kw, positions: [] })) as never)
-          .select() as { data: DbKW[] | null }
+        const { data: inserted } = await getDataProvider().insert('jarvis_rank_keywords', queries.map(kw => ({ org_id: orgId, kw, positions: [] }))) as { data: DbKW[] | null }
         if (inserted) setTracked(prev => [...prev, ...inserted.map(r => ({ id: r.id, kw: r.kw, positions: [] }))])
       }
     } catch { /* silent */ }
@@ -183,7 +174,7 @@ export function RankTracker() {
   }
 
   async function removeKeyword(id: string) {
-    await supabase.from('jarvis_rank_keywords').delete().eq('id', id)
+    await getDataProvider().remove('jarvis_rank_keywords', [{ column: 'id', op: 'eq', value: id }])
     setTracked(prev => prev.filter(t => t.id !== id))
   }
 

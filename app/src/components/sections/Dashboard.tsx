@@ -13,6 +13,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 
 function fmt(d: Date) { return d.toISOString().slice(0, 10) }
 
@@ -54,26 +55,25 @@ export function Dashboard() {
     setKpis(null); setTrend([]); setTopQueries([]); setGscSite(null); setExpandedWin(null); setAuditSummary(null)
     ;(async () => {
       try {
-        const { data: conn } = await supabase
-          .from('jarvis_gsc_connections')
-          .select('selected_site, available_sites')
-          .eq('org_id', orgId)
-          .maybeSingle() as { data: { selected_site: string | null; available_sites: string[] | null } | null }
+        const dp = getDataProvider()
+        const { data: conn } = await dp.select('jarvis_gsc_connections', {
+          columns: 'selected_site, available_sites',
+          filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+          mode: 'maybeSingle',
+        }) as { data: { selected_site: string | null; available_sites: string[] | null } | null }
 
         // Fetch latest audit summary regardless of GSC connection
-        supabase
-          .from('jarvis_crawl_jobs')
-          .select('issues')
-          .eq('org_id', orgId)
-          .eq('status', 'completed')
-          .order('started_at', { ascending: false })
-          .limit(1)
-          .then(({ data }) => {
-            if (data?.length) {
-              const job = data[0] as { issues: number }
-              setAuditSummary({ criticalIssues: job.issues })
-            }
-          })
+        dp.select('jarvis_crawl_jobs', {
+          columns: 'issues',
+          filters: [{ column: 'org_id', op: 'eq', value: orgId }, { column: 'status', op: 'eq', value: 'completed' }],
+          order: { column: 'started_at', ascending: false },
+          limit: 1,
+        }).then(({ data }) => {
+          const rows = data as { issues: number }[] | null
+          if (rows?.length) {
+            setAuditSummary({ criticalIssues: rows[0].issues })
+          }
+        })
 
         const availableSites = conn?.available_sites ?? []
         const siteUrl = (domain ? matchGscSite(domain, availableSites) : null)

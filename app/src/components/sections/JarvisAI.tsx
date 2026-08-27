@@ -12,6 +12,7 @@ import { listMcpTools, callMcpTool, mcpResultToText, slugify } from '@/lib/mcp'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -645,24 +646,27 @@ export function JarvisAI() {
   // ── Load GSC + GA4 connections for the analyze picker ────────────────────
   useEffect(() => {
     if (!orgId) return
-    supabase
-      .from('jarvis_gsc_connections')
-      .select('selected_site, available_sites')
-      .eq('org_id', orgId)
-      .maybeSingle()
+    const dp = getDataProvider()
+    dp.select('jarvis_gsc_connections', {
+      columns: 'selected_site, available_sites',
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      mode: 'maybeSingle',
+    })
       .then(({ data }) => {
         if (!data) return
-        const sites: string[] = data.available_sites ?? []
+        const conn = data as { selected_site: string | null; available_sites: string[] | null }
+        const sites: string[] = conn.available_sites ?? []
         setGscSites(sites)
-        setSelectedGscSite(data.selected_site || sites[0] || '')
+        setSelectedGscSite(conn.selected_site || sites[0] || '')
       })
-    supabase
-      .from('jarvis_ga4_connections')
-      .select('property_id, property_name, available_properties')
-      .eq('org_id', orgId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!data) return
+    dp.select('jarvis_ga4_connections', {
+      columns: 'property_id, property_name, available_properties',
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      mode: 'maybeSingle',
+    })
+      .then(({ data: raw }) => {
+        if (!raw) return
+        const data = raw as { property_id: string | null; property_name: string | null; available_properties: unknown[] | null }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const avail: { id: string; name: string }[] = (data.available_properties ?? []).map((p: any) => ({
           id: p.id, name: p.displayName || p.id,

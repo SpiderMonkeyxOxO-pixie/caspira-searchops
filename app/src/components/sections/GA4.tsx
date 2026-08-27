@@ -12,6 +12,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { downloadCSV } from '@/lib/csv'
 import { useAuthStore } from '@/store/authStore'
 import { useStore } from '@/store'
@@ -299,11 +300,11 @@ export function GA4() {
   const fetchConn = useCallback(async () => {
     if (!orgId) return
     setConnLoading(true)
-    const { data } = await supabase
-      .from('jarvis_ga4_connections')
-      .select('property_id, property_name, available_properties')
-      .eq('org_id', orgId)
-      .maybeSingle() as {
+    const { data } = await getDataProvider().select('jarvis_ga4_connections', {
+      columns: 'property_id, property_name, available_properties',
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      mode: 'maybeSingle',
+    }) as {
         data: { property_id: string | null; property_name: string | null; available_properties: GA4Conn['availableProperties'] } | null
       }
     if (!data) {
@@ -595,7 +596,7 @@ export function GA4() {
   }
 
   async function handlePropertySelect(propertyId: string, propertyName: string) {
-    await supabase.from('jarvis_ga4_connections').update({ property_id: propertyId, property_name: propertyName }).eq('org_id', orgId)
+    await getDataProvider().update('jarvis_ga4_connections', [{ column: 'org_id', op: 'eq', value: orgId }], { property_id: propertyId, property_name: propertyName })
     setConn(prev => prev ? { ...prev, propertyId, propertyName } : null)
     setShowSwitcher(false)
     if (!tabs.some(t => t.id === propertyId)) {
@@ -605,7 +606,7 @@ export function GA4() {
   }
 
   async function handleDisconnect() {
-    await supabase.from('jarvis_ga4_connections').delete().eq('org_id', orgId)
+    await getDataProvider().remove('jarvis_ga4_connections', [{ column: 'org_id', op: 'eq', value: orgId }])
     localStorage.removeItem(`jarvis_ga4_tabs_${orgId}`)
     localStorage.removeItem(`jarvis_ga4_active_${orgId}`)
     setConn(null); setKpis(null); setTrend([]); setChannels([]); setPages([])

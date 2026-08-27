@@ -4,6 +4,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 
@@ -124,12 +125,16 @@ export function CrossView() {
     if (!orgId) return
     setConnLoading(true)
     Promise.all([
-      supabase.from('jarvis_gsc_connections')
-        .select('selected_site, available_sites')
-        .eq('org_id', orgId).maybeSingle(),
-      supabase.from('jarvis_ga4_connections')
-        .select('property_id, property_name, available_properties')
-        .eq('org_id', orgId).maybeSingle(),
+      getDataProvider().select('jarvis_gsc_connections', {
+        columns: 'selected_site, available_sites',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        mode: 'maybeSingle',
+      }),
+      getDataProvider().select('jarvis_ga4_connections', {
+        columns: 'property_id, property_name, available_properties',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        mode: 'maybeSingle',
+      }),
     ]).then(([gscRes, ga4Res]) => {
       const conn = gscRes.data as GSCConn | null
       const ga4 = ga4Res.data as GA4Conn | null

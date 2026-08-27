@@ -9,6 +9,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { downloadCSV } from '@/lib/csv'
 import { useAuthStore } from '@/store/authStore'
 import { useStore } from '@/store'
@@ -269,11 +270,11 @@ export function GSC() {
   const fetchConn = useCallback(async () => {
     if (!orgId) return
     setConnLoading(true)
-    const { data: row } = await supabase
-      .from('jarvis_gsc_connections')
-      .select('selected_site, available_sites')
-      .eq('org_id', orgId)
-      .maybeSingle() as { data: { selected_site: string | null; available_sites: string[] } | null }
+    const { data: row } = await getDataProvider().select('jarvis_gsc_connections', {
+      columns: 'selected_site, available_sites',
+      filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+      mode: 'maybeSingle',
+    }) as { data: { selected_site: string | null; available_sites: string[] } | null }
     setConn(row ? { selectedSite: row.selected_site, availableSites: row.available_sites ?? [] } : null)
     setConnLoading(false)
   }, [orgId])
@@ -477,7 +478,7 @@ export function GSC() {
 
   // ── Switch primary site (header dropdown) ─────────────────
   async function handleSiteSwitch(url: string) {
-    await supabase.from('jarvis_gsc_connections').update({ selected_site: url }).eq('org_id', orgId)
+    await getDataProvider().update('jarvis_gsc_connections', [{ column: 'org_id', op: 'eq', value: orgId }], { selected_site: url })
     setConn(prev => prev ? { ...prev, selectedSite: url } : null)
     setShowSwitcher(false)
     if (!siteTabs.includes(url)) setSiteTabs(prev => [...prev, url])
@@ -485,12 +486,12 @@ export function GSC() {
   }
 
   async function handleSiteSelect(siteUrl: string) {
-    await supabase.from('jarvis_gsc_connections').update({ selected_site: siteUrl }).eq('org_id', orgId)
+    await getDataProvider().update('jarvis_gsc_connections', [{ column: 'org_id', op: 'eq', value: orgId }], { selected_site: siteUrl })
     setConn(prev => prev ? { ...prev, selectedSite: siteUrl } : null)
   }
 
   async function handleDisconnect() {
-    await supabase.from('jarvis_gsc_connections').delete().eq('org_id', orgId)
+    await getDataProvider().remove('jarvis_gsc_connections', [{ column: 'org_id', op: 'eq', value: orgId }])
     localStorage.removeItem(`jarvis_gsc_tabs_${orgId}`)
     localStorage.removeItem(`jarvis_gsc_active_${orgId}`)
     setConn(null); setData(null); setSiteTabs([]); setActiveUrl(''); setDataCache(new Map())

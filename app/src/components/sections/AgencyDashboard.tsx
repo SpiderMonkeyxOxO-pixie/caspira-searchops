@@ -9,6 +9,7 @@ import {
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -160,12 +161,11 @@ export function AgencyDashboard() {
     setEnriching(true)
     try {
       // 1. Latest completed crawl job per domain
-      const { data: jobs } = await supabase
-        .from('jarvis_crawl_jobs')
-        .select('site_url, issues, total_pages')
-        .eq('org_id', orgId)
-        .eq('status', 'completed')
-        .order('started_at', { ascending: false }) as {
+      const { data: jobs } = await getDataProvider().select('jarvis_crawl_jobs', {
+        columns: 'site_url, issues, total_pages',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }, { column: 'status', op: 'eq', value: 'completed' }],
+        order: { column: 'started_at', ascending: false },
+      }) as {
           data: { site_url: string; issues: number; total_pages: number }[] | null
         }
 
@@ -176,11 +176,11 @@ export function AgencyDashboard() {
       }
 
       // 2. GSC connection
-      const { data: conn } = await supabase
-        .from('jarvis_gsc_connections')
-        .select('available_sites')
-        .eq('org_id', orgId)
-        .maybeSingle() as { data: { available_sites: string[] | null } | null }
+      const { data: conn } = await getDataProvider().select('jarvis_gsc_connections', {
+        columns: 'available_sites',
+        filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        mode: 'maybeSingle',
+      }) as { data: { available_sites: string[] | null } | null }
 
       const availableSites = conn?.available_sites ?? []
       const startDate = new Date(Date.now() - 28 * 86_400_000).toISOString().slice(0, 10)

@@ -168,6 +168,14 @@ By default Supabase uses a shared email service that frequently lands in spam an
 | Sender email | `your@gmail.com` |
 | Sender name | `Caspira SearchOps` |
 
+**Troubleshooting "Error sending confirmation email" (500 on signup):**
+
+- **Username for Resend must be the literal string `resend`** — not your email address or account name. Easy to mix up if you copy the Gmail row's pattern by habit.
+- **Toggle "Enable custom SMTP" on**, not just filling in the fields below it — the fields save either way, but nothing sends unless the toggle is on.
+- **Check the failure end-to-end**, not just Supabase's error message — Supabase's API response is deliberately generic (`"Error sending confirmation email"`), so the real reason (auth rejected, bad recipient, etc.) only shows in your SMTP provider's own logs (Resend: **Logs** in the left sidebar).
+- **Don't test with `@example.com`, `@example.org`, or similar** — these are IANA-reserved documentation domains, and Resend permanently refuses to send to them regardless of your account or domain status. Test with a real address instead — a Gmail `+alias` (e.g. `you+test@gmail.com`) works well since it's a real, unique, deliverable address that still lands in your own inbox.
+- **The shared `onboarding@resend.dev` sender only delivers to your own Resend account email** until you verify a domain you own (Resend → Domains → Add Domain, then add the DNS records it gives you). Verify a domain before expecting arbitrary users to be able to sign up.
+
 ---
 
 ## Step 6 — Install and Run the App

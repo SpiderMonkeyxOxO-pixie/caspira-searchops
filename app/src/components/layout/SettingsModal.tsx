@@ -107,7 +107,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           </button>
           <div className="flex items-center gap-2 font-display font-bold text-lg mb-1">
             <Settings size={18} className="text-accent" />
-            JARVIS Settings
+            CASPIRA Settings
           </div>
           <div className="text-xs text-muted">All keys stored in your browser only — never on any server.</div>
         </div>
@@ -205,8 +205,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               </div>
               <div className="text-[10px] text-muted mt-1">
                 {providerInput === 'openrouter'
-                  ? 'Jarvis AI will use your OpenRouter key — free models available'
-                  : 'Jarvis AI will use your Anthropic key — Claude Sonnet 4.6'}
+                  ? 'Caspira AI will use your OpenRouter key — free models available'
+                  : 'Caspira AI will use your Anthropic key — Claude Sonnet 4.6'}
               </div>
             </div>
 
@@ -298,7 +298,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           <div className="flex items-start gap-2 bg-surface border border-border rounded-lg p-3">
             <Lock size={12} className="text-muted mt-0.5 shrink-0" />
             <div className="text-[11px] text-muted leading-relaxed">
-              Everything is stored in your browser's localStorage. Keys are sent directly to each service — Jarvis never sees them.
+              Everything is stored in your browser's localStorage. Keys are sent directly to each service — Caspira never sees them.
             </div>
           </div>
         </div>

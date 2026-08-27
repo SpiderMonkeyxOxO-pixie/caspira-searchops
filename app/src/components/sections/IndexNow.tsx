@@ -204,7 +204,7 @@ export function IndexNow() {
                   onChange={e => setUrlInput(e.target.value)}
                   rows={7}
                   placeholder={[
-                    `https://${host || 'yoursite.com'}/new-casino-review/`,
+                    `https://${host || 'yoursite.com'}/new-product-review/`,
                     `https://${host || 'yoursite.com'}/bonus-page/`,
                     `https://${host || 'yoursite.com'}/updated-guide/`,
                   ].join('\n')}

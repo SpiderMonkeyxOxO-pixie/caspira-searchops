@@ -81,7 +81,7 @@ export function ContentCalendar() {
     const item: CalendarItem = {
       id: String(nextItemId++),
       title: newTitle.trim(),
-      keyword: newKeyword.trim() || 'casino',
+      keyword: newKeyword.trim() || 'seo',
       status: newStatus,
       date: newDate,
       wordCount: '2,000',

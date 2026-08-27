@@ -82,8 +82,8 @@ export function CrawlImport() {
         <Card>
           <CardTitle className="mb-3">Screaming Frog Import</CardTitle>
           <p className="text-sm text-muted mb-5 leading-relaxed">
-            Upload a Screaming Frog CSV export and Jarvis will parse, prioritise, and surface actionable
-            fixes for your iGaming site — ranked by SEO impact.
+            Upload a Screaming Frog CSV export and Caspira will parse, prioritise, and surface actionable
+            fixes for your site — ranked by SEO impact.
           </p>
 
           {/* Drop zone */}

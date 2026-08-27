@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/Button'
 
 const PRESETS: { label: string; content: string }[] = [
   {
-    label: 'Casino — Allow All',
+    label: 'Allow All',
     content: `User-agent: *
 Allow: /
 
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://casinoexpert.io/sitemap.xml
-Sitemap: https://casinoexpert.io/sitemap-reviews.xml`,
+Sitemap: https://yoursite.com/sitemap.xml
+Sitemap: https://yoursite.com/sitemap-reviews.xml`,
   },
   {
     label: 'Block AI Bots',
@@ -32,7 +32,7 @@ Disallow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://casinoexpert.io/sitemap.xml`,
+Sitemap: https://yoursite.com/sitemap.xml`,
   },
   {
     label: 'Block Staging + Admin',
@@ -44,7 +44,7 @@ Disallow: /wp-login.php
 Disallow: /cgi-bin/
 Allow: /
 
-Sitemap: https://casinoexpert.io/sitemap.xml`,
+Sitemap: https://yoursite.com/sitemap.xml`,
   },
   {
     label: 'Block Thin Pages',
@@ -56,7 +56,7 @@ Disallow: /search/
 Disallow: /page/
 Allow: /
 
-Sitemap: https://casinoexpert.io/sitemap.xml`,
+Sitemap: https://yoursite.com/sitemap.xml`,
   },
 ]
 
@@ -66,8 +66,8 @@ Allow: /
 User-agent: Googlebot
 Allow: /
 
-Sitemap: https://casinoexpert.io/sitemap.xml
-Sitemap: https://casinoexpert.io/sitemap-reviews.xml`
+Sitemap: https://yoursite.com/sitemap.xml
+Sitemap: https://yoursite.com/sitemap-reviews.xml`
 
 interface ValidationIssue { type: 'error' | 'warning' | 'pass'; msg: string }
 
@@ -87,14 +87,14 @@ function validateRobots(content: string): ValidationIssue[] {
   if (blocksAll) issues.push({ type: 'error', msg: 'CRITICAL: "Disallow: /" blocks ALL crawling of your site' })
   else issues.push({ type: 'pass', msg: 'Root path "/" not blocked' })
 
-  const criticalPaths = ['/bonuses', '/best-online-casinos', '/no-deposit', '/slots', '/live-casino']
+  const criticalPaths = ['/products', '/pricing', '/blog', '/reviews', '/shop']
   criticalPaths.forEach(p => {
     const blocked = lines.some(l => l.startsWith('Disallow:') && l.includes(p))
-    if (blocked) issues.push({ type: 'error', msg: `Critical casino path "${p}" is blocked — Googlebot cannot crawl it` })
+    if (blocked) issues.push({ type: 'error', msg: `Critical path "${p}" is blocked — Googlebot cannot crawl it` })
   })
 
   const blocksImages = lines.some(l => l.includes('Disallow: /*.jpg') || l.includes('Disallow: /images'))
-  if (blocksImages) issues.push({ type: 'warning', msg: 'Images may be blocked — Google Image Search won\'t index casino screenshots' })
+  if (blocksImages) issues.push({ type: 'warning', msg: 'Images may be blocked — Google Image Search won\'t index your product images' })
 
   const hasCrawlDelay = lines.some(l => l.toLowerCase().startsWith('crawl-delay:'))
   if (hasCrawlDelay) issues.push({ type: 'warning', msg: 'Crawl-delay is set — Google ignores this; use Google Search Console instead' })
@@ -131,7 +131,7 @@ function testUrl(robots: string, testPath: string): 'allowed' | 'blocked' {
 
 export function RobotsTxt() {
   const [content,    setContent]    = useState(DEFAULT_CONTENT)
-  const [testPath,   setTestPath]   = useState('/bonuses/no-deposit')
+  const [testPath,   setTestPath]   = useState('/products/best-sellers')
   const [testResult, setTestResult] = useState<'allowed' | 'blocked' | null>(null)
   const [copied,     setCopied]     = useState(false)
 
@@ -214,7 +214,7 @@ export function RobotsTxt() {
             <div className="flex gap-2">
               <input value={testPath} onChange={e => setTestPath(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && runTest()}
-                placeholder="/bonuses/no-deposit"
+                placeholder="/products/best-sellers"
                 className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               <Button variant="primary" onClick={runTest}>
                 <Search size={13} /> Test

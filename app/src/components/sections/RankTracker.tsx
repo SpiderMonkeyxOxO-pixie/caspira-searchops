@@ -8,7 +8,7 @@ import { Card, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
+import { callDFS, isDFSReady, LOCATION_CODES, COUNTRIES } from '@/lib/dataforseo'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
@@ -24,19 +24,6 @@ type Filter = 'all' | 'top3' | 'top10' | 'p2' | 'unranked'
 const COMP_KEY    = 'jarvis_rank_competitor'
 const COUNTRY_KEY = 'jarvis_rank_country'
 
-const COUNTRIES = [
-  { code: 'in', label: 'India'   },
-  { code: 'us', label: 'US'      },
-  { code: 'gb', label: 'UK'      },
-  { code: 'au', label: 'AU'      },
-  { code: 'ca', label: 'CA'      },
-  { code: 'ph', label: 'PH'      },
-  { code: 'id', label: 'ID'      },
-  { code: 'sg', label: 'SG'      },
-  { code: 'my', label: 'MY'      },
-  { code: 'nz', label: 'NZ'      },
-]
-
 // ── Helpers ───────────────────────────────────────────────────
 function posColor(p: number | null) {
   if (p === null) return '#6b7280'
@@ -51,10 +38,10 @@ function visScore(p: number | null) {
   return Math.max(0, Math.round(100 - p * 2.8))
 }
 
-async function fetchPosition(keyword: string, targetDomain: string, country = 'in'): Promise<number | null> {
+async function fetchPosition(keyword: string, targetDomain: string, country = 'us'): Promise<number | null> {
   const clean = targetDomain
     .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '').toLowerCase()
-  const locationCode = LOCATION_CODES[country] ?? 2356
+  const locationCode = LOCATION_CODES[country] ?? 2840
   const result = await callDFS('serp/google/organic/live/advanced', [{
     keyword, location_code: locationCode, language_code: 'en', depth: 30,
   }])
@@ -98,7 +85,7 @@ export function RankTracker() {
   const [loading,          setLoading]          = useState(true)
   const [targetDomain,     setTargetDomain]     = useState(domain || '')
   const [competitorDomain, setCompetitorDomain] = useState(() => localStorage.getItem(COMP_KEY) ?? '')
-  const [country,          setCountry]          = useState(() => localStorage.getItem(COUNTRY_KEY) ?? 'in')
+  const [country,          setCountry]          = useState(() => localStorage.getItem(COUNTRY_KEY) ?? 'us')
   const [newKw,            setNewKw]            = useState('')
   const [bulkText,         setBulkText]         = useState('')
   const [showBulk,         setShowBulk]         = useState(false)
@@ -369,7 +356,7 @@ export function RankTracker() {
               value={bulkText}
               onChange={e => setBulkText(e.target.value)}
               rows={6}
-              placeholder={"best online casino india\ncasino bonus guide\nfree spins no deposit\nlive casino games\n…"}
+              placeholder={"best project management software\nproject management pricing guide\nfree project management tools\nbest running shoes 2026\n…"}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent resize-none transition-colors"
             />
             <div className="flex items-center gap-3 mt-2">

@@ -45,7 +45,7 @@ const CAT_COLOR: Record<JSIssue['category'], string> = {
 type FilterSev = 'all' | JSIssue['severity']
 
 export function JSSeo() {
-  const [url,      setUrl]      = useState('casinoexpert.io/best-online-casinos')
+  const [url,      setUrl]      = useState('yoursite.com/best-products')
   const [result,   setResult]   = useState<JSResult | null>(null)
   const [filter,   setFilter]   = useState<FilterSev>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -56,8 +56,8 @@ export function JSSeo() {
   const check = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are a JavaScript SEO technical expert. Analyse a casino page for JS-rendered content that Googlebot may miss.',
-        `Analyse this casino page for JavaScript SEO issues: ${url}
+        'You are a JavaScript SEO technical expert. Analyse a page for JS-rendered content that Googlebot may miss.',
+        `Analyse this page for JavaScript SEO issues: ${url}
 
 Return JSON:
 {
@@ -78,7 +78,7 @@ Return JSON:
   ]
 }
 
-Include 4-5 critical/warning issues specific to casino affiliate pages (rankings, affiliate links, review schema, pagination) and 3-4 pass items. Focus on iGaming-specific JS SEO risks.`,
+Include 4-5 critical/warning issues specific to affiliate/review pages (rankings, affiliate links, review schema, pagination) and 3-4 pass items. Focus on the most common JS SEO risks for this type of page.`,
         1200,
       )
     },
@@ -119,7 +119,7 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
       <Card>
         <CardTitle className="mb-3">JavaScript SEO Checker</CardTitle>
         <p className="text-sm text-muted mb-4 leading-relaxed">
-          Detect casino content, affiliate links, and schema markup that only renders after JavaScript execution
+          Detect page content, affiliate links, and schema markup that only renders after JavaScript execution
           — invisible to Googlebot on first crawl.
         </p>
         <div className="flex gap-3">
@@ -235,7 +235,7 @@ Include 4-5 critical/warning issues specific to casino affiliate pages (rankings
       {!result && (
         <div className="flex flex-col items-center justify-center h-48 text-center">
           <FileCode2 size={40} className="mb-3 text-muted" strokeWidth={1} />
-          <div className="text-sm text-muted">Enter your casino page URL to detect JS SEO issues</div>
+          <div className="text-sm text-muted">Enter your page URL to detect JS SEO issues</div>
         </div>
       )}
       </>)}

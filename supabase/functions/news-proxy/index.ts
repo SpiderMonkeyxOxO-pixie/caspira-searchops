@@ -133,7 +133,7 @@ serve(async (req) => {
     const results = await Promise.allSettled(
       SOURCES.map(async (src) => {
         const res = await fetch(src.url, {
-          headers: { 'User-Agent': 'Jarvis-SEO-Bot/1.0' },
+          headers: { 'User-Agent': 'Caspira-SearchOps-Bot/1.0' },
           signal: AbortSignal.timeout(8000),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)

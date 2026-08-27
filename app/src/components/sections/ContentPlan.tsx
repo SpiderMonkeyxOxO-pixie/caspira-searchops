@@ -48,22 +48,22 @@ export function ContentPlan() {
   const generateBrief = useMutation({
     mutationFn: (item: ContentItem) => callClaude(
       'You are an elite SEO content strategist. Create detailed, actionable content briefs.',
-      `Create a professional content brief for an iGaming/casino affiliate site:
+      `Create a professional content brief for this site:
 Title: "${item.title}"
 Target keyword: "${item.keyword}" (${item.vol}/mo searches)
-Site: ${domain || 'casino review site'}
+Site: ${domain || 'yoursite.com'}
 
 Include:
-**TARGET AUDIENCE**: (1 sentence — type of gambler or researcher)
-**SEARCH INTENT**: (Informational/Commercial/Transactional + why for gambling queries)
-**OUTLINE**: (H2s with 2-3 H3s each, 5-6 sections — casino-specific structure)
-**INTERNAL LINKS**: 3 casino/bonus pages to link from/to
-**KEY ANGLES TO COVER**: 4 bullets competitors miss (e.g. licensing, RTP, withdrawal speed)
-**WORD COUNT TARGET**: (with reasoning for YMYL casino content)
-**RESPONSIBLE GAMBLING NOTE**: Required disclaimer approach
-**CTA**: (what action should reader take — e.g. claim bonus, read full review)
+**TARGET AUDIENCE**: (1 sentence — type of reader or researcher)
+**SEARCH INTENT**: (Informational/Commercial/Transactional + why for this query)
+**OUTLINE**: (H2s with 2-3 H3s each, 5-6 sections tailored to this topic)
+**INTERNAL LINKS**: 3 relevant pages to link from/to
+**KEY ANGLES TO COVER**: 4 bullets competitors miss (e.g. pricing, specs, real-world testing)
+**WORD COUNT TARGET**: (with reasoning for YMYL content, if applicable)
+**COMPLIANCE NOTE**: Any required legal/disclosure language for this niche, if applicable
+**CTA**: (what action should reader take — e.g. sign up, compare options, read full review)
 
-Be specific and actionable for the iGaming industry.`,
+Be specific and actionable for this site's industry.`,
       1200,
     ),
     onSuccess: (content, item) => {

@@ -139,7 +139,7 @@ export function OutrankBlueprint() {
 
   const [market,     setMarket]     = useState('India')
   const [competitor, setCompetitor] = useState('')
-  const [keyword,    setKeyword]    = useState('best online casino india')
+  const [keyword,    setKeyword]    = useState('best project management software india')
   const [tab,        setTab]        = useState<Tab>('blueprint')
 
   // Results
@@ -199,15 +199,15 @@ export function OutrankBlueprint() {
 
   function handleMarketChange(m: string) {
     setMarket(m)
-    if (m.toLowerCase() === 'india')          setKeyword('best online casino india')
-    else if (m.toLowerCase() === 'indonesia') setKeyword('slot online terpercaya')
-    else if (m.trim())                        setKeyword(`best online casino ${m.toLowerCase()}`)
+    if (m.toLowerCase() === 'india')          setKeyword('best project management software india')
+    else if (m.toLowerCase() === 'indonesia') setKeyword('software crm terbaik indonesia')
+    else if (m.trim())                        setKeyword(`best project management software ${m.toLowerCase()}`)
     setBlueprint(''); setGaps([]); setLinks([]); setOnpage([]); setSprint([])
   }
 
   const generate = useMutation({
     mutationFn: async () => {
-      const sys = `You are an elite iGaming SEO strategist with deep expertise in the ${market} online casino market. Be direct, specific, and actionable. Every recommendation must name exact keywords, content types, or publication targets. No generic advice.`
+      const sys = `You are an elite SEO strategist with deep expertise in the ${market} market. Be direct, specific, and actionable. Every recommendation must name exact keywords, content types, or publication targets. No generic advice.`
 
       // Pre-fetch real DFS data to ground the AI
       let dfsContext = ''
@@ -266,7 +266,7 @@ In 3 sentences: where is the competitor currently beating us, and where do we ha
 The single highest-impact content piece to publish in the next 30 days. Include: exact article title, target keyword, word count, content type, and why this page will outrank theirs.
 
 **3. TOP 3 LINK ACQUISITION MOVES**
-Three specific link building tactics for iGaming in ${market}. For each: tactic name, exact target publication, outreach angle, realistic timeline.
+Three specific link building tactics for this niche in ${market}. For each: tactic name, exact target publication, outreach angle, realistic timeline.
 
 **4. ON-PAGE QUICK WINS (THIS WEEK)**
 Three specific on-page changes to implement immediately. Name the exact schema type, title tag formula, or hreflang tag.
@@ -280,10 +280,10 @@ At each milestone: expected ranking position for "${keyword}" and one measurable
 Return ONLY valid JSON (no markdown, no explanation):
 {
   "contentGaps": [
-    {"kw":"exact keyword","vol":"8,400","kd":45,"theirPos":3,"yourPos":null,"type":"Bonus Review","priority":"HIGH"}
+    {"kw":"exact keyword","vol":"8,400","kd":45,"theirPos":3,"yourPos":null,"type":"Product Review","priority":"HIGH"}
   ],
   "linkGaps": [
-    {"domain":"site.com","da":65,"type":"Guest Post","angle":"specific pitch angle for casino niche"}
+    {"domain":"site.com","da":65,"type":"Guest Post","angle":"specific pitch angle for this niche"}
   ],
   "onPage": [
     {"item":"Title tag on homepage","impact":"HIGH","effort":"LOW","action":"Exact change to implement"}
@@ -293,8 +293,8 @@ Return ONLY valid JSON (no markdown, no explanation):
   ]
 }
 Rules:
-- contentGaps: 8–10 items. Casino reviews, bonus pages, game guides. HIGH = high vol + they rank, we don't.
-- linkGaps: 6–8 items. Gambling publications relevant to ${market} market.
+- contentGaps: 8–10 items. Product reviews, buying guides, how-to guides. HIGH = high vol + they rank, we don't.
+- linkGaps: 6–8 items. Publications relevant to ${market} market.
 - onPage: 8–10 items. Schema, title tags, meta, content structure, internal links, page speed.
 - sprint: 12–14 tasks. 30-day = foundation, 60-day = content+links, 90-day = review+scale.
 - type values: Content | Links | Technical | Review`,

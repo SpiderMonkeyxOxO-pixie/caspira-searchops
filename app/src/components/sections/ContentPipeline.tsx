@@ -32,7 +32,7 @@ const REVIEW_CHECKS_TEMPLATE: ReviewCheck[] = [
   { label: 'Word count ≥ 2,000',          pass: false, note: 'Check word count after draft is generated' },
   { label: 'Primary keyword in H1',        pass: false, note: 'Verify H1 contains target keyword' },
   { label: 'E-E-A-T signal present',       pass: false, note: 'Add author byline and expertise statement' },
-  { label: 'Responsible gambling section', pass: false, note: 'Required for iGaming YMYL content' },
+  { label: 'Required disclosure section',  pass: false, note: 'Required legal/compliance disclosure for YMYL content' },
   { label: 'Internal links present',       pass: false, note: 'Add 3-5 contextual internal links' },
   { label: 'Schema markup included',       pass: false, note: 'Add FAQPage or ReviewList schema' },
   { label: 'Meta description written',     pass: false, note: 'Write meta description in brief' },
@@ -50,7 +50,7 @@ export function ContentPipeline() {
   const generateOutline = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an iGaming SEO content strategist. Generate casino article outlines.',
+        'You are an SEO content strategist. Generate article outlines.',
         `Create an SEO article outline for: "${brief.keyword}"
 Target: ${brief.wordCount} words · Tone: ${brief.tone} · Audience: ${brief.audience}
 Angle: ${brief.angle}
@@ -58,7 +58,7 @@ Angle: ${brief.angle}
 Return JSON array:
 [{"heading":"H2 or H3 text","type":"h2|h3","notes":"what to include in this section"}]
 
-Include 8-10 sections: intro, methodology, rankings (with H3s), bonuses, responsible gambling (REQUIRED), FAQ.`,
+Include 8-10 sections: intro, methodology, comparison/rankings (with H3s), pricing or offers, required disclosures (REQUIRED), FAQ.`,
         900,
       )
     },
@@ -76,13 +76,13 @@ Include 8-10 sections: intro, methodology, rankings (with H3s), bonuses, respons
     mutationFn: async () => {
       const outlineText = outline.map(s => `${s.type === 'h2' ? '##' : '###'} ${s.heading} [${s.notes}]`).join('\n')
       return callClaude(
-        'You are an expert iGaming content writer. Write E-E-A-T compliant casino affiliate articles.',
-        `Write a ${brief.wordCount}-word casino article for "${brief.keyword}".
+        'You are an expert content writer. Write E-E-A-T compliant affiliate articles.',
+        `Write a ${brief.wordCount}-word article for "${brief.keyword}".
 
 OUTLINE:
 ${outlineText}
 
-Include: UKGC compliance, real data, responsible gambling section, FAQ schema.
+Include: relevant regulatory/legal compliance, real data, required disclosures, FAQ schema.
 Tone: ${brief.tone}. Write in full markdown.`,
         4096,
       )
@@ -146,10 +146,10 @@ Tone: ${brief.tone}. Write in full markdown.`,
           <CardTitle className="mb-4">Content Brief</CardTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {[
-              { label: 'PRIMARY KEYWORD', key: 'keyword' as const, ph: 'best online casino uk' },
-              { label: 'URL SLUG',         key: 'slug'    as const, ph: 'best-online-casinos' },
-              { label: 'TARGET AUDIENCE',  key: 'audience' as const, ph: 'UK adult casino players' },
-              { label: 'COMPETITORS',      key: 'competitors' as const, ph: 'casino.org, gambling.com' },
+              { label: 'PRIMARY KEYWORD', key: 'keyword' as const, ph: 'best project management software' },
+              { label: 'URL SLUG',         key: 'slug'    as const, ph: 'best-project-management-software' },
+              { label: 'TARGET AUDIENCE',  key: 'audience' as const, ph: 'small business owners' },
+              { label: 'COMPETITORS',      key: 'competitors' as const, ph: 'acmesaas.com, urbanfitnessgear.com' },
             ].map(f => (
               <div key={f.key}>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">{f.label}</div>
@@ -277,7 +277,7 @@ Tone: ${brief.tone}. Write in full markdown.`,
           </div>
           <div className="mt-4 p-4 bg-surface border border-border rounded-xl text-xs text-muted leading-relaxed">
             <span className="text-accent font-semibold">Next steps:</span>
-            {' '}1. Add 3-5 internal links to related casino review pages.
+            {' '}1. Add 3-5 internal links to related product review pages.
             2. Write and add meta description (150-160 chars).
             3. Add 3 featured images with keyword-optimised alt text.
             4. Add FAQPage + ReviewList JSON-LD schema to the page source.

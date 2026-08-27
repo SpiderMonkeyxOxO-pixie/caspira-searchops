@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Building2, ArrowRight, Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import type { User } from '@supabase/supabase-js'
+import { getDataProvider } from '@/lib/backend'
+import type { AuthUser } from '@/lib/backend'
 
 interface Props {
-  user: User
+  user: AuthUser
   onCreated: () => void
 }
 
@@ -29,13 +29,11 @@ export function OrgCreateWizard({ user, onCreated }: Props) {
       const timeout = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Request timed out — your session may have expired. Sign out and sign back in.')), 10_000)
       )
-      const rpc = supabase.rpc('jarvis_create_org', {
+      const rpc = getDataProvider().callProcedure('jarvis_create_org', {
         p_name: orgName.trim(),
         p_slug: slug,
       })
-      const { error } = await Promise.race([rpc, timeout]) as { error: { message: string } | null }
-
-      if (error) throw new Error(error.message)
+      await Promise.race([rpc, timeout])
 
       onCreated()
     } catch (err: unknown) {
@@ -54,10 +52,10 @@ export function OrgCreateWizard({ user, onCreated }: Props) {
       <div className="w-full max-w-md relative">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl overflow-hidden mb-4 shadow-[0_0_40px_#00d4ff30]">
-            <img src="/jarvis-icon.png" alt="Jarvis" className="w-full h-full object-cover" />
+            <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
           </div>
-          <div className="font-display font-black text-2xl tracking-wide text-tx">JARVIS</div>
-          <div className="text-[10px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-1">iGaming SEO Platform</div>
+          <div className="font-display font-black text-2xl tracking-wide text-tx">CASPIRA SEARCHOPS</div>
+          <div className="text-[10px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-1">AI Search Intelligence Platform</div>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-[0_8px_40px_#00000040]">
@@ -72,7 +70,7 @@ export function OrgCreateWizard({ user, onCreated }: Props) {
           </div>
 
           <p className="text-sm text-muted mb-6 leading-relaxed">
-            Your organization is your Jarvis workspace. You can invite your SEO team, assign roles, and manage multiple iGaming sites from here.
+            Your organization is your Caspira workspace. You can invite your SEO team, assign roles, and manage multiple sites from here.
           </p>
 
           {error && (
@@ -87,7 +85,7 @@ export function OrgCreateWizard({ user, onCreated }: Props) {
               <input
                 type="text" value={orgName}
                 onChange={e => setOrgName(e.target.value)}
-                placeholder="e.g. Casino Expert Agency"
+                placeholder="e.g. Acme SEO Agency"
                 required
                 className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
               />

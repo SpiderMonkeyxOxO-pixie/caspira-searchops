@@ -1,6 +1,6 @@
-# Jarvis — Setup Guide
+# Caspira SearchOps — Setup Guide
 
-Follow these steps to get your own instance of Jarvis running. The whole process takes about 15–20 minutes.
+Follow these steps to get your own instance of Caspira SearchOps running. The whole process takes about 15–20 minutes.
 
 ---
 
@@ -149,7 +149,7 @@ By default Supabase uses a shared email service that frequently lands in spam an
 | Username | `resend` |
 | Password | *(your Resend API key)* |
 | Sender email | `onboarding@resend.dev` *(or your verified domain)* |
-| Sender name | `Jarvis` |
+| Sender name | `Caspira SearchOps` |
 
 3. Click **Save changes**
 
@@ -166,7 +166,7 @@ By default Supabase uses a shared email service that frequently lands in spam an
 | Username | `your@gmail.com` |
 | Password | *(your 16-character App Password)* |
 | Sender email | `your@gmail.com` |
-| Sender name | `Jarvis` |
+| Sender name | `Caspira SearchOps` |
 
 ---
 
@@ -212,7 +212,7 @@ To connect Google Search Console and Google Analytics 4:
 
 ### AI Features (optional but recommended)
 
-At least one AI key is needed for all AI-powered features (Outrank Blueprint, Content Planner, Jarvis AI, etc.):
+At least one AI key is needed for all AI-powered features (Outrank Blueprint, Content Planner, Caspira AI, etc.):
 
 | Provider | Where to get it | Setting field |
 |---|---|---|

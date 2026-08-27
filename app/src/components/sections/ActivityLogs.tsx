@@ -252,7 +252,7 @@ export function ActivityLogs() {
         {/* Boot comment block */}
         <div className="mb-5 space-y-0.5 text-[#252525] select-none">
           <div>{'// ================================================================'}</div>
-          <div>{'//  JARVIS Activity Log Daemon  v1.0.0'}</div>
+          <div>{'//  CASPIRA Activity Log Daemon  v1.0.0'}</div>
           <div>{'//  Auto-purge TTL: 48h  |  Realtime: enabled  |  Max entries: 500'}</div>
           <div>{'// ================================================================'}</div>
         </div>

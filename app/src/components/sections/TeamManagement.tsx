@@ -33,7 +33,7 @@ const DEFAULT_PERMISSIONS: Record<Exclude<OrgRole, 'owner'>, NavSection[]> = {
   admin: ALL_SECTIONS,
   seo_specialist: [
     'agency', 'sitesmanager', 'dashboard', 'competitors', 'siteexplorer', 'keywords', 'kwexplorer', 'backlinks',
-    'tracker', 'serpupdate', 'roadmap', 'seonews', 'gsc', 'crossview',
+    'tracker', 'serpupdate', 'roadmap', 'seonews', 'gsc', 'crossview', 'bingwebmaster',
     'aivisibility',
     'jarvis', 'roaster', 'clustering', 'bulkmeta', 'gapcontent', 'contentspy', 'autorefresh', 'intentanalyzer',
     'articlewriter', 'contentgrader', 'answerpublic', 'topicalmap', 'serpsim', 'faqgen',
@@ -44,7 +44,7 @@ const DEFAULT_PERMISSIONS: Record<Exclude<OrgRole, 'owner'>, NavSection[]> = {
   ],
   technical: [
     'dashboard', 'sitesmanager', 'analyzer', 'siteexplorer',
-    'tracker', 'roadmap', 'seonews', 'gsc', 'crossview',
+    'tracker', 'roadmap', 'seonews', 'gsc', 'crossview', 'bingwebmaster',
     'technical', 'redirectmgr', 'loganalyzer', 'hreflang', 'robotstxt', 'sitemapgen', 'jsseo',
     'ga4', 'apisync', 'crawlimport',
     'serpfeatures', 'schema', 'eeat',

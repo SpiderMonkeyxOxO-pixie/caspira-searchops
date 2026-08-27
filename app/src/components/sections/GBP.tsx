@@ -8,7 +8,7 @@ export function GBP() {
         <CardTitle className="mb-3">Google Business Profile Connector</CardTitle>
         <p className="text-sm text-muted mb-6 leading-relaxed">
           Connect your Google Business Profile to monitor local pack rankings, review sentiment,
-          listing completeness, and GBP optimisation opportunities for your iGaming brand.
+          listing completeness, and GBP optimisation opportunities for your brand.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {[

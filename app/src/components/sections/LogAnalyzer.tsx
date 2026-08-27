@@ -59,8 +59,8 @@ export function LogAnalyzer() {
         <Card>
           <CardTitle className="mb-3">Log File Analyzer</CardTitle>
           <p className="text-sm text-muted mb-6 leading-relaxed">
-            Upload your server access log and Jarvis identifies exactly what Googlebot is crawling,
-            where crawl budget is being wasted, and which pages Google is ignoring on your casino site.
+            Upload your server access log and Caspira identifies exactly what Googlebot is crawling,
+            where crawl budget is being wasted, and which pages Google is ignoring on your site.
           </p>
           <div className="grid grid-cols-3 gap-4 mb-8">
             {[
@@ -147,7 +147,7 @@ export function LogAnalyzer() {
             </div>
             <div className="text-xs text-muted leading-relaxed">
               {wasteEntries.length} URLs (404 pages, redirect chains, 410 gone) are consuming {Math.round((wasteHits / totalCrawls) * 100)}% of your crawl budget.
-              Fix or consolidate these to free up crawl for your casino review and bonus pages.
+              Fix or consolidate these to free up crawl for your key product and category pages.
             </div>
           </div>
         </div>
@@ -191,7 +191,7 @@ export function LogAnalyzer() {
 
         <div className="mt-4 p-3 bg-surface border border-border rounded-lg text-xs text-muted">
           <span className="text-accent font-semibold">Recommendation:</span>
-          {' '}Fix the {wasteEntries.length} crawl-waste URLs — consolidate redirect chains to single 301s, and either 301 or 410 all 404 pages. This will redirect Googlebot toward your casino review and bonus pages.
+          {' '}Fix the {wasteEntries.length} crawl-waste URLs — consolidate redirect chains to single 301s, and either 301 or 410 all 404 pages. This will redirect Googlebot toward your key product and category pages.
         </div>
       </Card>
     </div>

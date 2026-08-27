@@ -639,7 +639,7 @@ export function GSC() {
         <Card className="text-center py-10">
           <Globe size={40} className="text-accent mx-auto mb-4" strokeWidth={1.25} />
           <div className="font-display font-black text-lg text-tx mb-2">Select a GSC Property</div>
-          <div className="text-sm text-muted mb-6">Choose which Search Console property to connect to Jarvis</div>
+          <div className="text-sm text-muted mb-6">Choose which Search Console property to connect to Caspira</div>
           <div className="space-y-2 max-w-md mx-auto">
             {conn.availableSites.map(site => (
               <button
@@ -889,7 +889,7 @@ export function GSC() {
                   <span className="text-muted leading-relaxed">
                     <strong className="text-tx">Switch to the URL-prefix property:</strong> in Search Console, add{' '}
                     <code className="font-mono-jarvis text-accent bg-surface px-1 py-0.5 rounded">{domainToUrlPrefix(activeUrl)}</code>{' '}
-                    as a property — URL-prefix properties work with Full User access. Then reconnect Jarvis with that property selected.
+                    as a property — URL-prefix properties work with Full User access. Then reconnect Caspira with that property selected.
                   </span>
                 </div>
               )}

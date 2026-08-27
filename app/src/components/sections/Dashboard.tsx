@@ -208,7 +208,7 @@ export function Dashboard() {
       tooltip: 'How many times your pages appeared in Google Search results over the last 28 days, regardless of whether users clicked. High impressions with low clicks signals a CTR optimisation opportunity.' },
     { label: 'AVG. CTR',        value: kpis?.ctr                           ?? '—', color: '#a78bfa',              icon: Percent,      loading: gscLoading,
       subtitle: kpis ? 'Last 28 days' : '',
-      tooltip: 'Click-Through Rate — the percentage of impressions that resulted in a click. Industry average for iGaming is 2–5%. Below 2% suggests your title tags and meta descriptions need improvement.' },
+      tooltip: 'Click-Through Rate — the percentage of impressions that resulted in a click. A healthy industry average is 2–5%. Below 2% suggests your title tags and meta descriptions need improvement.' },
     { label: 'AVG. POSITION',   value: kpis ? `#${kpis.position}`          : '—', color: 'var(--color-accent4)', icon: Hash,         loading: gscLoading,
       subtitle: kpis ? 'Last 28 days' : '',
       tooltip: 'Your site\'s average ranking position across all keywords in Google Search. Position 1–3 captures ~60% of clicks. Lower numbers are better — aim to push averages below 10 (page 1).' },
@@ -387,7 +387,7 @@ export function Dashboard() {
         </div>
       </Card>
 
-      {/* ── Tasks + Jarvis CTA ── */}
+      {/* ── Tasks + Caspira CTA ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 flex items-center gap-6">
           <div>
@@ -412,8 +412,8 @@ export function Dashboard() {
         </Card>
 
         <Card className="bg-linear-to-br from-[#7c3aed15] to-[#00d4ff08] border-[#7c3aed30]">
-          <CardTitle className="text-[#a78bfa]">Jarvis AI Ready</CardTitle>
-          <div className="text-[11px] text-muted mb-4">Ask anything about your iGaming SEO strategy</div>
+          <CardTitle className="text-[#a78bfa]">Caspira AI Ready</CardTitle>
+          <div className="text-[11px] text-muted mb-4">Ask anything about your SEO strategy</div>
           <Button variant="primary" className="w-full justify-center" onClick={() => setSection('jarvis')}>
             Open AI Co-Pilot
           </Button>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { getAuthProvider } from '@/lib/backend'
 
 type Mode = 'login' | 'signup' | 'forgot'
 
@@ -21,24 +21,21 @@ export function AuthPage() {
     setLoading(true)
 
     try {
+      const auth = getAuthProvider()
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
+        const { error } = await auth.signInWithPassword(email, password)
+        if (error) throw new Error(error)
 
       } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: name } },
-        })
-        if (error) throw error
+        const { error } = await auth.signUp(email, password, { full_name: name })
+        if (error) throw new Error(error)
         setSuccess('Check your email to confirm your account, then come back to sign in.')
 
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin + '/reset-password',
         })
-        if (error) throw error
+        if (error) throw new Error(error)
         setSuccess('Password reset link sent — check your inbox.')
       }
     } catch (err: unknown) {
@@ -58,10 +55,11 @@ export function AuthPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl overflow-hidden mb-4 shadow-[0_0_40px_#00d4ff30]">
-            <img src="/jarvis-icon.png" alt="Jarvis" className="w-full h-full object-cover" />
+            <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
           </div>
-          <div className="font-display font-black text-2xl tracking-wide text-tx">JARVIS</div>
-          <div className="text-[10px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-1">iGaming SEO Platform</div>
+          <div className="font-display font-black text-2xl tracking-wide text-tx">CASPIRA SEARCHOPS</div>
+          <div className="text-[10px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-1">AI Search Intelligence Platform</div>
+          <div className="text-xs text-accent/80 italic mt-2">Structure Your Search Growth.</div>
         </div>
 
         {/* Card */}
@@ -72,8 +70,8 @@ export function AuthPage() {
              'Reset your password'}
           </h2>
           <p className="text-sm text-muted mb-6">
-            {mode === 'login'  ? 'Sign in to your Jarvis workspace'  :
-             mode === 'signup' ? 'Start managing your iGaming SEO'    :
+            {mode === 'login'  ? 'Sign in to your Caspira workspace'  :
+             mode === 'signup' ? 'Start managing your SEO'    :
              "We'll send a reset link to your email"}
           </p>
 
@@ -156,7 +154,7 @@ export function AuthPage() {
         </div>
 
         <p className="text-center text-[10px] text-muted mt-6 font-mono-jarvis">
-          JARVIS · iGaming SEO Platform · Pro
+          CASPIRA SEARCHOPS · AI Search Intelligence Platform · Pro
         </p>
       </div>
     </div>

@@ -125,18 +125,18 @@ export function Backlinks() {
 
   const getStrategy = useMutation({
     mutationFn: () => callAI(
-      'You are an elite link building strategist with 10+ years of iGaming SEO experience.',
-      `Create a 60-day link building sprint plan for ${targetDomain || domain || 'an iGaming/casino affiliate site'} in India and Indonesia markets.
+      'You are an elite link building strategist with 10+ years of SEO experience.',
+      `Create a 60-day link building sprint plan for ${targetDomain || domain || 'yoursite.com'} in its target market.
 
 Current backlink profile: ${summary ? `${fmt(summary.total)} total backlinks, ${fmt(summary.refDomains)} referring domains, domain rank ${summary.domainRank}` : 'unknown'}
 
 Provide:
-1. Top 3 link acquisition tactics specific to the casino/gambling niche (niche edits, HARO, gambling directories, news media outreach)
-2. 5 specific outreach targets worth pursuing with the exact angle for each (publication + pitch tailored to casino SEO)
-3. Toxic/spam link disavow strategy for gambling niches
+1. Top 3 link acquisition tactics specific to this niche (niche edits, HARO, industry directories, news media outreach)
+2. 5 specific outreach targets worth pursuing with the exact angle for each (publication + pitch tailored to this site's SEO)
+3. Toxic/spam link disavow strategy for this niche
 4. 30-day vs 60-day milestones
 
-Be specific and actionable for the regulated gambling industry.`,
+Be specific and actionable for this industry.`,
       800,
     ),
     onSuccess: setAiStrategy,
@@ -350,7 +350,7 @@ Be specific and actionable for the regulated gambling industry.`,
           <div className="text-xs text-tx leading-relaxed whitespace-pre-wrap">{aiStrategy}</div>
         ) : (
           <p className="text-xs text-muted">
-            Fetch backlinks above, then click <strong>Generate 60-Day Sprint</strong> to get a tailored iGaming link building plan with specific targets and tactics.
+            Fetch backlinks above, then click <strong>Generate 60-Day Sprint</strong> to get a tailored link building plan with specific targets and tactics.
           </p>
         )}
       </Card>

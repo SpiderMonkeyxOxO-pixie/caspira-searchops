@@ -75,18 +75,18 @@ export function ContentGap() {
       }
       return callClaude(
         'You are an elite content gap analyst. Return ONLY JSON for the gaps array, then a brief text summary.',
-        `Find content gaps for the iGaming/casino site "${own}" vs competitors "${c1}" and "${c2}" in the "${niche}" niche.${realDataContext}
+        `Find content gaps for the site "${own}" vs competitors "${c1}" and "${c2}" in the "${niche}" niche.${realDataContext}
 
 Return this exact format:
 GAPS_JSON:
-[{"topic":"...","vol":"5K","kd":30,"competitors":["${c1}"],"opportunity":"HIGH","angle":"specific casino content angle they're missing"}]
+[{"topic":"...","vol":"5K","kd":30,"competitors":["${c1}"],"opportunity":"HIGH","angle":"specific content angle they're missing"}]
 END_GAPS
 
 SUMMARY:
-2-3 sentence strategic summary of the biggest iGaming content opportunity.
+2-3 sentence strategic summary of the biggest content opportunity.
 END_SUMMARY
 
-Generate 6 realistic casino/gambling gaps (bonus pages, review content, game guides, geo pages). Opportunity: HIGH=kd<35, MED=moderate difficulty, LOW=hard to win.`,
+Generate 6 realistic content gaps (buying guides, review content, how-to guides, geo pages). Opportunity: HIGH=kd<35, MED=moderate difficulty, LOW=hard to win.`,
         1400,
       )
     },
@@ -146,10 +146,10 @@ Generate 6 realistic casino/gambling gaps (bonus pages, review content, game gui
             <CardTitle className="mb-4 flex items-center gap-1.5">Content Gap Finder <InfoTooltip text="A content gap is a topic your competitors rank for in Google but your site does not. Filling these gaps captures traffic you're currently missing." /></CardTitle>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
               {[
-                { label: 'YOUR DOMAIN', value: own,   onChange: setOwn,   placeholder: 'casinosite.com', tip: 'Your casino or affiliate site domain. Used as the baseline — the AI identifies topics competitors cover that you do not.' },
-                { label: 'COMPETITOR 1', value: c1,   onChange: setC1,    placeholder: 'casino.org',     tip: 'A direct competitor domain. The AI checks what topics they rank for that your site is missing.' },
-                { label: 'COMPETITOR 2', value: c2,   onChange: setC2,    placeholder: 'gambling.com',   tip: 'A second competitor domain for a wider gap analysis across multiple rivals.' },
-                { label: 'NICHE/TOPIC',  value: niche, onChange: setNiche, placeholder: 'e.g. casino bonus', tip: 'The content niche to focus the gap analysis on — e.g. "casino bonus", "live casino", "sports betting".' },
+                { label: 'YOUR DOMAIN', value: own,   onChange: setOwn,   placeholder: 'yoursite.com', tip: 'Your site or affiliate domain. Used as the baseline — the AI identifies topics competitors cover that you do not.' },
+                { label: 'COMPETITOR 1', value: c1,   onChange: setC1,    placeholder: 'acmesaas.com',     tip: 'A direct competitor domain. The AI checks what topics they rank for that your site is missing.' },
+                { label: 'COMPETITOR 2', value: c2,   onChange: setC2,    placeholder: 'urbanfitnessgear.com',   tip: 'A second competitor domain for a wider gap analysis across multiple rivals.' },
+                { label: 'NICHE/TOPIC',  value: niche, onChange: setNiche, placeholder: 'e.g. project management software', tip: 'The content niche to focus the gap analysis on — e.g. "project management software", "running shoes", "home decor".' },
               ].map(f => (
                 <div key={f.label}>
                   <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">{f.label} <InfoTooltip text={f.tip} /></div>

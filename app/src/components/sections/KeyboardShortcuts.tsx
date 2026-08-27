@@ -11,7 +11,7 @@ interface Shortcut {
 const SHORTCUTS: Shortcut[] = [
   // Navigation
   { keys: ['G', 'D'],        desc: 'Go to Dashboard',          category: 'Navigation', nav: 'dashboard' },
-  { keys: ['G', 'J'],        desc: 'Go to Jarvis AI',           category: 'Navigation', nav: 'jarvis' },
+  { keys: ['G', 'J'],        desc: 'Go to Caspira AI',          category: 'Navigation', nav: 'jarvis' },
   { keys: ['G', 'T'],        desc: 'Go to Rank Tracker',        category: 'Navigation', nav: 'tracker' },
   { keys: ['G', 'K'],        desc: 'Go to Keyword Strategy',    category: 'Navigation', nav: 'keywords' },
   { keys: ['G', 'S'],        desc: 'Go to Site Audit',          category: 'Navigation', nav: 'analyzer' },
@@ -65,7 +65,7 @@ export function KeyboardShortcuts() {
           <div>
             <CardTitle className="mb-1">Keyboard Shortcuts</CardTitle>
             <div className="text-xs text-muted leading-relaxed">
-              Navigate Jarvis at speed with keyboard-first controls. Shortcuts work globally — no need to click first.
+              Navigate Caspira at speed with keyboard-first controls. Shortcuts work globally — no need to click first.
               Use <Key k="G" /> sequences for section jumps and <Key k="?" /> to return here anytime.
             </div>
           </div>

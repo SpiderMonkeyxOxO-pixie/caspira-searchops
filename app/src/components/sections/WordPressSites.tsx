@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Rss, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, Globe, ExternalLink, Eye, EyeOff, FileText } from 'lucide-react'
+import { Rss, Trash2, RefreshCw, CheckCircle2, XCircle, Clock, Globe, ExternalLink, Eye, EyeOff, FileText, Bot, Wrench } from 'lucide-react'
 import { useStore } from '@/store'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { listMcpTools } from '@/lib/mcp'
 import type { WPSite } from '@/types'
 
 function StatusBadge({ s }: { s: WPSite['status'] }) {
@@ -28,6 +30,38 @@ export function WordPressSites() {
   const [showPass, setShowPass] = useState(false)
   const [testing,  setTesting]  = useState<number | null>(null)
   const [formErr,  setFormErr]  = useState('')
+
+  const [mcpDrafts, setMcpDrafts]     = useState<Record<number, { url: string; auth: string }>>({})
+  const [mcpTesting, setMcpTesting]   = useState<number | null>(null)
+  const [mcpErrors,  setMcpErrors]    = useState<Record<number, string>>({})
+
+  function mcpDraft(site: WPSite) {
+    return mcpDrafts[site.id] ?? { url: site.mcpUrl ?? '', auth: site.mcpAuth ?? '' }
+  }
+  function setMcpDraft(site: WPSite, patch: Partial<{ url: string; auth: string }>) {
+    setMcpDrafts(prev => ({ ...prev, [site.id]: { ...mcpDraft(site), ...patch } }))
+  }
+
+  async function connectMcp(site: WPSite) {
+    const draft = mcpDraft(site)
+    if (!draft.url.trim()) return
+    setMcpTesting(site.id)
+    setMcpErrors(prev => ({ ...prev, [site.id]: '' }))
+    try {
+      const tools = await listMcpTools(draft.url.trim(), draft.auth.trim() || undefined)
+      updateWPSite(site.id, {
+        mcpUrl: draft.url.trim(),
+        mcpAuth: draft.auth.trim(),
+        mcpStatus: 'connected',
+        mcpToolCount: tools.length,
+      })
+    } catch (e) {
+      updateWPSite(site.id, { mcpUrl: draft.url.trim(), mcpAuth: draft.auth.trim(), mcpStatus: 'error', mcpToolCount: 0 })
+      setMcpErrors(prev => ({ ...prev, [site.id]: e instanceof Error ? e.message : 'Failed to connect' }))
+    } finally {
+      setMcpTesting(null)
+    }
+  }
 
   const connected  = wpSites.filter(s => s.status === 'connected').length
   const totalPosts = wpSites.reduce((a, s) => a + s.postCount, 0)
@@ -160,13 +194,13 @@ export function WordPressSites() {
           <div>
             <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SITE NAME</div>
             <input value={name} onChange={e => setName(e.target.value)}
-              placeholder="India Casino Portal"
+              placeholder="Acme SaaS Blog"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis" />
           </div>
           <div>
             <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">SITE URL</div>
             <input value={url} onChange={e => setUrl(e.target.value)}
-              placeholder="https://casinoindian.in"
+              placeholder="https://acmesaas.com"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis" />
           </div>
           <div>
@@ -198,6 +232,57 @@ export function WordPressSites() {
         </div>
       </Card>
 
+      {/* MCP — AI-driven publishing */}
+      {wpSites.length > 0 && (
+        <Card>
+          <div className="flex items-center gap-2 mb-1">
+            <Bot size={15} className="text-accent2" />
+            <CardTitle className="mb-0">AI Publishing via MCP</CardTitle>
+            <Badge variant="purple">ADVANCED</Badge>
+          </div>
+          <p className="text-xs text-muted mb-4 leading-relaxed">
+            Connect a site's MCP server so Caspira AI can publish or schedule posts itself when you ask it to in chat — e.g. "publish this to Acme Blog next Monday at 9am".
+            Requires the site to run an MCP-capable plugin (e.g. the WordPress MCP Adapter) with a post-publishing ability exposed. Separate from — and optional alongside — the instant-publish flow above.
+          </p>
+          <div className="space-y-3">
+            {wpSites.map(site => {
+              const draft = mcpDraft(site)
+              const err   = mcpErrors[site.id]
+              return (
+                <div key={site.id} className="p-3 rounded-lg border border-border bg-surface/50">
+                  <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-tx">{site.name}</span>
+                      {site.mcpStatus === 'connected' && (
+                        <Badge variant="green"><Wrench size={9} /> {site.mcpToolCount ?? 0} tool{site.mcpToolCount === 1 ? '' : 's'}</Badge>
+                      )}
+                      {site.mcpStatus === 'error' && <Badge variant="red">Connection failed</Badge>}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
+                    <input value={draft.url} onChange={e => setMcpDraft(site, { url: e.target.value })}
+                      placeholder="https://acmesaas.com/wp-json/mcp/mcp-adapter-default-server"
+                      className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors font-mono-jarvis" />
+                    <input value={draft.auth} onChange={e => setMcpDraft(site, { auth: e.target.value })}
+                      placeholder="Authorization header value (e.g. Bearer xxxx or Basic xxxx) — optional"
+                      className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors font-mono-jarvis" />
+                    <Button variant="ghost" className="text-xs px-3 whitespace-nowrap" onClick={() => connectMcp(site)} disabled={mcpTesting === site.id || !draft.url.trim()}>
+                      <RefreshCw size={11} className={mcpTesting === site.id ? 'animate-spin' : ''} />
+                      {mcpTesting === site.id ? 'Connecting…' : 'Connect'}
+                    </Button>
+                  </div>
+                  {err && <div className="mt-2 text-[11px] text-danger">{err}</div>}
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-3 text-[10px] text-muted font-mono-jarvis flex items-center gap-1">
+            <InfoTooltip text="Caspira connects to the site's MCP endpoint using the Streamable HTTP transport (spec 2025-06-18), discovers whatever tools the site exposes, and lets the AI call them mid-conversation in Caspira AI. The Authorization header value is stored only in your browser." />
+            Only sites you've connected here appear as AI tools in Caspira AI chat.
+          </div>
+        </Card>
+      )}
+
       {/* How-to card */}
       <Card className="border-[#00d4ff30] bg-[#00d4ff04]">
         <div className="flex items-start gap-3">
@@ -205,7 +290,7 @@ export function WordPressSites() {
           <div className="space-y-1.5 text-xs text-muted leading-relaxed">
             <div className="text-tx font-semibold text-sm">How to generate a WordPress Application Password</div>
             <div><span className="text-accent font-mono-jarvis">1.</span> Log in to WP Admin → <span className="text-accent font-mono-jarvis">Users → Your Profile</span></div>
-            <div><span className="text-accent font-mono-jarvis">2.</span> Scroll to <span className="text-accent font-mono-jarvis">Application Passwords</span> → type <span className="font-mono-jarvis text-accent">"Jarvis"</span> as the name → click <span className="text-accent font-mono-jarvis">Add New</span></div>
+            <div><span className="text-accent font-mono-jarvis">2.</span> Scroll to <span className="text-accent font-mono-jarvis">Application Passwords</span> → type <span className="font-mono-jarvis text-accent">"Caspira"</span> as the name → click <span className="text-accent font-mono-jarvis">Add New</span></div>
             <div><span className="text-accent font-mono-jarvis">3.</span> Copy the generated password — format: <span className="font-mono-jarvis text-accent">xxxx xxxx xxxx xxxx xxxx xxxx</span></div>
             <div><span className="text-accent font-mono-jarvis">4.</span> Paste above and click <span className="text-accent font-mono-jarvis">Add Site</span> — credentials stay in your browser only, never sent to any server</div>
             <div className="pt-1 text-[11px]">Requires WordPress 5.6+ · Works with any hosting (WP Engine, Kinsta, SiteGround, self-hosted)</div>

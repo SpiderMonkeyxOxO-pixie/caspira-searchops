@@ -30,9 +30,9 @@ interface EEATRecord {
 }
 
 const DIMENSIONS = [
-  { key: 'experience' as const,       label: 'Experience',       icon: Star,        color: '#00d4ff', tip: 'Experience — Google assesses whether the content creator has first-hand experience with the topic. For iGaming, this means reviewing casinos you have actually used.' },
-  { key: 'expertise' as const,        label: 'Expertise',        icon: BookOpen,    color: '#a78bfa', tip: 'Expertise — the depth of knowledge demonstrated in the content. Expert content cites regulations, odds, RTP, and game mechanics accurately.' },
-  { key: 'authoritativeness' as const,label: 'Authoritativeness',icon: Award,       color: '#10b981', tip: 'Authoritativeness — how recognised your site is within the iGaming space. Measured by backlinks from trusted gambling publications and brand mentions.' },
+  { key: 'experience' as const,       label: 'Experience',       icon: Star,        color: '#00d4ff', tip: 'Experience — Google assesses whether the content creator has first-hand experience with the topic. This means reviewing or using the products/services you write about.' },
+  { key: 'expertise' as const,        label: 'Expertise',        icon: BookOpen,    color: '#a78bfa', tip: 'Expertise — the depth of knowledge demonstrated in the content. Expert content cites data, specs, and industry facts accurately.' },
+  { key: 'authoritativeness' as const,label: 'Authoritativeness',icon: Award,       color: '#10b981', tip: 'Authoritativeness — how recognised your site is within your niche. Measured by backlinks from trusted publications and brand mentions.' },
   { key: 'trustworthiness' as const,  label: 'Trustworthiness',  icon: ShieldCheck, color: '#f59e0b', tip: 'Trustworthiness — the most important E-E-A-T signal. Includes transparent ownership, licensing info, clear T&Cs, HTTPS, and accurate, updated content.' },
 ]
 
@@ -64,8 +64,8 @@ export function EEATAudit() {
   const audit = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are a Google E-E-A-T expert auditor specialising in YMYL iGaming and online gambling sites. Return ONLY valid JSON.',
-        `Perform an E-E-A-T audit for this online casino/gambling affiliate site: ${url || 'this casino website'}
+        'You are a Google E-E-A-T expert auditor specialising in YMYL sites. Return ONLY valid JSON.',
+        `Perform an E-E-A-T audit for this site: ${url || 'this website'}
 
 Return JSON only (no markdown):
 {
@@ -93,7 +93,7 @@ Return JSON only (no markdown):
             save({
               id: crypto.randomUUID(),
               savedAt: new Date().toISOString(),
-              label: url || 'Casino site',
+              label: url || 'Site audit',
               sublabel: `E-E-A-T Score: ${parsed.overall}/100`,
               url,
               result: parsed,
@@ -150,7 +150,7 @@ Return JSON only (no markdown):
                 <div className="text-6xl font-display font-black text-accent mb-2">{result.overall}</div>
                 <div className="flex items-center justify-center gap-1 text-[11px] text-muted font-mono-jarvis tracking-widest mb-3">
                   OVERALL E-E-A-T SCORE
-                  <InfoTooltip text="E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) — Google's quality framework for YMYL content like iGaming. A higher combined score improves ranking potential for competitive casino keywords." />
+                  <InfoTooltip text="E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) — Google's quality framework for YMYL content. A higher combined score improves ranking potential for competitive keywords." />
                 </div>
                 <div className="text-sm text-muted max-w-lg mx-auto leading-relaxed">{result.summary}</div>
               </Card>

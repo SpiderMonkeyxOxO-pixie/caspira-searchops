@@ -56,7 +56,7 @@ export function Keywords() {
       if (!isAIReady()) throw new Error('NO_KEY')
       return callClaude(
         'You are an elite SEO keyword researcher. Return ONLY a JSON array, no markdown, no explanation.',
-        `Generate 12 keyword ideas for the iGaming/online casino niche: "${query || domain || 'online casino'}"
+        `Generate 12 keyword ideas for this niche: "${query || domain || 'the target niche'}"
 
 Return ONLY this JSON array:
 [{"kw":"keyword here","vol":"10K","kd":35,"intent":"Info","cpc":"$3.50","opportunity":"HIGH"}]

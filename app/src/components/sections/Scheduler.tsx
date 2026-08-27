@@ -11,12 +11,12 @@ const FREQS  = ['Daily', 'Weekly', 'Bi-weekly', 'Monthly']
 const DAYS   = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', '1st', '15th']
 const TIMES  = ['7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '12:00 PM', '5:00 PM']
 const REPORT_TYPES = [
-  'Monthly iGaming SEO Performance Report',
-  'Weekly Casino Rankings Digest',
-  'Bonus Page Technical Audit Summary',
-  'Gambling Niche Backlink Growth Report',
-  'Casino Review Content Performance',
-  'Competitor Casino Site Insights',
+  'Monthly SEO Performance Report',
+  'Weekly Rankings Digest',
+  'Pricing Page Technical Audit Summary',
+  'Niche Backlink Growth Report',
+  'Content Performance Summary',
+  'Competitor Site Insights',
   'SERP Feature Ownership Tracker',
   'E-E-A-T Compliance Summary',
 ]

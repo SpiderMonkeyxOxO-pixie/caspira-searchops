@@ -31,19 +31,19 @@ const Q_CATEGORIES = [
 ]
 
 function buildStaticGroups(topic: string): QGroup[] {
-  const t = topic.trim() || 'online casino'
+  const t = topic.trim() || 'project management software'
   return [
-    { category: 'What', color: '#00d4ff', keywords: [`what is the best ${t}`, `what ${t} accepts UPI`, `what ${t} has the best bonus`, `what is the safest ${t} in india`, `what is ${t}`] },
-    { category: 'How',  color: '#10b981', keywords: [`how to win at ${t}`, `how to deposit in ${t} india`, `how to withdraw from ${t}`, `how to choose ${t}`, `how to get bonus from ${t}`, `how to play ${t} on mobile`] },
-    { category: 'Why',  color: '#7c3aed', keywords: [`why is ${t} popular in india`, `why use ${t} instead of sports betting`, `why is ${t} better than rummy`] },
-    { category: 'Which',color: '#f59e0b', keywords: [`which ${t} is best for beginners`, `which ${t} pays the fastest`, `which ${t} has no withdrawal limit`, `which ${t} is legal in india`] },
-    { category: 'Is',   color: '#34d399', keywords: [`is ${t} safe in india`, `is ${t} legal`, `is ${t} rigged`, `is ${t} better than rummy`] },
-    { category: 'Can',  color: '#ec4899', keywords: [`can i play ${t} in india`, `can i win real money at ${t}`, `can i use paytm at ${t}`, `can ${t} ban my account`] },
-    { category: 'Are',  color: '#a78bfa', keywords: [`are ${t}s legal in india`, `are ${t} games fair`, `are ${t} bonuses real`] },
-    { category: 'Will', color: '#fb923c', keywords: [`will ${t} become legal in india`, `will ${t} ban my account`, `will i get taxed on ${t} winnings india`] },
-    { category: 'For',  color: '#06b6d4', keywords: [`${t} for beginners india`, `${t} for real money`, `${t} for mobile android`, `${t} for indian players`] },
-    { category: 'Without', color: '#64748b', keywords: [`${t} without verification india`, `${t} without deposit bonus`, `${t} without id proof`] },
-    { category: 'vs',   color: '#e879f9', keywords: [`${t} vs sports betting`, `${t} vs rummy`, `${t} vs lottery india`, `${t} vs poker which is better`] },
+    { category: 'What', color: '#00d4ff', keywords: [`what is the best ${t}`, `what ${t} has the best reviews`, `what ${t} is worth the price`, `what is the best ${t} for beginners`, `what is ${t}`] },
+    { category: 'How',  color: '#10b981', keywords: [`how to choose ${t}`, `how to use ${t}`, `how to switch ${t}`, `how much does ${t} cost`, `how to get started with ${t}`, `how to compare ${t} options`] },
+    { category: 'Why',  color: '#7c3aed', keywords: [`why use ${t}`, `why is ${t} popular`, `why is ${t} better than the alternatives`] },
+    { category: 'Which',color: '#f59e0b', keywords: [`which ${t} is best for beginners`, `which ${t} is the most affordable`, `which ${t} has the best support`, `which ${t} is right for me`] },
+    { category: 'Is',   color: '#34d399', keywords: [`is ${t} worth it`, `is ${t} easy to use`, `is ${t} free`, `is ${t} better than the alternatives`] },
+    { category: 'Can',  color: '#ec4899', keywords: [`can i try ${t} for free`, `can i cancel ${t} anytime`, `can ${t} integrate with other tools`, `can i use ${t} on mobile`] },
+    { category: 'Are',  color: '#a78bfa', keywords: [`are ${t} reviews trustworthy`, `are ${t} alternatives better`, `are ${t} prices worth it`] },
+    { category: 'Will', color: '#fb923c', keywords: [`will ${t} work for my business`, `will ${t} save me time`, `will ${t} prices increase`] },
+    { category: 'For',  color: '#06b6d4', keywords: [`${t} for beginners`, `${t} for small business`, `${t} for enterprise`, `${t} pricing`] },
+    { category: 'Without', color: '#64748b', keywords: [`${t} without subscription`, `${t} without credit card`, `${t} without a contract`] },
+    { category: 'vs',   color: '#e879f9', keywords: [`${t} vs alternatives`, `${t} vs competitors`, `${t} vs free tools`, `${t} vs premium version`] },
   ]
 }
 
@@ -143,7 +143,7 @@ export function AnswerThePublic() {
       <Card>
         <CardTitle className="mb-1">Answer the Public</CardTitle>
         <p className="text-sm text-muted mb-4">
-          Generate the full question and comparison keyword landscape for any casino topic. What, How, Why, Which, vs, and more — copy directly into content briefs.
+          Generate the full question and comparison keyword landscape for any topic. What, How, Why, Which, vs, and more — copy directly into content briefs.
         </p>
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -152,7 +152,7 @@ export function AnswerThePublic() {
               value={topic}
               onChange={e => { setTopic(e.target.value); setGenerated(false) }}
               onKeyDown={e => e.key === 'Enter' && generate()}
-              placeholder='Enter topic: "online casino", "teen patti", "slot online"…'
+              placeholder='Enter topic: "project management software", "running shoes", "CRM tools"…'
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
             />
           </div>
@@ -170,7 +170,7 @@ export function AnswerThePublic() {
               {[
                 { label: 'TOTAL KEYWORDS', val: total,       color: '#00d4ff', tip: 'Total question and comparison keywords generated for this topic. Use these as content brief seeds or FAQ headings.' },
                 { label: 'QUESTION TYPES', val: questions,   color: '#10b981', tip: 'Keywords framed as questions (What, How, Why, Which, Is, Can, Are, Will). These map to People Also Ask and Featured Snippet opportunities.' },
-                { label: 'PREPOSITIONS',   val: preps,       color: '#f59e0b', tip: 'Keywords using prepositions (For, Without). These capture long-tail intent — e.g. "online casino for beginners india" targets a specific audience.' },
+                { label: 'PREPOSITIONS',   val: preps,       color: '#f59e0b', tip: 'Keywords using prepositions (For, Without). These capture long-tail intent — e.g. "project management software for beginners" targets a specific audience.' },
                 { label: 'COMPARISONS',    val: comparisons, color: '#7c3aed', tip: 'VS comparison keywords — high-intent queries from users deciding between options. Great for dedicated comparison pages that convert well.' },
               ].map(k => (
                 <Card key={k.label} className="text-center py-4">
@@ -242,7 +242,7 @@ export function AnswerThePublic() {
           <BookOpen size={40} className="text-muted mx-auto mb-3" strokeWidth={1} />
           <div className="font-display font-bold text-lg text-tx mb-1">What is the public asking?</div>
           <div className="text-sm text-muted max-w-sm mx-auto">
-            Enter any casino topic above to generate 40+ question and comparison keywords instantly
+            Enter any topic above to generate 40+ question and comparison keywords instantly
           </div>
         </Card>
       )}

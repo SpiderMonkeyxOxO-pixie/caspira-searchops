@@ -18,7 +18,7 @@ function DarkPreview() {
       <rect x="0" y="0" width="60" height="150" fill="#0b1428" />
       <rect x="0" y="0" width="60" height="30" fill="#0d1829" />
       <rect x="8" y="8" width="14" height="14" rx="3" fill="url(#dg)" />
-      <text x="26" y="18" fill="#e8f4fd" fontSize="7" fontFamily="Roboto" fontWeight="700">JARVIS</text>
+      <text x="26" y="18" fill="#e8f4fd" fontSize="7" fontFamily="Roboto" fontWeight="700">CASPIRA</text>
       {[0,1,2,3,4].map(i => <rect key={i} x="8" y={36 + i*18} width={44} height={10} rx="4" fill={i===0?"#00d4ff20":"#1a2a45"} />)}
       <rect x="68" y="8" width="164" height="60" rx="6" fill="#0b1428" />
       <rect x="68" y="76" width="78" height="66" rx="6" fill="#0b1428" />
@@ -37,7 +37,7 @@ function LightPreview() {
       <rect x="0" y="0" width="60" height="150" fill="#ffffff" />
       <rect x="0" y="0" width="60" height="30" fill="#f8fafc" />
       <rect x="8" y="8" width="14" height="14" rx="3" fill="url(#lg)" />
-      <text x="26" y="18" fill="#1a2844" fontSize="7" fontFamily="Roboto" fontWeight="700">JARVIS</text>
+      <text x="26" y="18" fill="#1a2844" fontSize="7" fontFamily="Roboto" fontWeight="700">CASPIRA</text>
       {[0,1,2,3,4].map(i => <rect key={i} x="8" y={36 + i*18} width={44} height={10} rx="4" fill={i===0?"#00d4ff20":"#e8edf3"} />)}
       <rect x="68" y="8" width="164" height="60" rx="6" fill="#ffffff" />
       <rect x="68" y="76" width="78" height="66" rx="6" fill="#ffffff" />
@@ -97,7 +97,7 @@ export function ThemeSettings() {
     <div className="space-y-5">
       <Card>
         <CardTitle className="mb-1">Theme Preferences</CardTitle>
-        <div className="text-xs text-muted mb-5">Choose how Jarvis looks. Your preference is saved locally and applied immediately.</div>
+        <div className="text-xs text-muted mb-5">Choose how Caspira looks. Your preference is saved locally and applied immediately.</div>
 
         <div className="grid grid-cols-3 gap-4 mb-6">
           {THEMES.map(({ id, label, desc, Icon }) => (

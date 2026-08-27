@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="app/public/jarvis-icon.png" width="80" height="80" alt="Jarvis" />
+<img src="app/public/jarvis-icon.png" width="80" height="80" alt="Caspira" />
 
-# Jarvis — iGaming SEO Platform
+# Caspira SearchOps — AI Search Intelligence Platform
 
-**A self-hosted SEO command centre purpose-built for casino affiliates, sportsbook operators, and iGaming marketers.**
+**Structure Your Search Growth.** A self-hosted SEO command centre built for any industry or niche — agencies, in-house teams, and freelancers alike.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
@@ -19,15 +19,15 @@
 
 ---
 
-## What is Jarvis?
+## What is Caspira SearchOps?
 
-Jarvis is an open-source SEO platform that brings all your tools into one place — keyword research, rank tracking, competitor analysis, technical audits, AI content generation, and Google Search Console / GA4 analytics — with a specific focus on the iGaming vertical (casino affiliates, sportsbook sites, and regulated markets across South and Southeast Asia).
+Caspira SearchOps is an open-source SEO platform that brings all your tools into one place — keyword research, rank tracking, competitor analysis, technical audits, AI content generation, and Google Search Console / GA4 analytics — built to work across any industry or niche.
 
-Instead of paying for five different SaaS tools, you self-host Jarvis once and connect your own API keys. **Your data stays in your own database. Your credentials never leave your browser.**
+Instead of paying for five different SaaS tools, you self-host Caspira once and connect your own API keys. **Your data stays in your own database. Your credentials never leave your browser.**
 
 **Who it's for:**
-- iGaming SEO agencies managing multiple casino or sportsbook domains
-- In-house SEO teams at affiliate publishers and tier-1 operators
+- SEO agencies managing multiple client domains across different niches
+- In-house SEO teams at publishers, e-commerce brands, and SaaS companies
 - Freelancers who want a professional-grade platform without monthly SaaS fees
 
 ---
@@ -74,7 +74,7 @@ Instead of paying for five different SaaS tools, you self-host Jarvis once and c
 
 | Section | What it does |
 |---|---|
-| **Jarvis AI** | Full-screen AI assistant with iGaming SEO context — supports Claude and OpenRouter models. Floating widget available from every section. Includes White-hat / Gray-hat / Black-hat strategy modes |
+| **Caspira AI** | Full-screen AI assistant with SEO context for any niche — supports Claude and OpenRouter models. Floating widget available from every section. Includes White-hat / Gray-hat / Black-hat strategy modes |
 | **Article Writer** | Generates long-form SEO articles with outline control — section headings, word count target, keyword density |
 | **Bulk Meta Writer** | Generates optimised title tags and meta descriptions for a list of URLs at once |
 | **Content Grader** | Scores existing content against SEO best practices and provides specific improvement suggestions |
@@ -107,7 +107,7 @@ Instead of paying for five different SaaS tools, you self-host Jarvis once and c
 | **Link Suggester** | Recommends internal linking opportunities based on topical relevance between your pages |
 | **Link Map** | Visualises your internal link structure — identifies pillar pages, cluster pages, and orphan pages |
 | **Schema Builder** | JSON-LD generator for structured data — Article, FAQ, BreadcrumbList, Organization, LocalBusiness |
-| **E-E-A-T Audit** | Reviews your pages for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL/iGaming |
+| **E-E-A-T Audit** | Reviews your pages for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL niches like finance and health |
 | **SERP Features** | Shows which SERP features each page is triggering and what you'd need to win more |
 
 ### Reporting & Roadmap
@@ -202,7 +202,7 @@ Your Supabase Project
 
 ### Why is there a Supabase backend?
 
-Browsers can't call most external APIs directly due to CORS restrictions. Instead of building a traditional server that stores your API credentials, Jarvis routes those calls through **Edge Functions that live inside your own Supabase project**. Your DataForSEO password, Serper key, and Google tokens are passed from your browser directly to your own function — they never touch any shared Jarvis server and are never logged or persisted.
+Browsers can't call most external APIs directly due to CORS restrictions. Instead of building a traditional server that stores your API credentials, Caspira routes those calls through **Edge Functions that live inside your own Supabase project**. Your DataForSEO password, Serper key, and Google tokens are passed from your browser directly to your own function — they never touch any shared Caspira server and are never logged or persisted.
 
 ---
 
@@ -230,7 +230,7 @@ jarvis/
 ├── app/                          # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/           # Sidebar, TopBar, SettingsModal, JarvisWidget
+│   │   │   ├── layout/           # Sidebar, TopBar, SettingsModal, JarvisWidget (Caspira AI widget)
 │   │   │   ├── sections/         # One file per tool/section (~65 sections)
 │   │   │   ├── auth/             # Login page, org creation wizard
 │   │   │   └── ui/               # Reusable components (Card, Button, Badge, etc.)
@@ -282,7 +282,7 @@ jarvis/
 
 ## Roles & Permissions
 
-Jarvis supports multi-user workspaces with role-based access control (RBAC).
+Caspira supports multi-user workspaces with role-based access control (RBAC).
 
 | Role | Access level |
 |---|---|

@@ -14,8 +14,8 @@ type Intensity = 'mild' | 'medium' | 'savage'
 
 const INTENSITY: Record<Intensity, { label: string; color: string; Icon: React.ElementType; tip: string }> = {
   mild:   { label: 'Mild',   color: '#f59e0b', Icon: Thermometer, tip: 'Constructive feedback — candid about issues but focused on actionable improvements.' },
-  medium: { label: 'Medium', color: '#ef8c34', Icon: Flame,       tip: 'Direct and honest roast with sharp iGaming-specific observations and no fluff.' },
-  savage: { label: 'Savage', color: '#ef4444', Icon: Skull,       tip: 'Maximum aggression — brutally funny, painfully specific casino SEO takedowns with gambling analogies.' },
+  medium: { label: 'Medium', color: '#ef8c34', Icon: Flame,       tip: 'Direct and honest roast with sharp, specific observations and no fluff.' },
+  savage: { label: 'Savage', color: '#ef4444', Icon: Skull,       tip: 'Maximum aggression — brutally funny, painfully specific SEO takedowns.' },
 }
 
 interface RoastResult {
@@ -62,20 +62,20 @@ export function Roaster() {
       setResult(null)
       setRaw('')
       return callAI(
-        `You are a brutally honest iGaming SEO critic specialising in online casino affiliate sites. Intensity: ${intensity.toUpperCase()}.
-${intensity === 'savage' ? 'Be savage, funny, and painfully specific. Use sharp gambling analogies.' : intensity === 'medium' ? 'Be direct and honest with sharp iGaming observations.' : 'Be constructive but candid about casino SEO issues.'}`,
-        `Roast the SEO of this online casino/gambling affiliate site: ${url || domain || 'yoursite.com'}
+        `You are a brutally honest SEO critic. Intensity: ${intensity.toUpperCase()}.
+${intensity === 'savage' ? 'Be savage, funny, and painfully specific. Use sharp analogies.' : intensity === 'medium' ? 'Be direct and honest with sharp, specific observations.' : 'Be constructive but candid about SEO issues.'}`,
+        `Roast the SEO of this site: ${url || domain || 'yoursite.com'}
 
 Return a JSON object (no markdown):
 {
   "score": <0-100>,
-  "headline": "<one brutal/honest opening line specific to casino SEO>",
+  "headline": "<one brutal/honest opening line specific to this site's SEO>",
   "sections": [
-    {"title":"Title Tags","rating":<1-10>,"roast":"<casino-specific critique>","fix":"<specific fix>"},
+    {"title":"Title Tags","rating":<1-10>,"roast":"<site-specific critique>","fix":"<specific fix>"},
     {"title":"Page Speed","rating":<1-10>,"roast":"<critique>","fix":"<specific fix>"},
-    {"title":"E-E-A-T Signals","rating":<1-10>,"roast":"<YMYL/gambling EEAT critique>","fix":"<specific fix>"},
-    {"title":"Bonus Page SEO","rating":<1-10>,"roast":"<bonus page structure critique>","fix":"<specific fix>"},
-    {"title":"Backlink Profile","rating":<1-10>,"roast":"<gambling niche link critique>","fix":"<specific fix>"},
+    {"title":"E-E-A-T Signals","rating":<1-10>,"roast":"<YMYL/EEAT critique>","fix":"<specific fix>"},
+    {"title":"Conversion Page SEO","rating":<1-10>,"roast":"<key conversion page structure critique>","fix":"<specific fix>"},
+    {"title":"Backlink Profile","rating":<1-10>,"roast":"<niche link critique>","fix":"<specific fix>"},
     {"title":"Schema Markup","rating":<1-10>,"roast":"<review/FAQ schema critique>","fix":"<specific fix>"}
   ]
 }`,
@@ -132,7 +132,7 @@ Return a JSON object (no markdown):
       ) : (
         <>
           <Card>
-            <CardTitle className="mb-3 flex items-center gap-1.5">AI Site Roaster <InfoTooltip text="JARVIS gives an honest, no-filter critique of your casino site's SEO. Scores each issue category out of 10 and provides a specific fix for each." /></CardTitle>
+            <CardTitle className="mb-3 flex items-center gap-1.5">AI Site Roaster <InfoTooltip text="CASPIRA gives an honest, no-filter critique of your site's SEO. Scores each issue category out of 10 and provides a specific fix for each." /></CardTitle>
             <div className="flex gap-3 mb-4">
               <div className="relative flex-1">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -144,7 +144,9 @@ Return a JSON object (no markdown):
               </div>
               <div className="flex gap-1 p-1 bg-surface border border-border rounded-lg">
                 {(Object.entries(INTENSITY) as [Intensity, typeof INTENSITY.mild][]).map(([key, val]) => (
-                  <button key={key} onClick={() => setIntensity(key)}
+                  <div key={key} role="button" tabIndex={0}
+                    onClick={() => setIntensity(key)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIntensity(key) } }}
                     className={cn(
                       'flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer',
                       intensity === key ? 'text-black' : 'text-muted hover:text-tx'
@@ -153,7 +155,7 @@ Return a JSON object (no markdown):
                   >
                     <val.Icon size={11} /> {val.label}
                     <InfoTooltip text={val.tip} />
-                  </button>
+                  </div>
                 ))}
               </div>
               <Button variant="primary" onClick={() => roast.mutate()} disabled={roast.isPending || !aiReady}>

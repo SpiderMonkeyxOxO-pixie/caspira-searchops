@@ -57,6 +57,12 @@ export interface WPSite {
   status: 'connected' | 'error' | 'untested'
   postCount: number
   lastPublished: string
+  // Optional MCP connection — lets Caspira AI discover and call tools this
+  // site's MCP server (e.g. the WordPress MCP Adapter plugin) exposes.
+  mcpUrl?: string
+  mcpAuth?: string   // sent verbatim as the Authorization header, e.g. "Bearer xyz"
+  mcpStatus?: 'connected' | 'error' | 'untested'
+  mcpToolCount?: number
 }
 
 export type NavSection =
@@ -67,6 +73,7 @@ export type NavSection =
   | 'eeat'      | 'schema'    | 'scheduler'
   | 'casestudy' | 'gsc'
   | 'ga4'       | 'apisync'   | 'crawlimport'
+  | 'bingwebmaster'
   | 'crossview'
   | 'articlewriter' | 'contentgrader' | 'articleaudit' | 'autorefresh' | 'topicalmap'
   | 'serpsim'       | 'contentspy'    | 'faqgen'

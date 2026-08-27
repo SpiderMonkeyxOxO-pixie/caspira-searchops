@@ -9,22 +9,22 @@ interface APIKey { id: string; name: string; key: string; created: string; lastU
 interface Endpoint { method: 'GET' | 'POST' | 'DELETE'; path: string; desc: string; params?: string }
 
 const ENDPOINTS: Endpoint[] = [
-  { method: 'GET',  path: '/api/v1/rankings',       desc: 'Get all tracked keyword rankings with position history', params: '?domain=casinoexpert.io&limit=100' },
-  { method: 'GET',  path: '/api/v1/backlinks',      desc: 'Fetch backlink profile — total count, DR, new/lost', params: '?domain=casinoexpert.io' },
-  { method: 'GET',  path: '/api/v1/keywords',       desc: 'Keyword research data with volume, KD, intent', params: '?q=best+online+casino+uk' },
+  { method: 'GET',  path: '/api/v1/rankings',       desc: 'Get all tracked keyword rankings with position history', params: '?domain=yoursite.com&limit=100' },
+  { method: 'GET',  path: '/api/v1/backlinks',      desc: 'Fetch backlink profile — total count, DR, new/lost', params: '?domain=yoursite.com' },
+  { method: 'GET',  path: '/api/v1/keywords',       desc: 'Keyword research data with volume, KD, intent', params: '?q=best+project+management+software' },
   { method: 'GET',  path: '/api/v1/sites',          desc: 'List all tracked sites and their current SEO scores', params: '' },
   { method: 'POST', path: '/api/v1/analyze',        desc: 'Trigger a full site audit for a given domain', params: '' },
   { method: 'GET',  path: '/api/v1/reports',        desc: 'Retrieve scheduled report history and next send dates', params: '?status=active' },
-  { method: 'GET',  path: '/api/v1/competitors',    desc: 'Get tracked competitors and keyword gap data', params: '?domain=casinoexpert.io' },
+  { method: 'GET',  path: '/api/v1/competitors',    desc: 'Get tracked competitors and keyword gap data', params: '?domain=yoursite.com' },
   { method: 'DELETE', path: '/api/v1/keywords/:id', desc: 'Remove a keyword from rank tracking', params: '' },
 ]
 
 const CODE_EXAMPLES: Record<string, string> = {
-  javascript: `const JARVIS_KEY = 'jvs_your_api_key_here'
+  javascript: `const CASPIRA_KEY = 'jvs_your_api_key_here'
 
-const res = await fetch('https://api.jarvis.app/v1/rankings?domain=casinoexpert.io', {
+const res = await fetch('https://api.caspira.app/v1/rankings?domain=yoursite.com', {
   headers: {
-    'Authorization': \`Bearer \${JARVIS_KEY}\`,
+    'Authorization': \`Bearer \${CASPIRA_KEY}\`,
     'Content-Type': 'application/json',
   }
 })
@@ -34,12 +34,12 @@ console.log(\`Tracking \${total} keywords\`, rankings)`,
 
   python: `import requests
 
-JARVIS_KEY = "jvs_your_api_key_here"
+CASPIRA_KEY = "jvs_your_api_key_here"
 
 response = requests.get(
-    "https://api.jarvis.app/v1/rankings",
-    params={"domain": "casinoexpert.io"},
-    headers={"Authorization": f"Bearer {JARVIS_KEY}"}
+    "https://api.caspira.app/v1/rankings",
+    params={"domain": "yoursite.com"},
+    headers={"Authorization": f"Bearer {CASPIRA_KEY}"}
 )
 
 data = response.json()
@@ -47,7 +47,7 @@ print(f"Tracking {data['total']} keywords")
 for kw in data['rankings'][:5]:
     print(f"  {kw['keyword']}: #{kw['position']}")`,
 
-  curl: `curl -X GET "https://api.jarvis.app/v1/rankings?domain=casinoexpert.io" \\
+  curl: `curl -X GET "https://api.caspira.app/v1/rankings?domain=yoursite.com" \\
   -H "Authorization: Bearer jvs_your_api_key_here" \\
   -H "Content-Type: application/json"`,
 }
@@ -196,7 +196,7 @@ export function APIAccess() {
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
             {[
-              { label: 'Base URL',    val: 'api.jarvis.app/v1' },
+              { label: 'Base URL',    val: 'api.caspira.app/v1' },
               { label: 'Auth',        val: 'Bearer token header' },
               { label: 'Rate limit',  val: '1,000 req/hour' },
               { label: 'Format',      val: 'JSON' },
@@ -236,7 +236,7 @@ export function APIAccess() {
                       <div>
                         <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">EXAMPLE</div>
                         <code className="text-[11px] font-mono-jarvis text-accent3 bg-code rounded-lg px-3 py-2 block">
-                          GET https://api.jarvis.app/v1{ep.path}{ep.params}
+                          GET https://api.caspira.app/v1{ep.path}{ep.params}
                         </code>
                       </div>
                     )}

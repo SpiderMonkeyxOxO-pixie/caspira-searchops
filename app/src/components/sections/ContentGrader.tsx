@@ -70,8 +70,8 @@ export function ContentGrader() {
   const grade = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an expert SEO content auditor specialising in iGaming YMYL content. Grade the article and return JSON only.',
-        `Grade this casino article for the target keyword "${keyword}":
+        'You are an expert SEO content auditor specialising in YMYL content. Grade the article and return JSON only.',
+        `Grade this article for the target keyword "${keyword}":
 
 ARTICLE:
 ${text.slice(0, 3000)}
@@ -89,7 +89,7 @@ Return JSON:
   "issues": [
     {"severity":"critical|warning|info|pass","message":"specific issue","suggestion":"specific fix"}
   ],
-  "summary":"2-sentence overall assessment for UK iGaming content"
+  "summary":"2-sentence overall assessment of the content"
 }`,
         1600,
       )
@@ -127,8 +127,8 @@ Return JSON:
     'Structure & Headings':    'Evaluates H1/H2/H3 hierarchy, heading keyword inclusion, and section organisation. Max 20 pts.',
     'Keyword Optimisation':    'Checks keyword density, placement in title, intro, and subheadings, and avoidance of over-optimisation. Max 25 pts.',
     'Readability':             'Assesses sentence length, paragraph structure, active voice, and overall readability score. Max 20 pts.',
-    'E-E-A-T Signals':         'Looks for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL iGaming content. Max 20 pts.',
-    'Internal Linking':        'Counts contextual internal links to related casino pages, pillar content, and responsible gambling resources. Max 15 pts.',
+    'E-E-A-T Signals':         'Looks for Experience, Expertise, Authoritativeness, and Trust signals — critical for YMYL content. Max 20 pts.',
+    'Internal Linking':        'Counts contextual internal links to related pages, pillar content, and required compliance resources for your niche. Max 15 pts.',
   }
 
   return (
@@ -168,7 +168,7 @@ Return JSON:
             <div>
               <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">PASTE ARTICLE <InfoTooltip text="Paste the full article text. Only the first 3,000 characters are sent for grading — ensure your intro and headings are near the top." /></div>
               <textarea value={text} onChange={e => setText(e.target.value)} rows={14}
-                placeholder="Paste your casino article here…"
+                placeholder="Paste your article here…"
                 className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
             </div>
             <Button variant="primary" className="w-full justify-center" onClick={() => grade.mutate()} disabled={grade.isPending}>
@@ -186,7 +186,7 @@ Return JSON:
                   <div className="relative">
                     <ScoreRing score={result.overall} />
                     <div className="absolute -top-1 -right-1">
-                      <InfoTooltip text="Overall content score out of 100. Combines Structure, Keyword Optimisation, Readability, E-E-A-T, and Internal Linking. Aim for 70+ for competitive iGaming SERPs." side="right" />
+                      <InfoTooltip text="Overall content score out of 100. Combines Structure, Keyword Optimisation, Readability, E-E-A-T, and Internal Linking. Aim for 70+ for competitive SERPs." side="right" />
                     </div>
                   </div>
                   <div className="flex-1">

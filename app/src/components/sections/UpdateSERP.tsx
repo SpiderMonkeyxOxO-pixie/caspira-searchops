@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
+import { callDFS, isDFSReady, LOCATION_CODES, COUNTRIES } from '@/lib/dataforseo'
 
 type ChangeType = 'up' | 'down' | 'new' | 'dropped' | 'same'
 
@@ -101,7 +101,7 @@ export function UpdateSERP() {
             <textarea
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
-              placeholder={'One keyword per line:\nbest online casino india\nteen patti online real money\nslot online terpercaya…'}
+              placeholder={'One keyword per line:\nbest project management software\nbest running shoes 2026\nwireless earbuds buying guide…'}
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors resize-none font-mono-jarvis scrollbar-thin"
               rows={4}
             />
@@ -115,11 +115,7 @@ export function UpdateSERP() {
             />
             <select value={country} onChange={e => setCountry(e.target.value)}
               className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-tx outline-none cursor-pointer">
-              <option value="us">🇺🇸 United States</option>
-              <option value="in">🇮🇳 India</option>
-              <option value="id">🇮🇩 Indonesia</option>
-              <option value="gb">🇬🇧 UK</option>
-              <option value="ph">🇵🇭 Philippines</option>
+              {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
             </select>
             <Button variant="primary" onClick={refresh}
               disabled={refreshing || !dfsReady || !keywords.trim() || !targetDomain.trim()}>

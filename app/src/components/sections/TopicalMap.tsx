@@ -55,8 +55,8 @@ function CoverageWeb({ clusters, selected, onSelect }: {
         fill="#00d4ff12" stroke="#00d4ff" strokeWidth="1.5"
       />
       <circle cx={CX} cy={CY} r={28} fill="url(#centerGrad)" />
-      <text x={CX} y={CY - 4} textAnchor="middle" fontSize="9" fill="white" fontFamily="Roboto Mono" fontWeight="700">ONLINE</text>
-      <text x={CX} y={CY + 8} textAnchor="middle" fontSize="9" fill="white" fontFamily="Roboto Mono" fontWeight="700">CASINO</text>
+      <text x={CX} y={CY - 4} textAnchor="middle" fontSize="9" fill="white" fontFamily="Roboto Mono" fontWeight="700">TOPIC</text>
+      <text x={CX} y={CY + 8} textAnchor="middle" fontSize="9" fill="white" fontFamily="Roboto Mono" fontWeight="700">MAP</text>
       {clusters.map(c => {
         const pos = clusterPos(c.angle)
         const isSelected = selected === c.id
@@ -107,8 +107,8 @@ export function TopicalMap() {
         } catch { /* ignore */ }
       }
       return callClaude(
-        'You are a topical authority expert for iGaming SEO. Map every subtopic a site should cover to rank in a casino niche.',
-        `Create a topical authority map for the iGaming niche: "${niche}"${realDataContext}
+        'You are a topical authority expert for SEO. Map every subtopic a site should cover to rank in its niche.',
+        `Create a topical authority map for the niche: "${niche}"${realDataContext}
 
 Return JSON array of 6 clusters:
 [{
@@ -192,7 +192,7 @@ Mark covered:true only where real keywords evidence exists`,
               </div>
               <div className="flex gap-2 items-center flex-wrap">
                 <input value={niche} onChange={e => setNiche(e.target.value)}
-                  placeholder="e.g. online casino uk"
+                  placeholder="e.g. project management software"
                   className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors w-40" />
                 {isDFSReady() && (
                   <input value={domain} onChange={e => setDomain(e.target.value)}

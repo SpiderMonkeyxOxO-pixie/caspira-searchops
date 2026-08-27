@@ -188,7 +188,7 @@ export function SitesManager() {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           { label: 'TOTAL SITES',     val: sites.length, color: 'var(--color-accent)',
-            tooltip: 'Total number of domains you are currently tracking in Jarvis. Each site can be assigned a client, market, and health status.' },
+            tooltip: 'Total number of domains you are currently tracking in Caspira. Each site can be assigned a client, market, and health status.' },
           { label: 'HEALTHY',         val: good,          color: '#10b981',
             tooltip: 'Sites with a health score of 70 or above, indicating few or no significant SEO issues detected in the latest crawl.' },
           { label: 'NEEDS ATTENTION', val: warning,       color: '#f59e0b',
@@ -224,7 +224,7 @@ export function SitesManager() {
               value={bulkRaw}
               onChange={e => setBulkRaw(e.target.value)}
               rows={8}
-              placeholder={`casinoindian.in\nslotindo.com\nteenpattipro.com\nandarbaharhub.in\nrummypro.in\nslotgacor.id\njudibola.co\ncasinoonline.id\n...`}
+              placeholder={`acmesaas.com\nurbanfitnessgear.com\ngreenleafdecor.com\nyoursite.com\n...`}
               className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors resize-none mb-3"
             />
             <Button variant="primary" onClick={handleBulkParse} disabled={!bulkRaw.trim()}>
@@ -393,11 +393,11 @@ export function SitesManager() {
           <div>
             <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
               DOMAIN <span className="text-danger">*</span>
-              <InfoTooltip text="Enter the root domain (e.g. casinoindian.in). HTTP/HTTPS and www are stripped automatically. This is used to match GSC data and crawl results." side="right" />
+              <InfoTooltip text="Enter the root domain (e.g. yoursite.com). HTTP/HTTPS and www are stripped automatically. This is used to match GSC data and crawl results." side="right" />
             </div>
             <input value={newDomain} onChange={e => setNewDomain(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
-              placeholder="casinoindian.in"
+              placeholder="yoursite.com"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
           </div>
           <div>

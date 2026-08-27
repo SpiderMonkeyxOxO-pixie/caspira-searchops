@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   CheckCircle2, ChevronRight, ChevronDown, KeyRound, Globe, BarChart2,
   Swords, CalendarClock, PlugZap, PenLine, Trophy, Activity, Rss,
-  Eye, EyeOff, Link, Zap, TrendingUp, Search, RefreshCw, Sparkles,
+  Eye, EyeOff, Link, Zap, TrendingUp, Search, RefreshCw, Sparkles, Signal,
 } from 'lucide-react'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { getSerperStatus, resetExhaustedKeys } from '@/lib/serper'
@@ -30,17 +30,17 @@ const STEPS: Step[] = [
   {
     id: 'domain',
     title: 'Set your primary domain',
-    desc: 'Add your main casino/iGaming site so Jarvis personalises all analysis and AI outputs to your property.',
+    desc: 'Add your main site so Caspira personalises all analysis and AI outputs to your property.',
     Icon: Globe,
     actionLabel: 'Open Settings',
     nav: 'dashboard',
-    tip: 'Use your root domain without www — e.g. "casinoexpert.io" not "www.casinoexpert.io".',
+    tip: 'Use your root domain without www — e.g. "acmesaas.com" not "www.acmesaas.com".',
     check: (s) => !!s.domain,
   },
   {
     id: 'apikey',
     title: 'Connect your Anthropic API key',
-    desc: 'Unlock all AI tools — Article Writer, Content Grader, Jarvis AI chat, SERP analysis and more.',
+    desc: 'Unlock all AI tools — Article Writer, Content Grader, Caspira AI chat, SERP analysis and more.',
     Icon: KeyRound,
     actionLabel: 'Add API Key',
     nav: 'jarvis',
@@ -50,21 +50,21 @@ const STEPS: Step[] = [
   {
     id: 'audit',
     title: 'Run your first site audit',
-    desc: 'Discover Core Web Vitals issues, crawl errors, and on-page opportunities on your casino site.',
+    desc: 'Discover Core Web Vitals issues, crawl errors, and on-page opportunities on your site.',
     Icon: BarChart2,
     actionLabel: 'Run Audit',
     nav: 'analyzer',
-    tip: 'The audit scores your site across 60+ technical and on-page factors relevant to iGaming YMYL content.',
+    tip: 'The audit scores your site across 60+ technical and on-page factors relevant to YMYL content.',
     check: (s) => s.hasAudit,
   },
   {
     id: 'competitors',
     title: 'Add competitors to track',
-    desc: 'Monitor 10cric.com, betway.in, or your top-ranking rivals in India/Indonesia for keyword gaps and content moves.',
+    desc: 'Monitor your top-ranking rivals in your target market for keyword gaps and content moves.',
     Icon: Swords,
     actionLabel: 'Add Competitors',
     nav: 'competitors',
-    tip: 'Track 3–5 competitors for best results. For India, focus on sites ranking above you for "best online casino india" and "teen patti online". For Indonesia, target "slot online terpercaya" rivals.',
+    tip: 'Track 3–5 competitors for best results. Focus on sites ranking above you for your primary keywords in your target market.',
     check: () => false,
   },
   {
@@ -80,7 +80,7 @@ const STEPS: Step[] = [
   {
     id: 'gsc',
     title: 'Connect Google Search Console',
-    desc: 'Import live query data to see which India/Indonesia casino keywords drive real clicks — clicks, impressions, CTR, and average position.',
+    desc: 'Import live query data to see which keywords drive real clicks — clicks, impressions, CTR, and average position.',
     Icon: PlugZap,
     actionLabel: 'Connect GSC',
     nav: 'gsc',
@@ -100,7 +100,7 @@ const STEPS: Step[] = [
   {
     id: 'wordpress',
     title: 'Connect your WordPress sites',
-    desc: 'Add your WordPress sites so Jarvis can publish AI-generated articles directly.',
+    desc: 'Add your WordPress sites so Caspira can publish AI-generated articles directly.',
     Icon: Rss,
     actionLabel: 'Add WordPress Sites',
     nav: 'wordpress',
@@ -110,11 +110,11 @@ const STEPS: Step[] = [
   {
     id: 'article',
     title: 'Generate your first AI article',
-    desc: 'Use the Article Writer to produce a 2,000-word iGaming article in one click.',
+    desc: 'Use the Article Writer to produce a 2,000-word article in one click.',
     Icon: PenLine,
     actionLabel: 'Open Article Writer',
     nav: 'articlewriter',
-    tip: 'For India: start with "Best Online Casino India 2026". For Indonesia: "Slot Online Terpercaya 2026".',
+    tip: 'Start with a high-intent topic in your niche — e.g. "Best Project Management Software 2026".',
     check: () => false,
   },
 ]
@@ -129,8 +129,8 @@ interface ApiCard {
   placeholder: string
   docsUrl:     string
   Icon:        React.ElementType
-  storeKey:    'anthropicKey' | 'openRouterKey' | 'openPageRankKey' | 'dataForSEOKey' | 'serpApiKey' | 'searchFitKey'
-  setter:      'setAnthropicKey' | 'setOpenRouterKey' | 'setOpenPageRankKey' | 'setDataForSEOKey' | 'setSerpApiKey' | 'setSearchFitKey'
+  storeKey:    'anthropicKey' | 'openRouterKey' | 'openPageRankKey' | 'dataForSEOKey' | 'serpApiKey' | 'searchFitKey' | 'bingKey'
+  setter:      'setAnthropicKey' | 'setOpenRouterKey' | 'setOpenPageRankKey' | 'setDataForSEOKey' | 'setSerpApiKey' | 'setSearchFitKey' | 'setBingKey'
   hint:        string
 }
 
@@ -143,11 +143,11 @@ const API_CARDS: ApiCard[] = [
     hint: 'Free tier available · Llama 3.3 70B, DeepSeek R1, Gemini Flash & 200+ models',
   },
   {
-    id: 'anthropic', label: 'Anthropic Claude', description: 'Powers all AI writing, analysis, and Jarvis AI chat.',
+    id: 'anthropic', label: 'Anthropic Claude', description: 'Powers all AI writing, analysis, and Caspira AI chat.',
     badge: 'PAID', badgeColor: 'purple', placeholder: 'sk-ant-api03-...',
     docsUrl: 'https://console.anthropic.com',
     Icon: Zap, storeKey: 'anthropicKey', setter: 'setAnthropicKey',
-    hint: '14 AI tools unlocked · Jarvis AI, Article Writer, Content Grader, and more',
+    hint: '14 AI tools unlocked · Caspira AI, Article Writer, Content Grader, and more',
   },
   {
     id: 'searchfit', label: 'SearchFit SEO', description: 'Free AI SEO toolkit — audit, strategy, optimize, markup, keywords, visibility.',
@@ -176,6 +176,13 @@ const API_CARDS: ApiCard[] = [
     docsUrl: 'https://serpapi.com',
     Icon: Search, storeKey: 'serpApiKey', setter: 'setSerpApiKey',
     hint: '100 free searches/month · Rank Tracker, Update SERP alternative',
+  },
+  {
+    id: 'bing', label: 'Bing Webmaster', description: 'Clicks, impressions, top queries, top pages, and crawl issues from Bing Search.',
+    badge: 'FREE', badgeColor: 'green', placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    docsUrl: 'https://www.bing.com/webmasters',
+    Icon: Signal, storeKey: 'bingKey', setter: 'setBingKey',
+    hint: 'Bing Webmaster tab · Settings → API Access in Bing Webmaster Tools to generate a key',
   },
 ]
 
@@ -297,7 +304,7 @@ function SerperCard() {
               )}
             </div>
             <div className="text-[11px] text-muted mt-0.5">
-              Real-time Google SERP data. Add multiple keys — Jarvis auto-rotates when credits run out.
+              Real-time Google SERP data. Add multiple keys — Caspira auto-rotates when credits run out.
             </div>
           </div>
         </div>
@@ -410,8 +417,8 @@ function AiProviderSwitcher() {
       <div className="flex items-center gap-2 mb-1">
         <Zap size={13} className="text-accent" />
         <span className="text-xs font-semibold text-tx">Active AI Provider</span>
-        <InfoTooltip text="The active AI provider powers all AI features in Jarvis — Jarvis AI chat, Article Writer, Content Grader, and more. Switch freely between OpenRouter (free models) and Anthropic Claude (paid)." />
-        <span className="text-[10px] text-muted ml-auto">Powers Jarvis AI, Keyword Explorer, AI Visibility &amp; more</span>
+        <InfoTooltip text="The active AI provider powers all AI features in Caspira — Caspira AI chat, Article Writer, Content Grader, and more. Switch freely between OpenRouter (free models) and Anthropic Claude (paid)." />
+        <span className="text-[10px] text-muted ml-auto">Powers Caspira AI, Keyword Explorer, AI Visibility &amp; more</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {opts.map(o => (
@@ -497,12 +504,12 @@ export function Onboarding() {
           </div>
           <div className="flex-1">
             <CardTitle className="mb-1">
-              {allDone ? 'Setup Complete — Jarvis is Ready' : 'Getting Started with Jarvis'}
+              {allDone ? 'Setup Complete — Caspira is Ready' : 'Getting Started with Caspira'}
             </CardTitle>
             <div className="text-xs text-muted leading-relaxed mb-3">
               {allDone
-                ? "All modules are unlocked. You're set up to run a full iGaming SEO operation from Jarvis."
-                : `Complete ${STEPS.length - completedCount} more step${STEPS.length - completedCount !== 1 ? 's' : ''} to unlock every Jarvis module.`
+                ? "All modules are unlocked. You're set up to run a full SEO operation from Caspira."
+                : `Complete ${STEPS.length - completedCount} more step${STEPS.length - completedCount !== 1 ? 's' : ''} to unlock every Caspira module.`
               }
             </div>
             <div className="h-2.5 bg-border rounded-full overflow-hidden">
@@ -511,7 +518,7 @@ export function Onboarding() {
             <div className="flex justify-between text-[10px] text-muted font-mono-jarvis mt-1">
               <span className="flex items-center gap-1">
                 {progress}% complete
-                <InfoTooltip text="Setup progress tracks how many onboarding steps are done. Complete all steps to unlock every Jarvis module and ensure accurate data across tools." />
+                <InfoTooltip text="Setup progress tracks how many onboarding steps are done. Complete all steps to unlock every Caspira module and ensure accurate data across tools." />
               </span>
               <span>{completedCount} of {STEPS.length} steps done</span>
             </div>
@@ -557,7 +564,7 @@ export function Onboarding() {
         {apiOpen && (
           <div className="px-5 pb-5 border-t border-border pt-4 space-y-3">
             <p className="text-xs text-muted">
-              All keys are stored only in your browser — never sent to Jarvis servers.
+              All keys are stored only in your browser — never sent to Caspira servers.
               Press <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px] font-mono-jarvis">Enter</kbd> or click Save after entering each key.
             </p>
 

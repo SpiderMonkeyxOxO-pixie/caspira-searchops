@@ -133,11 +133,13 @@ Use these colors in order: ${COLORS.join(', ')}`,
             <CardTitle className="mb-3 flex items-center gap-1.5">Keyword Clustering Engine <InfoTooltip text="Groups your keywords into semantic clusters so you can build topic-authoritative content. Each cluster maps to one pillar page and its supporting posts." /></CardTitle>
             <div className="flex gap-1 mb-3">
               {MODES.map(m => (
-                <button key={m.id} onClick={() => setMode(m.id)}
+                <div key={m.id} role="button" tabIndex={0}
+                  onClick={() => setMode(m.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setMode(m.id) } }}
                   className={cn('flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold cursor-pointer transition-all flex items-center justify-center gap-1',
                     mode === m.id ? 'bg-accent text-black' : 'border border-border text-muted hover:border-accent'
                   )}
-                >{m.label} <InfoTooltip text={m.tip} /></button>
+                >{m.label} <InfoTooltip text={m.tip} /></div>
               ))}
             </div>
             <textarea

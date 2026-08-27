@@ -9,7 +9,7 @@ import {
   Shuffle, ScrollText, Globe, Bot, Map, FileCode2,
   CalendarDays, Share2, Palette, GitBranch, ScanLine,
   SunMoon, Keyboard, ExternalLink, ListChecks, Webhook, Rss, Building2, Target,
-  SearchCode, Hash, BookOpen, Zap, Sparkles, Eye, ClipboardList,
+  SearchCode, Hash, BookOpen, Zap, Sparkles, Eye, ClipboardList, Signal,
 } from 'lucide-react'
 import type { NavSection } from '@/types'
 
@@ -45,6 +45,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
       { id: 'gsc',        label: 'Search Console',   icon: PlugZap },
       { id: 'ga4',        label: 'GA4 Connector',    icon: Activity, badge: 'NEW', badgeColor: 'bg-accent3' },
       { id: 'crossview',  label: 'GSC × GA4 View',   icon: GitMerge },
+      { id: 'bingwebmaster', label: 'Bing Webmaster', icon: Signal, badge: 'NEW', badgeColor: 'bg-accent3' },
     ],
   },
   {
@@ -56,7 +57,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
   {
     label: 'AI TOOLS',
     items: [
-      { id: 'jarvis',          label: 'Jarvis AI',        icon: BrainCircuit, badge: 'AI', badgeColor: 'bg-accent2' },
+      { id: 'jarvis',          label: 'Caspira AI',       icon: BrainCircuit, badge: 'AI', badgeColor: 'bg-accent2' },
       { id: 'roaster',         label: 'Site Roaster',     icon: Flame },
       { id: 'clustering',      label: 'KW Clustering',    icon: Network },
       { id: 'bulkmeta',        label: 'Bulk Meta Writer', icon: FileEdit },

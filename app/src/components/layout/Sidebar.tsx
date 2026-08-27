@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
-import { supabase } from '@/lib/supabase'
+import { getAuthProvider } from '@/lib/backend'
 import { NAV } from '@/lib/nav'
 import type { NavSection } from '@/types'
 
@@ -11,7 +11,7 @@ function LogoMark() {
   return (
     <img
       src="/jarvis-icon.png"
-      alt="Jarvis"
+      alt="Caspira"
       width={36}
       height={36}
       className="shrink-0 rounded-lg"
@@ -32,7 +32,7 @@ export function Sidebar() {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    await getAuthProvider().signOut()
     window.location.reload()
   }
 
@@ -58,8 +58,8 @@ export function Sidebar() {
         <LogoMark />
         {!sidebarCollapsed && (
           <div className="min-w-0">
-            <div className="font-display font-bold text-base tracking-wide text-tx leading-tight">JARVIS</div>
-            <div className="text-[9px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-0.5">iGaming SEO</div>
+            <div className="font-display font-bold text-base tracking-wide text-tx leading-tight">CASPIRA</div>
+            <div className="text-[9px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-0.5">SearchOps</div>
           </div>
         )}
       </div>

@@ -9,7 +9,7 @@ const cors = {
 
 const MAX_PAGES  = 500
 const BATCH_SIZE = 8
-const BOT_UA     = 'Jarvis-SEO-Crawler/1.0 (compatible; Googlebot)'
+const BOT_UA     = 'Caspira-SearchOps-Crawler/1.0 (compatible; Googlebot)'
 
 // ── HTML extractors ───────────────────────────────────────────
 function getTitle(html: string): string | null {

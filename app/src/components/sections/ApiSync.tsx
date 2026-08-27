@@ -144,7 +144,7 @@ export function ApiSync() {
         <CardTitle className="mb-2">Ahrefs / Semrush API Sync</CardTitle>
         <p className="text-sm text-muted leading-relaxed">
           Connect your SEO tool accounts to auto-import live backlink data, keyword positions, and domain
-          authority metrics directly into Jarvis — no manual exports needed.
+          authority metrics directly into Caspira — no manual exports needed.
         </p>
       </Card>
 

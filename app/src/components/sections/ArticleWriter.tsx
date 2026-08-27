@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 const WORD_COUNTS = [1500, 2000, 2500, 3000]
 const TONES = ['Expert', 'Conversational', 'Formal', 'Engaging'] as const
-const CATEGORIES = ['Casino Review', 'Bonus Guide', 'Game Guide', 'Comparison', 'News Update'] as const
+const CATEGORIES = ['Product Review', 'Buying Guide', 'How-To Guide', 'Comparison', 'News Update'] as const
 
 function countWords(text: string) {
   return text.split(/\s+/).filter(Boolean).length
@@ -47,7 +47,7 @@ export function ArticleWriter() {
   const [secKws,    setSecKws]    = useState('')
   const [wordCount, setWordCount] = useState(2000)
   const [tone,      setTone]      = useState<typeof TONES[number]>('Expert')
-  const [category,  setCategory]  = useState<typeof CATEGORIES[number]>('Casino Review')
+  const [category,  setCategory]  = useState<typeof CATEGORIES[number]>('Product Review')
   const [article,   setArticle]   = useState('')
   const [copied,    setCopied]    = useState(false)
   const [expanded,  setExpanded]  = useState(false)
@@ -101,8 +101,8 @@ export function ArticleWriter() {
   const generate = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an expert iGaming SEO content writer specialising in UK casino affiliate content. Write E-E-A-T compliant articles that rank on Google.',
-        `Write a ${wordCount}-word SEO article for the UK online casino niche.
+        'You are an expert SEO content writer. Write E-E-A-T compliant articles that rank on Google.',
+        `Write a ${wordCount}-word SEO article.
 
 Topic: ${topic}
 Primary keyword: "${keyword}"
@@ -114,10 +114,10 @@ Requirements:
 - Include the primary keyword in the H1, first paragraph, and 2-3 subheadings
 - Write a compelling introduction with a clear value proposition
 - Include 4-6 H2 sections with H3 subsections
-- Add a Responsible Gambling section (required for UK iGaming YMYL content)
+- Add any required legal/compliance disclosures for the topic's niche, if applicable
 - Include an FAQ section (3-4 questions)
 - Add an E-E-A-T author/expertise signal in the introduction
-- Use specific data points, statistics, and UK-specific casino examples
+- Use specific data points, statistics, and concrete examples
 - End with a clear call to action
 
 Format with markdown headings. Target exactly ${wordCount} words.`,
@@ -199,7 +199,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
               <CardTitle>Article Brief</CardTitle>
 
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TOPIC / TITLE <InfoTooltip text="The article topic used as the H1 heading. Make it specific and descriptive — e.g. 'Best Casino Bonuses in India 2026'." /></div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">TOPIC / TITLE <InfoTooltip text="The article topic used as the H1 heading. Make it specific and descriptive — e.g. 'Best Running Shoes for Beginners 2026'." /></div>
                 <input value={topic} onChange={e => setTopic(e.target.value)}
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
@@ -217,7 +217,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
               </div>
 
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">WORD COUNT <InfoTooltip text="Target article length. iGaming review and guide content typically performs best at 2,000–3,000 words for E-E-A-T and YMYL compliance." /></div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">WORD COUNT <InfoTooltip text="Target article length. Review and guide content typically performs best at 2,000–3,000 words for E-E-A-T and YMYL compliance." /></div>
                 <div className="flex gap-1">
                   {WORD_COUNTS.map(w => (
                     <button key={w} onClick={() => setWordCount(w)}
@@ -241,7 +241,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
               </div>
 
               <div>
-                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">CATEGORY <InfoTooltip text="Article type. Drives the content structure — e.g. Casino Review includes operator details, bonuses, and licensing sections." /></div>
+                <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5 flex items-center gap-1">CATEGORY <InfoTooltip text="Article type. Drives the content structure — e.g. Product Review includes specs, pros/cons, and pricing sections." /></div>
                 <select value={category} onChange={e => setCategory(e.target.value as typeof CATEGORIES[number])}
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors">
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -305,7 +305,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
                 <div className="flex flex-col items-center justify-center h-80 text-center">
                   <PenLine size={40} className="mb-3 text-muted" strokeWidth={1} />
                   <div className="text-sm text-muted mb-1">Fill in the brief and click Generate</div>
-                  <div className="text-xs text-muted">Produces E-E-A-T compliant, YMYL-safe casino content</div>
+                  <div className="text-xs text-muted">Produces E-E-A-T compliant, YMYL-safe content</div>
                 </div>
               )}
             </Card>
@@ -317,7 +317,7 @@ Format with markdown headings. Target exactly ${wordCount} words.`,
               <div className="flex items-center gap-3">
                 <Rss size={16} className="text-accent shrink-0" />
                 <div className="flex-1 text-xs text-muted">
-                  Connect your WordPress sites to publish this article directly from Jarvis
+                  Connect your WordPress sites to publish this article directly from Caspira
                 </div>
                 <Button variant="ghost" className="text-[11px] shrink-0" onClick={() => setSection('wordpress')}>
                   Add WordPress Site

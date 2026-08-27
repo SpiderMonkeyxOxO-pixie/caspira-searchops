@@ -78,7 +78,7 @@ export function AutoRefresh() {
     mutationFn: async ({ page, section }: { page: DeclinePage; section: string }) => {
       setRefreshing(page.id)
       const data = await callClaude(
-        'You are an iGaming content refresh specialist. Rewrite outdated casino content to be current, accurate, and better optimised.',
+        'You are a content refresh specialist. Rewrite outdated content to be current, accurate, and better optimised.',
         `Rewrite this stale section from the page "${page.title}" (${page.url}).
 
 Section to refresh: "${section}"
@@ -138,13 +138,13 @@ Return JSON:
       <Card>
         <CardTitle className="mb-3">Add Declining Page</CardTitle>
         <p className="text-sm text-muted mb-4">
-          Enter pages that are losing traffic. Jarvis will use AI to rewrite stale sections with fresh 2026 content.
+          Enter pages that are losing traffic. Caspira will use AI to rewrite stale sections with fresh 2026 content.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
           <input
             value={newUrl}
             onChange={e => setNewUrl(e.target.value)}
-            placeholder="/best-online-casinos"
+            placeholder="/best-project-management-software"
             className="bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors font-mono-jarvis"
           />
           <input
@@ -156,7 +156,7 @@ Return JSON:
           <input
             value={newSection}
             onChange={e => setNewSection(e.target.value)}
-            placeholder="Section to refresh (e.g. Casino rankings)"
+            placeholder="Section to refresh (e.g. Product rankings)"
             onKeyDown={e => e.key === 'Enter' && addPage()}
             className="bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
           />

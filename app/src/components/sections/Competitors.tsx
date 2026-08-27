@@ -152,17 +152,17 @@ export function Competitors() {
           ).join('\n')
         : 'none added yet'
       return callAI(
-        'You are an elite SEO competitive analyst for iGaming sites in India and Indonesia. Be sharp and specific.',
-        `Compare ${domain || 'our casino site'} (DR: ${yourDR ?? '?'}) against these competitors:
+        'You are an elite SEO competitive analyst. Be sharp and specific.',
+        `Compare ${domain || 'our site'} (DR: ${yourDR ?? '?'}) against these competitors:
 ${compList}
 
 Provide:
 1. Our #1 competitive advantage to double down on
-2. Biggest keyword gap we can close in 90 days (be specific — bonus pages, review pages, game guides)
+2. Biggest keyword gap we can close in 90 days (be specific — landing pages, review pages, guide pages)
 3. One tactic the top competitor is doing we should replicate immediately
 4. Priority 30-day action plan
 
-Industry: iGaming / online casino affiliate (India & Indonesia)
+Infer the industry and target market from the domain and competitor list above.
 Be direct, specific, and actionable.`,
         800,
       )

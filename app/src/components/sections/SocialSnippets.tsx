@@ -66,7 +66,7 @@ function PlatformLogo({ id, color }: { id: string; color: string }) {
 }
 
 export function SocialSnippets() {
-  const [articleText, setArticleText] = useState(`Best Online Casinos UK 2026: Expert Tested & Ranked\n\nAfter testing over 40 UKGC-licensed casinos across eight core criteria — licensing, bonus fairness, payout speed, game library, mobile experience, customer support, responsible gambling tools, and software quality — we've identified the casinos that genuinely outperform the rest.\n\nWelcome bonus: 100% up to £250 + 50 free spins (30x wagering — below the UK average of 35x). Payout speed: 0-24 hours via PayPal.`)
+  const [articleText, setArticleText] = useState(`Best Project Management Software 2026: Expert Tested & Ranked\n\nAfter testing over 40 project management tools across eight core criteria — pricing, feature depth, ease of use, integrations, mobile experience, customer support, security, and performance — we've identified the platforms that genuinely outperform the rest.\n\nFree plan: Up to 10 users with core features included. Setup time: under 15 minutes with guided onboarding.`)
   const [tone,       setTone]       = useState<typeof TONES[number]>('Expert & Authoritative')
   const [snippets,   setSnippets]   = useState<Record<string, Snippet>>({})
   const [copied,     setCopied]     = useState<string | null>(null)
@@ -78,8 +78,8 @@ export function SocialSnippets() {
   const generate = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an expert iGaming social media strategist. Create platform-optimised social captions for casino affiliate content.',
-        `Turn this casino article into social media snippets for 5 platforms. Tone: ${tone}.
+        'You are an expert social media strategist. Create platform-optimised social captions for affiliate content.',
+        `Turn this article into social media snippets for 5 platforms. Tone: ${tone}.
 
 ARTICLE:
 ${articleText.slice(0, 1500)}
@@ -89,11 +89,11 @@ Return JSON:
   "linkedin": {"platform":"linkedin","text":"professional post (max 1300 chars)","hashtags":"3-5 tags"},
   "twitter":  {"platform":"twitter","text":"punchy tweet (max 280 chars)","hashtags":"2-3 tags"},
   "facebook": {"platform":"facebook","text":"engaging post (max 500 chars)","hashtags":"2-3 tags"},
-  "instagram": {"platform":"instagram","text":"visual caption (max 300 chars body)","hashtags":"15-20 gambling/casino hashtags"},
+  "instagram": {"platform":"instagram","text":"visual caption (max 300 chars body)","hashtags":"15-20 relevant hashtags"},
   "threads":  {"platform":"threads","text":"conversational post (max 500 chars)","hashtags":""}
 }
 
-Make each one platform-native and casino/iGaming appropriate.`,
+Make each one platform-native and appropriate for the article's niche.`,
         1600,
       )
     },
@@ -141,7 +141,7 @@ Make each one platform-native and casino/iGaming appropriate.`,
           <div>
             <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">ARTICLE TEXT / PASTE CONTENT</div>
             <textarea value={articleText} onChange={e => setArticleText(e.target.value)} rows={12}
-              placeholder="Paste your casino article here…"
+              placeholder="Paste your article here…"
               className="w-full bg-surface border border-border rounded-lg p-3 text-xs text-tx outline-none focus:border-accent transition-colors resize-none scrollbar-thin" />
           </div>
           <div>

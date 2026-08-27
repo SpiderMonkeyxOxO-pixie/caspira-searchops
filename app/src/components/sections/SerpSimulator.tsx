@@ -100,7 +100,7 @@ function DesktopPreview({ title, url, description, date, rich }: {
       {/* Sitelinks */}
       {rich.sitelinks && (
         <div className="flex gap-4 mt-2">
-          {['Casino Reviews', 'Bonus Offers', 'Free Spins', 'Live Casino'].map(sl => (
+          {['Product Reviews', 'Pricing', 'Features', 'Support'].map(sl => (
             <a key={sl} href="#" className="text-[13px] text-[#1a0dab] hover:underline">{sl}</a>
           ))}
         </div>
@@ -121,7 +121,7 @@ function MobilePreview({ title, url, description, rich }: {
       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
         <div className="bg-white rounded-full px-3 py-1.5 flex items-center gap-2 border border-gray-300 text-[13px] text-gray-400">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          best online casino uk
+          best project management software
         </div>
       </div>
 
@@ -304,7 +304,7 @@ export function SerpSimulator() {
           {/* Tips */}
           <div className="mt-4 space-y-2">
             {[
-              { ok: title.includes('2026'), tip: 'Year in title — freshness signal for casino queries', warn: 'Add "2026" to your title for freshness' },
+              { ok: title.includes('2026'), tip: 'Year in title — freshness signal for time-sensitive queries', warn: 'Add "2026" to your title for freshness' },
               { ok: title.split(' ').length >= 5, tip: 'Title length gives enough keyword context', warn: 'Title may be too short — add more descriptive terms' },
               { ok: desc.length >= 100, tip: 'Description length is sufficient', warn: 'Meta description is too short — aim for 130–160 characters' },
             ].map((t, i) => (

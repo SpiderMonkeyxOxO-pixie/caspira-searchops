@@ -24,7 +24,7 @@ const SECTION_TITLES: Record<string, string> = {
   crossview:    'GSC × GA4 Cross-View',
 
   // AI TOOLS
-  jarvis:       'Jarvis AI',
+  jarvis:       'Caspira AI',
   roaster:      'Site Roaster',
   clustering:   'KW Clustering',
   bulkmeta:     'Bulk Meta Writer',
@@ -224,7 +224,7 @@ export function TopBar() {
           </button>
 
           <Button variant="primary" onClick={() => setSection('jarvis')}>
-            Ask Jarvis
+            Ask Caspira
           </Button>
 
           <button

@@ -12,7 +12,7 @@ export function MobileApp() {
         <Badge variant="purple" className="mb-4">Coming Soon</Badge>
         <div className="font-display font-black text-2xl text-tx mb-3">Mobile App</div>
         <div className="text-sm text-muted leading-relaxed max-w-xs mx-auto">
-          Take Jarvis on the go — live rank tracking, AI strategy chat, and ranking alerts for your iGaming portfolio, right from your phone.
+          Take Caspira on the go — live rank tracking, AI strategy chat, and ranking alerts for your site portfolio, right from your phone.
         </div>
       </Card>
     </div>

@@ -50,15 +50,15 @@ export function FAQGenerator() {
   const generate = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an iGaming SEO expert generating FAQ content for UK casino affiliate sites. Write E-E-A-T compliant, accurate FAQs.',
-        `Generate ${count} FAQ pairs for the UK casino keyword: "${keyword}"
+        'You are an SEO expert generating FAQ content for affiliate sites. Write E-E-A-T compliant, accurate FAQs.',
+        `Generate ${count} FAQ pairs for the keyword: "${keyword}"
 Page URL: ${url}
 
 Requirements:
-- Questions should match real user search intent for UK casino players
-- Answers should be 2-4 sentences, specific, and reference UKGC regulations where relevant
-- Include questions about: bonus terms, safety/licensing, payment methods, game types, or responsible gambling as appropriate
-- Answers must be factually accurate for the UK iGaming market in 2026
+- Questions should match real user search intent for your target audience
+- Answers should be 2-4 sentences, specific, and reference relevant regulations or standards where applicable
+- Include questions about: pricing, safety/trust, features, how it works, or required disclosures as appropriate
+- Answers must be factually accurate as of 2026
 
 Return JSON array only:
 [{"q":"Question text?","a":"Detailed answer text."}]`,
@@ -251,7 +251,7 @@ Return JSON array only:
                   <div className="mt-4 p-3 bg-[#10b98110] border border-[#10b98130] rounded-lg">
                     <div className="text-[10px] text-accent3 font-mono-jarvis tracking-widest mb-1">SERP BENEFIT</div>
                     <div className="text-xs text-muted leading-relaxed">
-                      FAQPage schema can generate expandable Q&A rich results in Google, increasing your SERP real estate by up to 300% for casino queries.
+                      FAQPage schema can generate expandable Q&A rich results in Google, increasing your SERP real estate by up to 300% for eligible queries.
                     </div>
                   </div>
                 </Card>

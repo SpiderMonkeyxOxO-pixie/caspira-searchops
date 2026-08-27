@@ -321,7 +321,7 @@ export function AgencyDashboard() {
           { label:'TOTAL SITES',      val: DISPLAY_SITES.length,                    sub: 'Your portfolio',  color:'var(--color-accent)',
             tooltip: 'Total number of sites currently tracked in your agency portfolio. Each site gets its own health score, traffic data, and SEO issue count.' },
           { label:'TOTAL TRAFFIC',    val: totalTraffic > 0 ? formatTraffic(totalTraffic) : '—', sub: 'Combined organic', color:'#a78bfa',
-            tooltip: 'Combined organic clicks across all portfolio sites from Google Search Console over the last 28 days. Reflects total reach of your iGaming network.' },
+            tooltip: 'Combined organic clicks across all portfolio sites from Google Search Console over the last 28 days. Reflects total reach of your site network.' },
           { label:'AVG HEALTH SCORE', val: avgScore || '—',                          sub: `${aboveScore70} sites above 70`,  color: scoreColor(avgScore),
             tooltip: 'Average SEO health score across all sites (0–100). Calculated from crawl data: issues vs. total pages. 70+ is healthy, 50–69 needs attention, below 50 is critical.' },
           { label:'CRITICAL ALERTS',  val: totalAlerts,                              sub: `${criticalCount} sites in danger`, color:'var(--color-danger)',

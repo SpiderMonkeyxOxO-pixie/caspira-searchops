@@ -48,16 +48,16 @@ const INTENT_ICON: Record<Intent, React.ElementType> = {
   Info: Info, Comm: ShoppingCart, Trans: FileText, Nav: Navigation,
 }
 
-const SAMPLE = `best online casino india
-how to deposit with UPI in casino
-teen patti real money android
-is online casino legal in india
-top casino bonus india 2026
-how to win at online slots
-casino vs sports betting india
-register casino india free bonus
-slot online terpercaya indonesia
-cara main slot online pemula`
+const SAMPLE = `best project management software
+how to choose project management software
+sign up for a free trial
+is project management software worth it
+top project management tools 2026
+how to migrate from spreadsheets to software
+project management software vs spreadsheets
+download the mobile app
+best running shoes for beginners
+how to pick the right running shoes`
 
 function classifyIntent(kw: string): Intent {
   const k = kw.toLowerCase()
@@ -125,7 +125,7 @@ export function IntentAnalyzer() {
     setAiError(null)
     try {
       const raw = await callAI(
-        'You are an iGaming SEO expert. Classify keyword search intent for casino/gambling queries (India & Indonesia markets). Return ONLY valid JSON, no markdown.',
+        'You are an SEO expert. Classify keyword search intent for these queries. Return ONLY valid JSON, no markdown.',
         `Analyze the search intent for these keywords and return a JSON array:
 ${kwList.map((k, i) => `${i + 1}. ${k}`).join('\n')}
 
@@ -210,7 +210,7 @@ Intent definitions:
               <textarea
                 value={input}
                 onChange={e => { setInput(e.target.value); setAnalyzed(false) }}
-                placeholder={'Paste keywords (one per line):\nbest online casino india\nhow to play teen patti\ncasino bonus india…'}
+                placeholder={'Paste keywords (one per line):\nbest project management software\nhow to choose a project management tool\nproject management software pricing…'}
                 className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors resize-none font-mono-jarvis scrollbar-thin"
                 rows={6}
               />
@@ -254,7 +254,7 @@ Intent definitions:
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Chart */}
                 <Card>
-                  <CardTitle className="mb-4 flex items-center gap-1.5">Intent Breakdown <InfoTooltip text="Distribution of your keyword list across the four intent categories. A healthy iGaming site targets a mix of all four — heavy Trans bias indicates thin content risk." /></CardTitle>
+                  <CardTitle className="mb-4 flex items-center gap-1.5">Intent Breakdown <InfoTooltip text="Distribution of your keyword list across the four intent categories. A healthy site targets a mix of all four — heavy Trans bias indicates thin content risk." /></CardTitle>
                   <ResponsiveContainer width="100%" height={160}>
                     <BarChart data={chartData} layout="vertical" margin={{ left: 4, right: 24 }}>
                       <XAxis type="number" hide />

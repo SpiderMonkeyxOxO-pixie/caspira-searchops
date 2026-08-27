@@ -52,7 +52,7 @@ function MetricCard({ m }: { m: CaseStudyOutput['metrics'][0] }) {
 
 export function CaseStudy() {
   const [form, setForm] = useState<FormData>({
-    client: '', industry: 'iGaming / Online Casino', challenge: '', strategy: '', duration: '6 months', results: '', tone: 'professional',
+    client: '', industry: 'SaaS', challenge: '', strategy: '', duration: '6 months', results: '', tone: 'professional',
   })
   const [output, setOutput] = useState<CaseStudyOutput | null>(null)
   const [copied, setCopied] = useState(false)
@@ -61,12 +61,12 @@ export function CaseStudy() {
   const generate = useMutation({
     mutationFn: async () => {
       return callClaude(
-        `You are an expert SEO copywriter specialising in ${form.tone} iGaming case studies that convert casino affiliate prospects into clients.`,
-        `Write a compelling iGaming SEO case study with these details:
-Client: ${form.client || 'CasinoReview.io'}
-Industry: ${form.industry || 'iGaming / Online Casino Affiliate'}
-Challenge: ${form.challenge || 'Stagnant organic traffic on bonus and review pages'}
-Strategy: ${form.strategy || 'E-E-A-T overhaul, bonus page restructure, niche link building'}
+        `You are an expert SEO copywriter specialising in ${form.tone} case studies that convert prospects into clients.`,
+        `Write a compelling SEO case study with these details:
+Client: ${form.client || 'Acme SaaS Blog'}
+Industry: ${form.industry || 'SaaS'}
+Challenge: ${form.challenge || 'Stagnant organic traffic on key landing and review pages'}
+Strategy: ${form.strategy || 'E-E-A-T overhaul, landing page restructure, niche link building'}
 Duration: ${form.duration}
 Results: ${form.results || 'Significant organic growth and affiliate commission increase'}
 Tone: ${form.tone}
@@ -131,8 +131,8 @@ Return ONLY JSON:
 
         <div className="grid grid-cols-2 gap-3 mb-3">
           {([
-            { key: 'client',   label: 'CLIENT / SITE NAME', placeholder: 'CasinoReview.io' },
-            { key: 'industry', label: 'VERTICAL',           placeholder: 'iGaming, Sports Betting, Poker…' },
+            { key: 'client',   label: 'CLIENT / SITE NAME', placeholder: 'Acme SaaS Blog' },
+            { key: 'industry', label: 'VERTICAL',           placeholder: 'SaaS, E-commerce, Local Service, Health & Wellness…' },
             { key: 'duration', label: 'PROJECT DURATION',   placeholder: '6 months' },
           ] as const).map(f => (
             <div key={f.key} className={f.key === 'client' ? '' : ''}>
@@ -147,9 +147,9 @@ Return ONLY JSON:
 
         <div className="grid grid-cols-1 gap-3 mb-3">
           {([
-            { key: 'challenge', label: 'CHALLENGE / PROBLEM',    placeholder: 'Ranking stuck on page 3 for key bonus terms, losing affiliate revenue to casino.org…', rows: 2 },
-            { key: 'strategy',  label: 'STRATEGY USED',          placeholder: 'E-E-A-T overhaul, bonus page restructure, niche link building, Review schema…', rows: 2 },
-            { key: 'results',   label: 'RESULTS ACHIEVED',       placeholder: 'Traffic +340%, 18 bonus keywords on page 1, affiliate commissions up $12K/mo…', rows: 2 },
+            { key: 'challenge', label: 'CHALLENGE / PROBLEM',    placeholder: 'Ranking stuck on page 3 for key terms, losing revenue to competitors…', rows: 2 },
+            { key: 'strategy',  label: 'STRATEGY USED',          placeholder: 'E-E-A-T overhaul, landing page restructure, niche link building, Review schema…', rows: 2 },
+            { key: 'results',   label: 'RESULTS ACHIEVED',       placeholder: 'Traffic +340%, 18 keywords on page 1, revenue up $12K/mo…', rows: 2 },
           ] as const).map(f => (
             <div key={f.key}>
               <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">{f.label}</div>

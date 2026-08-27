@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
 import type { Site, Task, Schedule, VoiceEntry, NavSection, WPSite } from '@/types'
 
 // ── Types for Supabase rows ───────────────────────────────────
@@ -55,6 +55,7 @@ interface JarvisState {
   searchFitKey:    string
   psiKey:          string
   indexNowKey:     string
+  bingKey:         string
   backendProvider: 'supabase' | 'pocketbase' | 'custom'
   backendUrl:      string
   backendKey:      string
@@ -78,6 +79,7 @@ interface JarvisState {
   setSearchFitKey:    (k: string) => void
   setPsiKey:           (k: string) => void
   setIndexNowKey:      (k: string) => void
+  setBingKey:          (k: string) => void
   setBackendProvider:  (p: 'supabase' | 'pocketbase' | 'custom') => void
   setBackendUrl:       (k: string) => void
   setBackendKey:       (k: string) => void
@@ -139,6 +141,7 @@ export const useStore = create<JarvisState>()(
       searchFitKey:    '',
       psiKey:          '',
       indexNowKey:     '',
+      bingKey:         '',
       backendProvider: 'supabase',
       backendUrl:      '',
       backendKey:      '',
@@ -162,6 +165,7 @@ export const useStore = create<JarvisState>()(
       setSearchFitKey:    (searchFitKey)    => set({ searchFitKey }),
       setPsiKey:          (psiKey)          => set({ psiKey }),
       setIndexNowKey:     (indexNowKey)     => set({ indexNowKey }),
+      setBingKey:         (bingKey)         => set({ bingKey }),
       setBackendProvider: (backendProvider) => set({ backendProvider }),
       setBackendUrl:      (backendUrl)      => set({ backendUrl }),
       setBackendKey:      (backendKey)      => set({ backendKey }),
@@ -181,26 +185,24 @@ export const useStore = create<JarvisState>()(
       scenario: 'conservative',
       wpSites: [],
 
-      // ── Supabase sync ───────────────────────────────────────
+      // ── Backend sync (Supabase or custom REST — see lib/backend) ─
       loadOrgData: async (orgId) => {
         try {
+          const dp = getDataProvider()
           // Seed starter data for new orgs (no-op if already seeded)
-          await supabase.rpc('jarvis_seed_org', { p_org_id: orgId })
+          await dp.callProcedure('jarvis_seed_org', { p_org_id: orgId })
 
-          const [{ data: sitesRaw }, { data: tasksRaw }, { data: schedsRaw }] = await Promise.all([
-            supabase.from('jarvis_sites').select('*').eq('org_id', orgId).order('created_at'),
-            supabase.from('jarvis_tasks').select('*').eq('org_id', orgId).order('created_at'),
-            supabase.from('jarvis_schedules').select('*').eq('org_id', orgId).order('created_at'),
-          ]) as [
-            { data: DbSite[]     | null },
-            { data: DbTask[]     | null },
-            { data: DbSchedule[] | null },
-          ]
+          const byOrg = { filters: [{ column: 'org_id' as const, op: 'eq' as const, value: orgId }], order: { column: 'created_at' } }
+          const [sitesRes, tasksRes, schedsRes] = await Promise.all([
+            dp.select<DbSite>('jarvis_sites', byOrg),
+            dp.select<DbTask>('jarvis_tasks', byOrg),
+            dp.select<DbSchedule>('jarvis_schedules', byOrg),
+          ])
 
           set({
-            sites:     (sitesRaw  ?? []).map(toSite),
-            tasks:     (tasksRaw  ?? []).map(toTask),
-            schedules: (schedsRaw ?? []).map(toSchedule),
+            sites:     ((sitesRes.data ?? []) as DbSite[]).map(toSite),
+            tasks:     ((tasksRes.data ?? []) as DbTask[]).map(toTask),
+            schedules: ((schedsRes.data ?? []) as DbSchedule[]).map(toSchedule),
           })
         } catch (err) {
           console.error('[loadOrgData]', err)
@@ -209,22 +211,21 @@ export const useStore = create<JarvisState>()(
 
       // ── Sites ───────────────────────────────────────────────
       addSite: async (s, orgId) => {
-        const { data } = await supabase
-          .from('jarvis_sites')
-          .insert({ ...s, org_id: orgId } as never)
-          .select().single() as { data: DbSite | null }
-        if (data) set((st) => ({ sites: [...st.sites, toSite(data, st.sites.length)] }))
+        const { data } = await getDataProvider().insert<DbSite>('jarvis_sites', { ...s, org_id: orgId })
+        if (data) set((st) => ({ sites: [...st.sites, toSite(data as DbSite, st.sites.length)] }))
       },
 
       removeSite: async (id, orgId) => {
         const { sites } = get()
         const site = sites[id - 1]
         if (!site) return
+        const dp = getDataProvider()
         // Find UUID by matching domain+name via a fresh fetch
-        const { data: rows } = await supabase
-          .from('jarvis_sites').select('id,domain').eq('org_id', orgId) as { data: { id: string; domain: string }[] | null }
-        const row = rows?.find(r => r.domain === site.domain)
-        if (row) await supabase.from('jarvis_sites').delete().eq('id', row.id)
+        const { data: rows } = await dp.select<{ id: string; domain: string }>('jarvis_sites', {
+          columns: 'id,domain', filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        })
+        const row = (rows as { id: string; domain: string }[] | null)?.find(r => r.domain === site.domain)
+        if (row) await dp.remove('jarvis_sites', [{ column: 'id', op: 'eq', value: row.id }])
         set((st) => ({ sites: st.sites.filter((_, i) => i !== id - 1) }))
       },
 
@@ -232,10 +233,12 @@ export const useStore = create<JarvisState>()(
         const { sites } = get()
         const site = sites[id - 1]
         if (!site) return
-        const { data: rows } = await supabase
-          .from('jarvis_sites').select('id,domain').eq('org_id', orgId) as { data: { id: string; domain: string }[] | null }
-        const row = rows?.find(r => r.domain === site.domain)
-        if (row) await supabase.from('jarvis_sites').update(patch as never).eq('id', row.id)
+        const dp = getDataProvider()
+        const { data: rows } = await dp.select<{ id: string; domain: string }>('jarvis_sites', {
+          columns: 'id,domain', filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        })
+        const row = (rows as { id: string; domain: string }[] | null)?.find(r => r.domain === site.domain)
+        if (row) await dp.update('jarvis_sites', [{ column: 'id', op: 'eq', value: row.id }], patch)
         set((st) => ({ sites: st.sites.map((s, i) => i === id - 1 ? { ...s, ...patch } : s) }))
       },
 
@@ -243,51 +246,55 @@ export const useStore = create<JarvisState>()(
       toggleTask: async (id, orgId) => {
         const task = get().tasks.find(t => t.id === id)
         if (!task) return
-        const { data: rows } = await supabase
-          .from('jarvis_tasks').select('id,title').eq('org_id', orgId) as { data: { id: string; title: string }[] | null }
-        const row = rows?.find(r => r.title === task.title)
-        if (row) await supabase.from('jarvis_tasks').update({ done: !task.done } as never).eq('id', row.id)
+        const dp = getDataProvider()
+        const { data: rows } = await dp.select<{ id: string; title: string }>('jarvis_tasks', {
+          columns: 'id,title', filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        })
+        const row = (rows as { id: string; title: string }[] | null)?.find(r => r.title === task.title)
+        if (row) await dp.update('jarvis_tasks', [{ column: 'id', op: 'eq', value: row.id }], { done: !task.done })
         set((st) => ({ tasks: st.tasks.map(t => t.id === id ? { ...t, done: !t.done } : t) }))
       },
 
       addTask: async (t, orgId) => {
-        const { data } = await supabase
-          .from('jarvis_tasks')
-          .insert({ ...t, org_id: orgId, done: false } as never)
-          .select().single() as { data: DbTask | null }
+        const { data } = await getDataProvider().insert<DbTask>('jarvis_tasks', { ...t, org_id: orgId, done: false })
         if (data) {
-          const newTask: Task = { id: Date.now(), title: data.title, assignee: data.assignee,
-            priority: data.priority, done: false, section: data.section, created: 'just now' }
+          const row = data as DbTask
+          const newTask: Task = { id: Date.now(), title: row.title, assignee: row.assignee,
+            priority: row.priority, done: false, section: row.section, created: 'just now' }
           set((st) => ({ tasks: [newTask, ...st.tasks] }))
         }
       },
 
       // ── Schedules ───────────────────────────────────────────
       saveSchedule: async (s, orgId) => {
-        await supabase.from('jarvis_schedules').insert({
+        await getDataProvider().insert('jarvis_schedules', {
           org_id: orgId, name: s.name, freq: s.freq, day: s.day,
           time_of_day: s.time, emails: s.emails, active: s.active, next_run: s.next,
-        } as never)
+        }, { returning: false })
         set((st) => ({ schedules: [s, ...st.schedules] }))
       },
 
       toggleSchedule: async (i, orgId) => {
         const sched = get().schedules[i]
         if (!sched) return
-        const { data: rows } = await supabase
-          .from('jarvis_schedules').select('id,name').eq('org_id', orgId) as { data: { id: string; name: string }[] | null }
-        const row = rows?.find(r => r.name === sched.name)
-        if (row) await supabase.from('jarvis_schedules').update({ active: !sched.active } as never).eq('id', row.id)
+        const dp = getDataProvider()
+        const { data: rows } = await dp.select<{ id: string; name: string }>('jarvis_schedules', {
+          columns: 'id,name', filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        })
+        const row = (rows as { id: string; name: string }[] | null)?.find(r => r.name === sched.name)
+        if (row) await dp.update('jarvis_schedules', [{ column: 'id', op: 'eq', value: row.id }], { active: !sched.active })
         set((st) => ({ schedules: st.schedules.map((s, idx) => idx === i ? { ...s, active: !s.active } : s) }))
       },
 
       deleteSchedule: async (i, orgId) => {
         const sched = get().schedules[i]
         if (!sched) return
-        const { data: rows } = await supabase
-          .from('jarvis_schedules').select('id,name').eq('org_id', orgId) as { data: { id: string; name: string }[] | null }
-        const row = rows?.find(r => r.name === sched.name)
-        if (row) await supabase.from('jarvis_schedules').delete().eq('id', row.id)
+        const dp = getDataProvider()
+        const { data: rows } = await dp.select<{ id: string; name: string }>('jarvis_schedules', {
+          columns: 'id,name', filters: [{ column: 'org_id', op: 'eq', value: orgId }],
+        })
+        const row = (rows as { id: string; name: string }[] | null)?.find(r => r.name === sched.name)
+        if (row) await dp.remove('jarvis_schedules', [{ column: 'id', op: 'eq', value: row.id }])
         set((st) => ({ schedules: st.schedules.filter((_, idx) => idx !== i) }))
       },
 
@@ -318,6 +325,7 @@ export const useStore = create<JarvisState>()(
         searchFitKey:    state.searchFitKey,
         psiKey:          state.psiKey,
         indexNowKey:     state.indexNowKey,
+        bingKey:         state.bingKey,
         backendProvider: state.backendProvider,
         backendUrl:      state.backendUrl,
         backendKey:      state.backendKey,

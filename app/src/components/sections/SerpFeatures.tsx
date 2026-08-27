@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { Loader2, Search, TrendingUp, Star, MapPin, ShoppingCart, Image, Video, BookOpen, HelpCircle, ChevronUp, ChevronDown, Check, History } from 'lucide-react'
 import { callClaude, isAIReady } from '@/lib/ai'
 import { useStore } from '@/store'
-import { callDFS, isDFSReady, LOCATION_CODES } from '@/lib/dataforseo'
+import { callDFS, isDFSReady, LOCATION_CODES, COUNTRIES } from '@/lib/dataforseo'
 import { Card, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -41,7 +41,7 @@ const FEATURE_ICONS: Record<string, React.ReactNode> = {
 }
 
 const FEATURE_TOOLTIPS: Record<string, string> = {
-  'Featured Snippet': 'A boxed answer shown above all organic results (Position 0). Captured with direct, concise answers to question keywords — ideal for "how to" and "what is" casino queries.',
+  'Featured Snippet': 'A boxed answer shown above all organic results (Position 0). Captured with direct, concise answers to question keywords — ideal for "how to" and "what is" queries.',
   'People Also Ask':  'Expandable question boxes below the Featured Snippet. Each question you win expands to show more related questions, creating a PAA chain effect.',
   'Knowledge Panel':  'A sidebar card showing entity information (brand, founder, social links). Strengthened by Organization schema and Wikipedia/Wikidata presence.',
   'Local Pack':       'A map + 3 listings shown for geo-intent queries. Requires a verified Google Business Profile and local SEO signals.',
@@ -73,12 +73,12 @@ export function SerpFeatures() {
   const [features, setFeatures] = useState<SerpFeature[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
   const [tab,      setTab]      = useState<'tool' | 'history'>('tool')
-  const [country,  setCountry]  = useState('in')
+  const [country,  setCountry]  = useState('us')
 
   const { records, save, remove, clear } = useHistory<SerpFeaturesRecord>('jarvis_serpfeatures_history')
 
   async function fetchRealFeatures(keywords: string[]): Promise<SerpFeature[]> {
-    const locationCode = LOCATION_CODES[country] ?? 2356
+    const locationCode = LOCATION_CODES[country] ?? 2840
     const featureMap = new Map<string, { keywords: { kw: string; position: number; owned: boolean }[] }>()
 
     await Promise.allSettled(keywords.slice(0, 5).map(async (kw) => {
@@ -218,7 +218,7 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
               </div>
               <div className="md:col-span-2">
                 <textarea value={kwInput} onChange={e => setKwInput(e.target.value)}
-                  placeholder={'Keywords to check (one per line — DFS detects real features):\nbest online casino india\nteen patti real money'}
+                  placeholder={'Keywords to check (one per line — DFS detects real features):\nbest project management software\nhow to choose running shoes'}
                   rows={3}
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx outline-none focus:border-accent transition-colors resize-none font-mono-jarvis"
                 />
@@ -227,11 +227,7 @@ opportunity: high=easy win, medium=requires work, low=unlikely.`,
             <div className="flex items-center gap-3">
               <select value={country} onChange={e => setCountry(e.target.value)}
                 className="bg-surface border border-border rounded-lg px-3 py-2 text-sm text-tx outline-none cursor-pointer font-mono-jarvis">
-                <option value="in">🇮🇳 India</option>
-                <option value="us">🇺🇸 US</option>
-                <option value="gb">🇬🇧 UK</option>
-                <option value="ph">🇵🇭 Philippines</option>
-                <option value="id">🇮🇩 Indonesia</option>
+                {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
               </select>
               <Button variant="primary" onClick={() => analyze.mutate()} disabled={analyze.isPending}>
                 {analyze.isPending ? <Loader2 size={13} className="animate-spin" /> : null}

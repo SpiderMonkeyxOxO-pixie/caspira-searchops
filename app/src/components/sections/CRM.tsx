@@ -62,7 +62,7 @@ export function CRM() {
       <Card>
         <CardTitle className="mb-3">CRM Integration</CardTitle>
         <p className="text-sm text-muted mb-5 leading-relaxed">
-          Connect HubSpot or Salesforce to track which iGaming keywords drive real closed deals —
+          Connect HubSpot or Salesforce to track which keywords drive real closed deals —
           so you can prove SEO ROI from organic visit right through to revenue.
         </p>
         <div className="space-y-3 mb-5">
@@ -85,7 +85,7 @@ export function CRM() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Keyword → Lead attribution', desc: 'See which casino keywords bring leads, not just traffic' },
+          { label: 'Keyword → Lead attribution', desc: 'See which keywords bring leads, not just traffic' },
           { label: 'Pipeline stage tracking',    desc: 'Map organic sessions through MQL, SQL to closed deals' },
           { label: 'True SEO ROI',              desc: 'Report actual revenue driven by organic search' },
         ].map(({ label, desc }) => (

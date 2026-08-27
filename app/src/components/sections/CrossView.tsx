@@ -499,7 +499,7 @@ export function CrossView() {
                   <span className="text-accent3 font-mono-jarvis shrink-0 mt-0.5">→</span>
                   <span><strong className="text-tx">Use the URL-prefix property instead:</strong> add{' '}
                   <code className="font-mono-jarvis text-accent bg-surface px-1 rounded">{urlPrefix}</code>{' '}
-                  in Search Console — it works with Full User access. Then reconnect GSC in Jarvis.</span>
+                  in Search Console — it works with Full User access. Then reconnect GSC in Caspira.</span>
                 </div>
               )}
               <div className="text-xs text-muted flex items-start gap-2">

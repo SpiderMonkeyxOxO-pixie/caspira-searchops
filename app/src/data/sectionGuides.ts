@@ -31,8 +31,8 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
   },
 
   jarvis: {
-    title: 'Jarvis AI',
-    description: 'Your AI-powered iGaming SEO strategist — ask strategy questions, get content ideas, run research, and get actionable recommendations.',
+    title: 'Caspira AI',
+    description: 'Your AI-powered SEO strategist — ask strategy questions, get content ideas, run research, and get actionable recommendations.',
     steps: [
       'Add an AI API key in Onboarding (Anthropic Claude or OpenRouter)',
       'Type a question or click a quick-ask prompt to get started',
@@ -48,7 +48,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   tracker: {
     title: 'Rank Tracker',
-    description: 'Track keyword rankings over time — see position changes, top movers, and visibility trends for your iGaming site.',
+    description: 'Track keyword rankings over time — see position changes, top movers, and visibility trends for your site.',
     steps: [
       'Add keywords to track manually or import from the Keywords section',
       'Connect a rank-checking API in Onboarding (DataForSEO or SerpAPI) for real data',
@@ -81,7 +81,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   keywords: {
     title: 'Keyword Research',
-    description: 'AI keyword research for iGaming — generate keyword ideas with volume, KD, intent, CPC, and opportunity score.',
+    description: 'AI keyword research for any niche — generate keyword ideas with volume, KD, intent, CPC, and opportunity score.',
     steps: [
       'Enter a seed keyword or topic and click AI Research (requires AI key in Onboarding)',
       'Filter results by Difficulty, Intent, or Opportunity level',
@@ -114,7 +114,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   content: {
     title: 'Content Plan',
-    description: 'Editorial pipeline tracker — plan, manage, and track your iGaming articles from Brief → In Progress → Published.',
+    description: 'Editorial pipeline tracker — plan, manage, and track your articles from Brief → In Progress → Published.',
     steps: [
       'Your content list is empty — add articles you plan to create for your site',
       'Set status for each item as it progresses through your workflow',
@@ -179,7 +179,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   roaster: {
     title: 'Site Roaster',
-    description: 'Quick competitive audit — rapid breakdown of any site\'s SEO strengths, weaknesses, and vulnerabilities in the iGaming space.',
+    description: 'Quick competitive audit — rapid breakdown of any site\'s SEO strengths, weaknesses, and vulnerabilities in your space.',
     steps: [
       'Enter any competitor domain to roast',
       'Get a quick breakdown of SEO wins, gaps, and areas to exploit',
@@ -241,7 +241,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   eeat: {
     title: 'E-E-A-T Audit',
-    description: 'Audit your Experience, Expertise, Authoritativeness, and Trustworthiness signals — critical for iGaming YMYL rankings.',
+    description: 'Audit your Experience, Expertise, Authoritativeness, and Trustworthiness signals — critical for YMYL rankings.',
     steps: [
       'Review each E-E-A-T signal item in the checklist',
       'Identify gaps and follow the specific fix recommendations',
@@ -257,7 +257,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   schema: {
     title: 'Schema Builder',
-    description: 'Generate JSON-LD structured data for Review, FAQPage, BreadcrumbList, and other schema types for iGaming pages.',
+    description: 'Generate JSON-LD structured data for Review, FAQPage, BreadcrumbList, and other schema types for your pages.',
     steps: [
       'Select the schema type needed (Review, FAQ, Breadcrumb, etc.)',
       'Fill in all fields for your specific page',
@@ -336,7 +336,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   gsc: {
     title: 'Google Search Console',
-    description: 'Connect your GSC property to pull real clicks, impressions, CTR, and ranking data into Jarvis.',
+    description: 'Connect your GSC property to pull real clicks, impressions, CTR, and ranking data into Caspira.',
     steps: [
       'Click Connect Google Search Console to start the OAuth flow',
       'Select your GSC property from the dropdown list',
@@ -350,9 +350,24 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     ],
   },
 
+  bingwebmaster: {
+    title: 'Bing Webmaster',
+    description: 'Connect your Bing Webmaster API key to pull clicks, impressions, top queries, top pages, and crawl issues from Bing Search.',
+    steps: [
+      'Add your Bing Webmaster API key in Onboarding — generate one from Bing Webmaster Tools → Settings → API Access',
+      'Pick a verified site from the dropdown, or enter its URL manually',
+      'Click Fetch Data to pull live stats — export any table to CSV',
+    ],
+    connects: [
+      { section: 'onboarding', label: 'Onboarding — add API key' },
+      { section: 'gsc',        label: 'Search Console — Google equivalent' },
+      { section: 'dashboard',  label: 'Dashboard — live KPIs' },
+    ],
+  },
+
   ga4: {
     title: 'Google Analytics 4',
-    description: 'Connect your GA4 property to see sessions, pageviews, engagement rate, and top pages inside Jarvis.',
+    description: 'Connect your GA4 property to see sessions, pageviews, engagement rate, and top pages inside Caspira.',
     steps: [
       'Click Connect Google Analytics 4 to start the OAuth flow',
       'Select your GA4 property from the dropdown',
@@ -367,7 +382,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   apisync: {
     title: 'API Sync',
-    description: 'Pull external data (rankings, backlinks, traffic) from third-party APIs into Jarvis on a schedule.',
+    description: 'Pull external data (rankings, backlinks, traffic) from third-party APIs into Caspira on a schedule.',
     steps: [
       'Configure API keys in Onboarding (DataForSEO, SerpAPI, Serper)',
       'Select data sources to sync and set the sync frequency',
@@ -382,7 +397,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   crawlimport: {
     title: 'Crawl Import',
-    description: 'Import site crawl exports from Screaming Frog, Sitebulb, or similar tools to enrich Jarvis data.',
+    description: 'Import site crawl exports from Screaming Frog, Sitebulb, or similar tools to enrich Caspira data.',
     steps: [
       'Export a crawl from your crawler tool as CSV or JSON',
       'Upload the file here to import all page-level data',
@@ -413,7 +428,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   articlewriter: {
     title: 'Article Writer',
-    description: 'AI article writer — generate full iGaming articles (casino reviews, bonus guides, game guides) with proper SEO structure.',
+    description: 'AI article writer — generate full articles (product reviews, buying guides, how-to guides) with proper SEO structure.',
     steps: [
       'Enter your topic, primary keyword, and secondary keywords',
       'Select word count, tone, and article category',
@@ -430,7 +445,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   contentgrader: {
     title: 'Content Grader',
-    description: 'Paste any article and get a 0-100 SEO score with specific, actionable recommendations for iGaming YMYL content.',
+    description: 'Paste any article and get a 0-100 SEO score with specific, actionable recommendations for YMYL content.',
     steps: [
       'Paste your article text into the editor',
       'Enter the primary keyword this article targets',
@@ -446,11 +461,11 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   autorefresh: {
     title: 'Auto Refresh',
-    description: 'Keep bonus pages and time-sensitive casino content up-to-date automatically — freshness is a YMYL ranking signal.',
+    description: 'Keep pricing pages and time-sensitive content up-to-date automatically — freshness is a YMYL ranking signal.',
     steps: [
-      'Select pages that need regular content refreshes (bonus pages, news)',
-      'Set refresh frequency — daily for bonus amounts, weekly for evergreen guides',
-      'Jarvis auto-updates timestamps and flags stale content for manual review',
+      'Select pages that need regular content refreshes (pricing pages, news)',
+      'Set refresh frequency — daily for pricing/offers, weekly for evergreen guides',
+      'Caspira auto-updates timestamps and flags stale content for manual review',
     ],
     connects: [
       { section: 'content',    label: 'Content Plan — track refresh schedule' },
@@ -463,7 +478,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     title: 'Topical Authority Map',
     description: 'Visualise your niche\'s topic clusters and identify coverage gaps — showing what Google expects you to cover to rank.',
     steps: [
-      'Enter your niche (e.g. "online casino india") and click Map Niche',
+      'Enter your niche (e.g. "project management software") and click Map Niche',
       'Click each cluster node on the web to inspect covered vs missing subtopics',
       'Use gap subtopics as content briefs in Article Writer or add to Content Plan',
     ],
@@ -526,7 +541,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     description: 'Manage 301/302 redirects, detect redirect chains and loops, and export a clean redirect map for implementation.',
     steps: [
       'Upload your redirect list or add redirects manually',
-      'Jarvis flags redirect chains (A→B→C) and loops (A→B→A) automatically',
+      'Caspira flags redirect chains (A→B→C) and loops (A→B→A) automatically',
       'Export the clean, deduplicated redirect map for .htaccess or nginx implementation',
     ],
     connects: [
@@ -553,7 +568,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   hreflang: {
     title: 'Hreflang Builder',
-    description: 'Generate correct hreflang tags for multi-language or multi-region casino sites targeting different countries.',
+    description: 'Generate correct hreflang tags for multi-language or multi-region sites targeting different countries.',
     steps: [
       'Enter page URLs for each language/region variant (e.g. en-IN, id-ID)',
       'Select the correct ISO language and region codes for each URL',
@@ -586,7 +601,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     description: 'Build and maintain your XML sitemap with priority, changefreq, and lastmod settings — download and submit to GSC.',
     steps: [
       'Enter your domain and edit the URL list (add paths, toggle include/exclude)',
-      'Set priority (1.0 for key pages) and changefreq (daily for bonus pages)',
+      'Set priority (1.0 for key pages) and changefreq (daily for frequently updated pages)',
       'Download sitemap.xml and submit it directly in Google Search Console',
     ],
     connects: [
@@ -618,7 +633,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     steps: [
       'Add content items from Content Plan or create new ones directly here',
       'Set target publish dates and drag to reschedule across the calendar',
-      'Coordinate refresh cycles with Auto Refresh for time-sensitive casino content',
+      'Coordinate refresh cycles with Auto Refresh for time-sensitive content',
     ],
     connects: [
       { section: 'content',     label: 'Content Plan — source content items' },
@@ -630,7 +645,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   socialsnip: {
     title: 'Social Snippets',
-    description: 'Generate and preview Open Graph and Twitter Card meta tags so your casino pages look great when shared on social.',
+    description: 'Generate and preview Open Graph and Twitter Card meta tags so your pages look great when shared on social.',
     steps: [
       'Enter your page title, description, and featured image URL',
       'Toggle between Facebook (OG) and Twitter Card preview modes',
@@ -645,7 +660,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   imagebuilder: {
     title: 'Image Builder',
-    description: 'Create SEO-optimised featured images and social cards for iGaming content — no design tools needed.',
+    description: 'Create SEO-optimised featured images and social cards for your content — no design tools needed.',
     steps: [
       'Choose a template and colour theme',
       'Customise the headline text and branding elements',
@@ -660,7 +675,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   pipeline: {
     title: 'Content Pipeline',
-    description: 'Step-by-step content production workflow — Brief → Outline → Draft → Review → Export — for casino articles.',
+    description: 'Step-by-step content production workflow — Brief → Outline → Draft → Review → Export — for any article.',
     steps: [
       'Fill in the Brief fields (keyword, audience, angle, competitors)',
       'Generate an AI outline, then expand each section into a full draft',
@@ -679,7 +694,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     description: 'Find internal linking opportunities across your content — surface pages that should link to your target page.',
     steps: [
       'Enter a target page URL or keyword to find link opportunities for',
-      'Jarvis surfaces existing content that can contextually link to your target',
+      'Caspira surfaces existing content that can contextually link to your target',
       'Implement the suggestions to improve internal link equity and topical depth',
     ],
     connects: [
@@ -705,7 +720,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   shortcuts: {
     title: 'Keyboard Shortcuts',
-    description: 'View all keyboard shortcuts — navigate Jarvis without touching your mouse for a faster workflow.',
+    description: 'View all keyboard shortcuts — navigate Caspira without touching your mouse for a faster workflow.',
     steps: [
       'Press ? or Ctrl+K at any time to open this guide from anywhere',
       'Use G then D/J/T/K chord shortcuts to jump directly to key sections',
@@ -734,7 +749,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   onboarding: {
     title: 'Onboarding & Settings',
-    description: 'Configure your domain, AI API keys, and third-party integrations — this is the first step to unlocking Jarvis\'s full power.',
+    description: 'Configure your domain, AI API keys, and third-party integrations — this is the first step to unlocking Caspira\'s full power.',
     steps: [
       'Set your primary domain — it auto-fills into all tools and AI prompts',
       'Add an AI API key (Anthropic or OpenRouter) to unlock all AI-powered features',
@@ -750,11 +765,11 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   apiaccess: {
     title: 'API Access',
-    description: 'Manage Jarvis API keys for programmatic access to your SEO data from external scripts or custom dashboards.',
+    description: 'Manage Caspira API keys for programmatic access to your SEO data from external scripts or custom dashboards.',
     steps: [
       'Generate a new API key and copy it securely',
       'Review rate limits and available API endpoints in the documentation',
-      'Use the API to pull Jarvis data into spreadsheets, BI tools, or custom apps',
+      'Use the API to pull Caspira data into spreadsheets, BI tools, or custom apps',
     ],
     connects: [
       { section: 'apisync',   label: 'API Sync — import external data' },
@@ -811,7 +826,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   sitesmanager: {
     title: 'Sites Manager',
-    description: 'Add and manage all the websites you track in Jarvis — site health scores, traffic estimates, and client assignments.',
+    description: 'Add and manage all the websites you track in Caspira — site health scores, traffic estimates, and client assignments.',
     steps: [
       'Click Add Site and fill in domain, site name, and optional client label',
       'Sites appear across Agency Dashboard, Cross View, and reporting sections',
@@ -907,7 +922,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
     title: 'AI Visibility',
     description: 'Audit how well your site appears in AI-generated answers (ChatGPT, Gemini, Perplexity) and what signals need improvement.',
     steps: [
-      'Review each AI visibility checklist item for your iGaming site',
+      'Review each AI visibility checklist item for your site',
       'Prioritise high-impact fixes: structured data, E-E-A-T signals, FAQ content',
       'Implement fixes via Schema Builder and E-E-A-T Audit, then re-run the audit',
     ],
@@ -921,7 +936,7 @@ export const SECTION_GUIDES: Partial<Record<NavSection, SectionGuideData>> = {
 
   team: {
     title: 'Team Management',
-    description: 'Invite team members, assign roles (Owner / Editor / Viewer), and control access to your Jarvis organisation.',
+    description: 'Invite team members, assign roles (Owner / Editor / Viewer), and control access to your Caspira organisation.',
     steps: [
       'Click Invite Member and enter their email address',
       'Assign a role — Editors can create content, Viewers can only read data',

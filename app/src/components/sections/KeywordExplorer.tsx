@@ -41,7 +41,7 @@ interface KWExplorerRecord {
   seed: string; rows: KWRow[]
 }
 
-const AI_SYSTEM = `You are an iGaming SEO expert specialising in India and Indonesia markets.
+const AI_SYSTEM = `You are an SEO expert.
 Generate keyword ideas in JSON format only. No markdown, no explanation — pure JSON array.`
 
 function inferIntent(kw: string): Intent {
@@ -239,7 +239,7 @@ Return ONLY a valid JSON array. Each object:
   "trend": "up" | "down" | "flat"
 }
 
-Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-tail, commercial, informational.`,
+Focus on keywords relevant to the seed topic. Mix questions, long-tail, commercial, informational.`,
         1500,
       )
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
@@ -326,7 +326,7 @@ Focus on iGaming/casino keywords for India and Indonesia. Mix questions, long-ta
               value={seed}
               onChange={e => setSeed(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && serperReady && searchWithSerper()}
-              placeholder='Try "online casino", "slot online", "teen patti"…'
+              placeholder='Try "project management software", "running shoes", "CRM tools"…'
               className="w-full bg-surface border border-border rounded-lg pl-8 pr-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors"
             />
           </div>

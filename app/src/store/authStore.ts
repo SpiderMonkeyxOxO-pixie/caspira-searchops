@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { User, Session } from '@supabase/supabase-js'
+import type { AuthUser, Session } from '@/lib/backend'
 import type { Organization, OrgRole } from '@/types/supabase'
 import type { NavSection } from '@/types'
 
@@ -8,7 +8,7 @@ export type RolePermissions = Partial<Record<OrgRole, NavSection[]>>
 
 interface AuthState {
   session:         Session | null
-  user:            User | null
+  user:            AuthUser | null
   org:             Organization | null
   myRole:          OrgRole | null
   rolePermissions: RolePermissions
@@ -16,7 +16,7 @@ interface AuthState {
   orgLoading:      boolean
 
   setSession:         (s: Session | null)       => void
-  setUser:            (u: User | null)           => void
+  setUser:            (u: AuthUser | null)       => void
   setOrg:             (o: Organization | null, role: OrgRole | null) => void
   setRolePermissions: (p: RolePermissions)       => void
   setLoading:         (v: boolean)               => void

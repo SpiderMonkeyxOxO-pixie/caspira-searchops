@@ -14,12 +14,12 @@ interface Theme {
 const THEMES: Theme[] = [
   { id: 'dark',   label: 'Dark Neon',     bg: '#0a0f1a', bg2: '#0d1829', accent: '#00d4ff', text: '#ffffff', subtext: '#9ca3af', bar: '#00d4ff' },
   { id: 'purple', label: 'Purple Premium', bg: '#1a0a2e', bg2: '#210c3a', accent: '#a78bfa', text: '#ffffff', subtext: '#c4b5fd', bar: '#7c3aed' },
-  { id: 'gold',   label: 'Casino Gold',   bg: '#1a1000', bg2: '#231500', accent: '#f59e0b', text: '#ffffff', subtext: '#fcd34d', bar: '#f59e0b' },
+  { id: 'gold',   label: 'Gold Premium',   bg: '#1a1000', bg2: '#231500', accent: '#f59e0b', text: '#ffffff', subtext: '#fcd34d', bar: '#f59e0b' },
   { id: 'light',  label: 'Clean White',   bg: '#f8f9fa', bg2: '#ffffff', accent: '#1a1a2e', text: '#1a1a2e', subtext: '#4b5563', bar: '#1a1a2e' },
 ]
 
 const TEMPLATES = ['Article Cover', 'Social Square', 'Wide Banner', 'Card Thumbnail'] as const
-const CATEGORIES = ['Casino Review', 'Bonus Guide', 'Slot Guide', 'News', 'Comparison', 'Strategy'] as const
+const CATEGORIES = ['Product Review', 'Buying Guide', 'How-To Guide', 'News', 'Comparison', 'Strategy'] as const
 
 interface ImageRecord {
   id: string; savedAt: string; label: string; sublabel: string
@@ -140,10 +140,10 @@ function FeaturedSVG({ headline, subtitle, site, category, date, theme, template
 }
 
 export function ImageBuilder() {
-  const [headline,  setHeadline]  = useState('Best Online Casinos UK 2026')
-  const [subtitle,  setSubtitle]  = useState('Expert Tested · UKGC Licensed · Updated Daily')
-  const [site,      setSite]      = useState('casinoexpert.io')
-  const [category,  setCategory]  = useState<typeof CATEGORIES[number]>('Casino Review')
+  const [headline,  setHeadline]  = useState('Best Project Management Software 2026')
+  const [subtitle,  setSubtitle]  = useState('Expert Tested · Verified Data · Updated Daily')
+  const [site,      setSite]      = useState('yoursite.com')
+  const [category,  setCategory]  = useState<typeof CATEGORIES[number]>('Product Review')
   const [date,      setDate]      = useState(new Date().toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' }))
   const [themeId,   setThemeId]   = useState('dark')
   const [template,  setTemplate]  = useState<typeof TEMPLATES[number]>('Article Cover')
@@ -262,9 +262,9 @@ export function ImageBuilder() {
 
           {/* Inputs */}
           {[
-            { label: 'HEADLINE',  val: headline,  set: setHeadline,  ph: 'Best Online Casinos UK 2026' },
-            { label: 'SUBTITLE',  val: subtitle,  set: setSubtitle,  ph: 'Expert tested, UKGC licensed' },
-            { label: 'SITE NAME', val: site,      set: setSite,      ph: 'casinoexpert.io' },
+            { label: 'HEADLINE',  val: headline,  set: setHeadline,  ph: 'Best Project Management Software 2026' },
+            { label: 'SUBTITLE',  val: subtitle,  set: setSubtitle,  ph: 'Expert tested, verified data' },
+            { label: 'SITE NAME', val: site,      set: setSite,      ph: 'yoursite.com' },
             { label: 'DATE',      val: date,      set: setDate,      ph: 'May 2026' },
           ].map(f => (
             <div key={f.label}>
@@ -342,7 +342,7 @@ export function ImageBuilder() {
           </div>
           <div className="mt-3 p-3 bg-surface border border-border rounded-lg text-[10px] text-muted">
             <Palette size={10} className="inline mr-1 text-accent" />
-            Tip: Use Dark Neon or Purple Premium for casino review articles — they match iGaming brand expectations and improve click-through on social shares.
+            Tip: Use Dark Neon or Purple Premium for review articles — they add visual polish and improve click-through on social shares.
           </div>
         </Card>
       </div>

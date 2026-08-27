@@ -1,6 +1,6 @@
-# Jarvis — Frontend
+# Caspira SearchOps — Frontend
 
-React 19 + TypeScript + Tailwind CSS v4 + Vite 8 frontend for the Jarvis iGaming SEO platform.
+React 19 + TypeScript + Tailwind CSS v4 + Vite 8 frontend for the Caspira SearchOps AI Search Intelligence Platform.
 
 ## Development
 

@@ -18,14 +18,14 @@ interface CheckItem {
 }
 
 const CHECKLIST: CheckItem[] = [
-  { id:'faq',     title:'Add FAQ schema to all review pages',                     impact:'High',   status:'pending', desc:'FAQ schema is the #1 driver of Google AI Overview citations for casino queries. Every review page and guide needs FAQ markup.' },
-  { id:'org',     title:'Add Organization + Review structured data',              impact:'High',   status:'pending', desc:'Organization schema with trust signals (address, license, founder) signals authority to AI crawlers evaluating citability.' },
-  { id:'news',    title:'Earn citations in Indian / Indonesian news publications', impact:'High',   status:'pending', desc:'AI models heavily weight sites cited by mainstream news. Target Times of India, Detik.com, Kompas for iGaming mentions.' },
-  { id:'expert',  title:'Publish 3+ expert-authored iGaming guides',              impact:'High',   status:'pending', desc:'Long-form authoritative guides with expert bylines are the primary content type cited in AI responses for "best casino" queries.' },
+  { id:'faq',     title:'Add FAQ schema to all review pages',                     impact:'High',   status:'pending', desc:'FAQ schema is the #1 driver of Google AI Overview citations for high-intent queries. Every review page and guide needs FAQ markup.' },
+  { id:'org',     title:'Add Organization + Review structured data',              impact:'High',   status:'pending', desc:'Organization schema with trust signals (address, credentials, founder) signals authority to AI crawlers evaluating citability.' },
+  { id:'news',    title:'Earn citations in industry news publications',           impact:'High',   status:'pending', desc:'AI models heavily weight sites cited by mainstream news. Target the top publications in your niche for mentions.' },
+  { id:'expert',  title:'Publish 3+ expert-authored guides',                      impact:'High',   status:'pending', desc:'Long-form authoritative guides with expert bylines are the primary content type cited in AI responses for "best [category]" queries.' },
   { id:'authors', title:'Add expert credentials and author bios to all content',  impact:'Medium', status:'pending', desc:'Perplexity and ChatGPT prefer citing content with clear author expertise signals — full bio, credentials, social proof.' },
-  { id:'brand',   title:'Build brand mention campaign (unlinked mentions)',        impact:'Medium', status:'pending', desc:'AI models train on unlinked brand mentions. A PR push targeting Indian gaming and sports media increases LLM brand awareness.' },
+  { id:'brand',   title:'Build brand mention campaign (unlinked mentions)',        impact:'Medium', status:'pending', desc:'AI models train on unlinked brand mentions. A PR push targeting your industry media increases LLM brand awareness.' },
   { id:'speak',   title:'Add Speakable schema for voice and AI search',           impact:'Medium', status:'pending', desc:'Speakable schema marks your most AI-readable content, increasing the chance of direct citation in conversational AI responses.' },
-  { id:'cite',    title:'Add data citations from authoritative sources',          impact:'Low',    status:'pending', desc:'Linking to government gambling regulations, academic studies, and industry reports improves trust signals for AI sourcing.' },
+  { id:'cite',    title:'Add data citations from authoritative sources',          impact:'Low',    status:'pending', desc:'Linking to relevant regulations, academic studies, and industry reports improves trust signals for AI sourcing.' },
 ]
 
 const CHECKLIST_KEY = 'jarvis_aivisibility_checklist'
@@ -67,14 +67,14 @@ export function AIVisibility() {
     setAiLoading(true)
     setAiError(null)
     try {
-      const site = domain || 'your casino site'
+      const site = domain || 'your site'
       const report = await callAI(
-        'You are an AI Visibility (AEO) expert for iGaming sites in India and Indonesia. Write concise, actionable strategy reports.',
+        'You are an AI Visibility (AEO) expert. Write concise, actionable strategy reports.',
         `Generate an AI Visibility strategy report for: ${site}
 
 Cover:
-1. Current AI platform landscape for iGaming keywords (ChatGPT, Google AIO, Perplexity, Gemini, Bing Copilot)
-2. Top 3 quick wins to get cited in AI responses for casino/betting queries in India & Indonesia
+1. Current AI platform landscape for this site's target keywords (ChatGPT, Google AIO, Perplexity, Gemini, Bing Copilot)
+2. Top 3 quick wins to get cited in AI responses for this site's core queries
 3. Content types AI models prefer to cite (FAQ, structured data, authoritative guides)
 4. 30-day action plan with specific tasks
 
@@ -115,11 +115,11 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
           <div>
             <div className="flex items-center gap-2 mb-1">
               <CardTitle>AI Visibility</CardTitle>
-              <InfoTooltip text="AI Visibility (AEO — Answer Engine Optimization) measures how often your casino site is cited or referenced inside AI-powered search tools like ChatGPT, Perplexity, Google AI Overviews, and Gemini." />
+              <InfoTooltip text="AI Visibility (AEO — Answer Engine Optimization) measures how often your site is cited or referenced inside AI-powered search tools like ChatGPT, Perplexity, Google AI Overviews, and Gemini." />
             </div>
             <p className="text-sm text-muted leading-relaxed max-w-xl">
-              Track how your casino site appears inside ChatGPT, Google AI Overviews, Perplexity, Gemini,
-              and Bing Copilot. AEO (Answer Engine Optimization) is the next frontier in iGaming search.
+              Track how your site appears inside ChatGPT, Google AI Overviews, Perplexity, Gemini,
+              and Bing Copilot. AEO (Answer Engine Optimization) is the next frontier in search.
             </p>
           </div>
           <Button variant="primary" onClick={generateReport} disabled={!aiReady || aiLoading}>
@@ -194,7 +194,7 @@ Be specific, direct, and actionable. Format with clear sections and bullet point
                 {[
                   { name: 'Google AI Overviews', color: '#4285F4', note: 'Add FAQ + Organization schema to your pages to increase citation chances.', tip: 'Google AI Overviews (formerly SGE) appear at the top of search results and directly answer queries. Sites with FAQ schema and strong E-E-A-T are most frequently cited.' },
                   { name: 'ChatGPT / Perplexity', color: '#10a37f', note: 'Build authoritative backlinks and earn mentions in news publications.', tip: 'ChatGPT and Perplexity source answers from the web in real-time. Sites with strong backlink profiles, news citations, and authoritative long-form content get cited most.' },
-                  { name: 'Gemini / Bing Copilot', color: '#8E44AD', note: 'Ensure your E-E-A-T signals (author bios, expert credentials) are strong.', tip: 'Google Gemini and Bing Copilot heavily weight E-E-A-T signals — clear author credentials, expert bios, and trust signals on YMYL pages like casino reviews.' },
+                  { name: 'Gemini / Bing Copilot', color: '#8E44AD', note: 'Ensure your E-E-A-T signals (author bios, expert credentials) are strong.', tip: 'Google Gemini and Bing Copilot heavily weight E-E-A-T signals — clear author credentials, expert bios, and trust signals on YMYL pages like product and service reviews.' },
                 ].map(p => (
                   <div key={p.name} className="p-3 rounded-xl border border-border bg-surface space-y-2">
                     <div className="flex items-center gap-2">

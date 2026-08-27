@@ -9,8 +9,9 @@ import { SectionGuide } from '@/components/ui/SectionGuide'
 import { AuthPage } from '@/components/auth/AuthPage'
 import { OrgCreateWizard } from '@/components/auth/OrgCreateWizard'
 import { useStore } from '@/store'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore, type RolePermissions } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider, getAuthProvider } from '@/lib/backend'
 import { cn } from '@/lib/utils'
 import type { NavSection } from '@/types'
 import type { Organization, OrgRole, OrgInvite } from '@/types/supabase'
@@ -83,6 +84,7 @@ const TeamManagement     = load(() => import('@/components/sections/TeamManageme
 const SEONews            = load(() => import('@/components/sections/SEONews'))
 const ActivityLogs       = load(() => import('@/components/sections/ActivityLogs'))
 const IndexNow           = load(() => import('@/components/sections/IndexNow'))
+const BingWebmaster      = load(() => import('@/components/sections/BingWebmaster'))
 
 const qc = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
@@ -152,6 +154,7 @@ const SECTION_MAP: Partial<Record<NavSection, React.LazyExoticComponent<React.Co
   seonews:        SEONews,
   activitylogs:   ActivityLogs,
   indexnow:       IndexNow,
+  bingwebmaster:  BingWebmaster,
 }
 
 // ── Error boundary — catches any section crash, resets on nav ─
@@ -330,13 +333,13 @@ function useActivityLogger() {
   useEffect(() => {
     if (!session?.user || !org || activeSection === lastSection.current) return
     lastSection.current = activeSection
-    supabase.from('jarvis_activity_logs').insert({
+    getDataProvider().insert('jarvis_activity_logs', {
       org_id: org.id,
       user_id: session.user.id,
       user_email: session.user.email ?? null,
       section: activeSection,
-    }).then(({ error }) => {
-      if (error) console.warn('[ActivityLog]', error.message)
+    }, { returning: false }).catch((err: unknown) => {
+      console.warn('[ActivityLog]', err instanceof Error ? err.message : err)
     })
   }, [activeSection, session, org])
 }
@@ -418,59 +421,45 @@ function useGA4Popup() {
 }
 
 async function acceptInvite(userId: string, email: string, token: string) {
-  const { data: invite } = await supabase
-    .from('jarvis_org_invites')
-    .select('*')
-    .eq('token', token)
-    .eq('email', email)
-    .eq('status', 'pending')
-    .single() as { data: OrgInvite | null; error: unknown }
+  const dp = getDataProvider()
+  const res = await dp.select<OrgInvite>('jarvis_org_invites', {
+    filters: [
+      { column: 'token',  op: 'eq', value: token },
+      { column: 'email',  op: 'eq', value: email },
+      { column: 'status', op: 'eq', value: 'pending' },
+    ],
+    mode: 'maybeSingle',
+  })
+  const invite = res.data as OrgInvite | null
 
   if (!invite || new Date(invite.expires_at) < new Date()) return
 
-  const { error: memberErr } = await supabase
-    .from('jarvis_org_members')
-    .insert({ org_id: invite.org_id, user_id: userId, role: invite.role } as never)
-
-  // ignore duplicate — user might already be a member
-  if (memberErr && !(memberErr as { message?: string }).message?.includes('unique')) {
-    console.error('[invite] join error:', memberErr)
-    return
+  try {
+    await dp.insert('jarvis_org_members', { org_id: invite.org_id, user_id: userId, role: invite.role }, { returning: false })
+  } catch (err) {
+    // ignore duplicate — user might already be a member
+    if (!(err instanceof Error && err.message.includes('unique'))) {
+      console.error('[invite] join error:', err)
+      return
+    }
   }
 
-  await supabase
-    .from('jarvis_org_invites')
-    .update({ status: 'accepted' } as never)
-    .eq('id', invite.id)
+  await dp.update('jarvis_org_invites', [{ column: 'id', op: 'eq', value: invite.id }], { status: 'accepted' })
 }
 
 function useAuth() {
   const { setSession, setOrg, setLoading, setOrgLoading, reset } = useAuthStore()
 
-  async function loadOrg(jwt: string) {
+  async function loadOrg() {
     setOrgLoading(true)
-    const ctrl = new AbortController()
-    const timer = setTimeout(() => ctrl.abort(), 12_000)
     try {
-      const sbUrl = useStore.getState().backendUrl || (import.meta.env.VITE_SUPABASE_URL as string) || ''
-      const sbKey = useStore.getState().backendKey || (import.meta.env.VITE_SUPABASE_ANON_KEY as string) || ''
-      const res = await fetch(
-        `${sbUrl}/rest/v1/rpc/jarvis_get_my_org`,
-        {
-          method:  'POST',
-          headers: {
-            'apikey':        sbKey,
-            'Authorization': `Bearer ${jwt}`,
-            'Content-Type':  'application/json',
-          },
-          body:   '{}',
-          signal: ctrl.signal,
-        }
-      )
-      clearTimeout(timer)
-      if (!res.ok) { console.error('[loadOrg] http', res.status); setOrg(null, null); return }
-      const data = await res.json() as
-        { id: string; name: string; slug: string; owner_id: string; role: string } | null
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('loadOrg timed out after 12s')), 12_000))
+      const data = await Promise.race([
+        getDataProvider().callProcedure<{ id: string; name: string; slug: string; owner_id: string; role: string } | null>(
+          'jarvis_get_my_org', {}),
+        timeout,
+      ])
       if (!data) { setOrg(null, null); return }
       const org: Organization = { id: data.id, name: data.name, slug: data.slug, owner_id: data.owner_id, plan: 'free', logo_url: null, created_at: new Date().toISOString() }
       setOrg(org, data.role as OrgRole)
@@ -478,15 +467,17 @@ function useAuth() {
       // Load role permissions non-blocking
       ;(async () => {
         try {
-          const { data: p } = await supabase.from('jarvis_organizations').select('role_permissions').eq('id', data.id).single()
+          const res = await getDataProvider().select<{ role_permissions: RolePermissions }>('jarvis_organizations', {
+            columns: 'role_permissions',
+            filters: [{ column: 'id', op: 'eq', value: data.id }],
+            mode: 'maybeSingle',
+          })
+          const p = res.data as { role_permissions: RolePermissions } | null
           if (p?.role_permissions) useAuthStore.getState().setRolePermissions(p.role_permissions)
         } catch { /* ignore */ }
       })()
     } catch (err) {
-      clearTimeout(timer)
-      const name = (err as Error).name
-      if (name === 'AbortError') console.error('[loadOrg] timed out after 12s')
-      else console.error('[loadOrg] unexpected:', err)
+      console.error('[loadOrg]', err)
       setOrg(null, null)
     }
   }
@@ -494,18 +485,17 @@ function useAuth() {
   useEffect(() => {
     let cancelled = false
 
-    async function joinViaShareLink(userId: string, accessToken: string) {
+    async function joinViaShareLink(userId: string) {
       const pendingOrgId = sessionStorage.getItem('pending_join_org')
       if (!pendingOrgId) return
       sessionStorage.removeItem('pending_join_org')
-      const { error } = await supabase
-        .from('jarvis_org_members')
-        .insert({ org_id: pendingOrgId, user_id: userId, role: 'viewer' } as never)
-      if (error) {
-        const msg = (error as { message?: string }).message ?? ''
-        if (!msg.includes('unique')) console.error('[org-share] join error:', error)
+      try {
+        await getDataProvider().insert('jarvis_org_members', { org_id: pendingOrgId, user_id: userId, role: 'viewer' }, { returning: false })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : ''
+        if (!msg.includes('unique')) console.error('[org-share] join error:', err)
       }
-      await loadOrg(accessToken)
+      await loadOrg()
     }
 
     async function bootstrap() {
@@ -528,7 +518,7 @@ function useAuth() {
       // Safety net — never stay loading forever (30s to give loadOrg time to respond)
       const timeout = setTimeout(() => { if (!cancelled) setLoading(false) }, 30_000)
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const session = await getAuthProvider().getSession()
         if (cancelled) return
         setSession(session)
         if (session) {
@@ -550,12 +540,12 @@ function useAuth() {
           const hasCachedOrg = !!useAuthStore.getState().org
           if (hasCachedOrg) {
             if (!cancelled) setLoading(false)
-            loadOrg(session.access_token)
-              .then(() => joinViaShareLink(session.user.id, session.access_token))
+            loadOrg()
+              .then(() => joinViaShareLink(session.user.id))
               .catch(() => {})
           } else {
-            await loadOrg(session.access_token)
-            await joinViaShareLink(session.user.id, session.access_token)
+            await loadOrg()
+            await joinViaShareLink(session.user.id)
           }
         }
 
@@ -595,32 +585,34 @@ function useAuth() {
 
     bootstrap()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const unsubscribe = getAuthProvider().onAuthStateChange((session) => {
       if (cancelled) return
-      setSession(session)
-      if (session) {
-        await loadOrg(session.access_token)
-        await joinViaShareLink(session.user.id, session.access_token)
-        // Retry GSC auth if a code was stashed but orgId wasn't ready during bootstrap
-        const pendingCode = sessionStorage.getItem('gsc_pending_code')
-        const orgId = useAuthStore.getState().org?.id
-        if (pendingCode && orgId) {
-          sessionStorage.removeItem('gsc_pending_code')
-          sessionStorage.removeItem('gsc_oauth_state')
-          supabase.functions.invoke('gsc-auth', {
-            body: { code: pendingCode, redirect_uri: window.location.origin, org_id: orgId },
-          }).then(({ error }) => {
-            if (!error) useStore.getState().setSection('gsc')
-            else console.error('[gsc-auth retry]', error)
-          })
+      ;(async () => {
+        setSession(session)
+        if (session) {
+          await loadOrg()
+          await joinViaShareLink(session.user.id)
+          // Retry GSC auth if a code was stashed but orgId wasn't ready during bootstrap
+          const pendingCode = sessionStorage.getItem('gsc_pending_code')
+          const orgId = useAuthStore.getState().org?.id
+          if (pendingCode && orgId) {
+            sessionStorage.removeItem('gsc_pending_code')
+            sessionStorage.removeItem('gsc_oauth_state')
+            supabase.functions.invoke('gsc-auth', {
+              body: { code: pendingCode, redirect_uri: window.location.origin, org_id: orgId },
+            }).then(({ error }) => {
+              if (!error) useStore.getState().setSection('gsc')
+              else console.error('[gsc-auth retry]', error)
+            })
+          }
+        } else {
+          reset()
         }
-      } else {
-        reset()
-      }
-      if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false)
+      })()
     })
 
-    return () => { cancelled = true; subscription.unsubscribe() }
+    return () => { cancelled = true; unsubscribe() }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 }

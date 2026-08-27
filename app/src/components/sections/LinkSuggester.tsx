@@ -56,7 +56,7 @@ function segmentText(text: string, suggestions: LinkSuggestion[]): { text: strin
 
 export function LinkSuggester() {
   const [article,     setArticle]     = useState('')
-  const [domain,      setDomain]      = useState('casinoexpert.io')
+  const [domain,      setDomain]      = useState('yoursite.com')
   const [suggestions, setSuggestions] = useState<LinkSuggestion[]>([])
   const [selected,    setSelected]    = useState<number | null>(null)
   const [filter,      setFilter]      = useState<'all' | LinkSuggestion['priority']>('all')
@@ -68,8 +68,8 @@ export function LinkSuggester() {
   const analyze = useMutation({
     mutationFn: async () => {
       return callClaude(
-        'You are an iGaming internal linking expert. Identify high-value internal link opportunities in casino content.',
-        `Analyse this casino article and identify the best internal link opportunities for "${domain}".
+        'You are an internal linking expert. Identify high-value internal link opportunities in the content.',
+        `Analyse this article and identify the best internal link opportunities for "${domain}".
 
 ARTICLE:
 ${article.slice(0, 2000)}
@@ -85,8 +85,8 @@ Return JSON array:
 }]
 
 Identify 6-8 opportunities. Prioritise:
-- HIGH: pillar pages, high-traffic targets, E-E-A-T signals (UKGC, responsible gambling)
-- MEDIUM: supporting cluster pages, provider pages
+- HIGH: pillar pages, high-traffic targets, E-E-A-T signals (author bios, trust/compliance pages)
+- MEDIUM: supporting cluster pages, product/category pages
 - LOW: optional supplementary links`,
         1000,
       )
@@ -128,7 +128,7 @@ Identify 6-8 opportunities. Prioritise:
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1">
             <CardTitle className="mb-1">Internal Link Suggester</CardTitle>
-            <div className="text-[11px] text-muted font-mono-jarvis">Paste a new article — Jarvis identifies where to add internal links and which pages to target</div>
+            <div className="text-[11px] text-muted font-mono-jarvis">Paste a new article — Caspira identifies where to add internal links and which pages to target</div>
           </div>
           <div>
             <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1">YOUR DOMAIN</div>
@@ -145,7 +145,7 @@ Identify 6-8 opportunities. Prioritise:
 
         {suggestions.length === 0 ? (
           <textarea value={article} onChange={e => setArticle(e.target.value)} rows={12}
-            placeholder="Paste your new casino article here…"
+            placeholder="Paste your new article here…"
             className="w-full bg-surface border border-border rounded-xl p-4 text-xs text-tx outline-none focus:border-accent transition-colors resize-none scrollbar-thin leading-relaxed" />
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">

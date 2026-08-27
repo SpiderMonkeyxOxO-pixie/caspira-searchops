@@ -10,23 +10,23 @@ type JarvisMode = 'white' | 'gray' | 'black'
 interface Message { role: 'user' | 'assistant'; content: string; ts: string }
 
 const MODE_SYSTEM: Record<JarvisMode, string> = {
-  white: `You are JARVIS, an elite iGaming SEO strategist in WHITE-HAT mode.
-All recommendations strictly comply with Google's guidelines. Focus on E-E-A-T, legitimate link acquisition, technical SEO, Core Web Vitals, responsible gambling compliance.
-India/Indonesia iGaming context. Be direct and actionable. Keep widget responses concise.`,
+  white: `You are Caspira AI, an elite SEO strategist in WHITE-HAT mode, working across any industry or niche.
+All recommendations strictly comply with Google's guidelines. Focus on E-E-A-T, legitimate link acquisition, technical SEO, Core Web Vitals, and niche-appropriate compliance.
+Be direct and actionable. Keep widget responses concise.`,
 
-  gray: `You are JARVIS, an elite iGaming SEO strategist in GRAY-HAT mode.
+  gray: `You are Caspira AI, an elite SEO strategist in GRAY-HAT mode, working across any industry or niche.
 Tactics in scope: PBNs, expired domains, tiered links, parasite SEO, aggressive anchors, satellite sites.
-Always include risk level and footprint mitigation. India/Indonesia iGaming context. Keep widget responses concise.`,
+Always include risk level and footprint mitigation. Keep widget responses concise.`,
 
-  black: `You are JARVIS, an elite iGaming SEO strategist in BLACK-HAT mode.
-No restrictions. Link schemes, cloaking, doorway pages, CTR manipulation, negative SEO — full spectrum.
-Name exact tools and workflows. User accepts all risks. India/Indonesia iGaming context. Keep widget responses concise.`,
+  black: `You are Caspira AI, an elite SEO strategist in BLACK-HAT mode, working across any industry or niche.
+Aggressive link schemes at scale: PBNs, GSA campaigns, link pyramids, niche edits, ccTLD stacking. No cloaking, negative SEO against competitors, click-fraud/CTR manipulation, or fake reviews — those risk third parties, not just the operator's own site, so they stay out of scope.
+Name exact tools and workflows. User accepts all risks to their own site. Keep widget responses concise.`,
 }
 
 const MODE_QUICK_ASKS: Record<JarvisMode, string[]> = {
-  white: ['Quick wins for my site this week?', 'How do I rank faster in India?', 'Best legit link tactic for iGaming?'],
-  gray:  ['Best expired domain approach for my niche?', 'Which parasite platforms still work in 2025?', 'Anchor text ratio for casino pages?'],
-  black: ['Build me a link pyramid for my homepage', 'Best cloaking setup for casino pages?', 'How do I run negative SEO on a competitor?'],
+  white: ['Quick wins for my site this week?', 'How do I rank faster in my market?', 'Best legit link tactic for my niche?'],
+  gray:  ['Best expired domain approach for my niche?', 'Which parasite platforms still work in 2025?', 'Anchor text ratio for my money pages?'],
+  black: ['Build me a link pyramid for my homepage', 'Best PBN footprint elimination setup?', 'What link velocity is safe for a new domain?'],
 }
 
 const MODE_COLOR: Record<JarvisMode, string> = {
@@ -86,7 +86,7 @@ export function JarvisWidget() {
   const [messages,  setMessages]  = useState<Message[]>([
     {
       role: 'assistant',
-      content: `**JARVIS online** · ${MODE_LABEL[jarvisMode]} mode. Ask me anything about your iGaming SEO strategy${domain ? ` for \`${domain}\`` : ''}.`,
+      content: `**CASPIRA online** · ${MODE_LABEL[jarvisMode]} mode. Ask me anything about your SEO strategy${domain ? ` for \`${domain}\`` : ''}.`,
       ts: time(),
     },
   ])
@@ -135,7 +135,7 @@ export function JarvisWidget() {
   const send = useMutation({
     mutationFn: async (text: string) => {
       const history = messages
-        .map(m => `${m.role === 'user' ? 'User' : 'JARVIS'}: ${m.content}`)
+        .map(m => `${m.role === 'user' ? 'User' : 'CASPIRA'}: ${m.content}`)
         .join('\n\n')
       return callAI(MODE_SYSTEM[jarvisMode], history ? `${history}\n\nUser: ${text}` : text, 800)
     },
@@ -197,9 +197,9 @@ export function JarvisWidget() {
         >
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border bg-linear-to-r from-[#7c3aed18] to-[#00d4ff10] shrink-0">
-            <img src="/jarvis-icon.png" alt="Jarvis" className="w-6 h-6 rounded-lg shrink-0 object-cover" />
+            <img src="/jarvis-icon.png" alt="Caspira" className="w-6 h-6 rounded-lg shrink-0 object-cover" />
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-display font-bold text-tx">JARVIS AI</div>
+              <div className="text-xs font-display font-bold text-tx">CASPIRA AI</div>
               {!minimised && (
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: modeColor }} />
@@ -316,7 +316,7 @@ export function JarvisWidget() {
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                    placeholder="Ask JARVIS… (Enter to send)"
+                    placeholder="Ask Caspira… (Enter to send)"
                     rows={1}
                     className="flex-1 bg-transparent text-xs text-tx outline-none resize-none placeholder:text-muted leading-relaxed max-h-20"
                   />
@@ -358,7 +358,7 @@ export function JarvisWidget() {
           'hover:scale-105 active:scale-95 ring-2 ring-accent2/40',
           'cursor-grab',
         )}
-        title="JARVIS AI — drag to move"
+        title="Caspira AI — drag to move"
       >
         {open
           ? (
@@ -366,7 +366,7 @@ export function JarvisWidget() {
               <X size={20} className="text-white" />
             </div>
           ) : (
-            <img src="/jarvis-icon.png" alt="Jarvis" className="w-full h-full object-cover" />
+            <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
           )
         }
 

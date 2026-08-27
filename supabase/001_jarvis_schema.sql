@@ -1,5 +1,5 @@
 -- ============================================================
--- JARVIS SEO — Database Schema
+-- CASPIRA SEARCHOPS — Database Schema
 -- Run this in: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 

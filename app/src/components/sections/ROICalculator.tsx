@@ -12,7 +12,7 @@ export function ROICalculator() {
         <Badge variant="purple" className="mb-4">Coming Soon</Badge>
         <div className="font-display font-black text-2xl text-tx mb-3">ROI Calculator</div>
         <div className="text-sm text-muted leading-relaxed max-w-xs mx-auto">
-          Track SEO investment vs revenue return — keyword rank improvements mapped to traffic, conversions, and deposit value for iGaming clients.
+          Track SEO investment vs revenue return — keyword rank improvements mapped to traffic, conversions, and revenue value for your clients.
         </div>
       </Card>
     </div>

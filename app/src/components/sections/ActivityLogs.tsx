@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { supabase } from '@/lib/supabase'
+import { getDataProvider } from '@/lib/backend'
+import { useStore } from '@/store'
 import { useAuthStore } from '@/store/authStore'
 import { NAV } from '@/lib/nav'
 import { cn } from '@/lib/utils'
+
+// Live updates via postgres_changes only exist for the Supabase provider —
+// a custom REST backend has no realtime equivalent (Phase C), so it falls
+// back to polling on this interval instead.
+const POLL_INTERVAL_MS = 15_000
 
 const SECTION_META: Record<string, { label: string; icon: React.ElementType }> = {}
 for (const group of NAV) {
@@ -61,6 +68,7 @@ const GRID = '20px 200px 240px 1fr 90px'
 
 export function ActivityLogs() {
   const { org } = useAuthStore()
+  const backendProvider = useStore(s => s.backendProvider)
   const [logs,     setLogs]     = useState<LogEntry[]>([])
   const [loading,  setLoading]  = useState(true)
   const [grep,     setGrep]     = useState('')
@@ -77,14 +85,16 @@ export function ActivityLogs() {
   async function fetchLogs() {
     if (!org) return
     setLoading(true)
-    const { data } = await supabase
-      .from('jarvis_activity_logs')
-      .select('id, user_email, section, visited_at, expires_at')
-      .eq('org_id', org.id)
-      .gt('expires_at', new Date().toISOString())
-      .order('visited_at', { ascending: false })
-      .limit(500)
-    setLogs(data ?? [])
+    const { data } = await getDataProvider().select<LogEntry>('jarvis_activity_logs', {
+      columns: 'id, user_email, section, visited_at, expires_at',
+      filters: [
+        { column: 'org_id', op: 'eq', value: org.id },
+        { column: 'expires_at', op: 'gt', value: new Date().toISOString() },
+      ],
+      order: { column: 'visited_at', ascending: false },
+      limit: 500,
+    })
+    setLogs((data as LogEntry[] | null) ?? [])
     setSelected(new Set())
     setConfirm(false)
     setLoading(false)
@@ -93,19 +103,26 @@ export function ActivityLogs() {
   useEffect(() => {
     fetchLogs()
     if (!org) return
-    const channel = supabase
-      .channel(`activity-logs-${org.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'jarvis_activity_logs',
-        filter: `org_id=eq.${org.id}`,
-      }, payload => {
-        setLogs(prev => [payload.new as LogEntry, ...prev].slice(0, 500))
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [org?.id])
+
+    if (backendProvider === 'supabase') {
+      const channel = supabase
+        .channel(`activity-logs-${org.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'jarvis_activity_logs',
+          filter: `org_id=eq.${org.id}`,
+        }, payload => {
+          setLogs(prev => [payload.new as LogEntry, ...prev].slice(0, 500))
+        })
+        .subscribe()
+      return () => { supabase.removeChannel(channel) }
+    }
+
+    // No realtime on a custom backend — poll instead.
+    const id = setInterval(fetchLogs, POLL_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [org?.id, backendProvider])
 
   const uniqueUsers    = [...new Set(logs.map(l => l.user_email).filter(Boolean))] as string[]
   const uniqueSections = [...new Set(logs.map(l => l.section))]
@@ -149,11 +166,10 @@ export function ActivityLogs() {
   async function deleteSelected() {
     if (!org || selected.size === 0) return
     setDeleting(true)
-    await supabase
-      .from('jarvis_activity_logs')
-      .delete()
-      .in('id', [...selected])
-      .eq('org_id', org.id)
+    await getDataProvider().remove('jarvis_activity_logs', [
+      { column: 'id', op: 'in', value: [...selected] },
+      { column: 'org_id', op: 'eq', value: org.id },
+    ])
     setLogs(prev => prev.filter(l => !selected.has(l.id)))
     setSelected(new Set())
     setConfirm(false)

@@ -59,6 +59,11 @@ interface JarvisState {
   backendProvider: 'supabase' | 'pocketbase' | 'custom'
   backendUrl:      string
   backendKey:      string
+  // Custom REST data backend (Phase C/D) — separate from backendUrl/backendKey above,
+  // which point the Supabase client itself (auth + edge functions) at a self-hosted
+  // project and stay required even when backendProvider is 'custom'.
+  customBackendUrl: string
+  customBackendKey: string
   googleClientId:  string
   domain: string
   jarvisMode:    'white' | 'gray' | 'black'
@@ -83,6 +88,8 @@ interface JarvisState {
   setBackendProvider:  (p: 'supabase' | 'pocketbase' | 'custom') => void
   setBackendUrl:       (k: string) => void
   setBackendKey:       (k: string) => void
+  setCustomBackendUrl: (k: string) => void
+  setCustomBackendKey: (k: string) => void
   setGoogleClientId:   (k: string) => void
   setDomain: (d: string) => void
   setTheme: (t: 'dark' | 'light' | 'auto') => void
@@ -145,6 +152,8 @@ export const useStore = create<JarvisState>()(
       backendProvider: 'supabase',
       backendUrl:      '',
       backendKey:      '',
+      customBackendUrl: '',
+      customBackendKey: '',
       googleClientId:  '',
       domain: '',
       jarvisMode:    'white',
@@ -169,6 +178,8 @@ export const useStore = create<JarvisState>()(
       setBackendProvider: (backendProvider) => set({ backendProvider }),
       setBackendUrl:      (backendUrl)      => set({ backendUrl }),
       setBackendKey:      (backendKey)      => set({ backendKey }),
+      setCustomBackendUrl:(customBackendUrl) => set({ customBackendUrl }),
+      setCustomBackendKey:(customBackendKey) => set({ customBackendKey }),
       setGoogleClientId:  (googleClientId)  => set({ googleClientId }),
       setDomain: (domain) => set({ domain }),
       setTheme: (theme) => set({ theme }),
@@ -329,6 +340,8 @@ export const useStore = create<JarvisState>()(
         backendProvider: state.backendProvider,
         backendUrl:      state.backendUrl,
         backendKey:      state.backendKey,
+        customBackendUrl: state.customBackendUrl,
+        customBackendKey: state.customBackendKey,
         googleClientId:  state.googleClientId,
         domain:            state.domain,
         jarvisMode:        state.jarvisMode,

@@ -44,6 +44,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     openRouterModel, setOpenRouterModel,
     backendUrl, setBackendUrl,
     backendKey, setBackendKey,
+    backendProvider, setBackendProvider,
+    customBackendUrl, setCustomBackendUrl,
+    customBackendKey, setCustomBackendKey,
     googleClientId, setGoogleClientId,
     dataForSEOKey, setDataForSEOKey,
     serperKeys, setSerperKeys,
@@ -52,6 +55,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [providerInput,     setProviderInput]     = useState(aiProvider)
   const [urlInput,          setUrlInput]          = useState(backendUrl)
   const [keyInput,          setKeyInput]          = useState(backendKey)
+  const [providerInputBk,   setProviderInputBk]   = useState(backendProvider)
+  const [customUrlInput,    setCustomUrlInput]    = useState(customBackendUrl)
+  const [customKeyInput,    setCustomKeyInput]    = useState(customBackendKey)
   const [googleInput,       setGoogleInput]       = useState(googleClientId)
   const [anthropicInput,    setAnthropicInput]    = useState(anthropicKey)
   const [geminiInput,       setGeminiInput]       = useState(geminiKey)
@@ -62,6 +68,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const [serperInput,       setSerperInput]       = useState(serperKeys)
 
   const [showKey,        setShowKey]        = useState(false)
+  const [showCustomKey,  setShowCustomKey]  = useState(false)
   const [showAnthropic,  setShowAnthropic]  = useState(false)
   const [showGemini,     setShowGemini]     = useState(false)
   const [showOpenRouter, setShowOpenRouter] = useState(false)
@@ -81,7 +88,10 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
 
   if (!open) return null
 
-  const backendChanged = urlInput.trim() !== backendUrl || keyInput.trim() !== backendKey
+  const backendChanged =
+    urlInput.trim() !== backendUrl || keyInput.trim() !== backendKey ||
+    providerInputBk !== backendProvider ||
+    customUrlInput.trim() !== customBackendUrl || customKeyInput.trim() !== customBackendKey
 
   function handleSave() {
     setAiProvider(providerInput)
@@ -94,6 +104,9 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     setSerperKeys(serperInput.trim())
     setBackendUrl(urlInput.trim())
     setBackendKey(keyInput.trim())
+    setBackendProvider(providerInputBk)
+    setCustomBackendUrl(customUrlInput.trim())
+    setCustomBackendKey(customKeyInput.trim())
     setGoogleClientId(googleInput.trim())
     setSaved(true)
     if (backendChanged) {
@@ -186,6 +199,61 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <RefreshCw size={11} />
                 Backend changes will reload the page to apply.
               </div>
+            )}
+          </div>
+
+          {/* ── Data Backend ── */}
+          <div className="pb-6 border-b border-border">
+            <div className="text-[10px] tracking-widest text-muted font-mono-jarvis mb-3 font-semibold">DATA BACKEND</div>
+
+            <div className="mb-3">
+              <label className="text-[11px] tracking-widest text-muted font-mono-jarvis block mb-1.5">CORE DATA STORAGE</label>
+              <div className="flex gap-2">
+                {(['supabase', 'custom'] as const).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setProviderInputBk(p)}
+                    className={`flex-1 py-2 rounded-lg text-xs font-mono-jarvis border transition-colors ${
+                      providerInputBk === p
+                        ? 'bg-accent/10 border-accent text-accent'
+                        : 'bg-surface border-border text-muted hover:text-tx'
+                    }`}
+                  >
+                    {p === 'supabase' ? 'Supabase' : 'Custom REST API'}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-muted mt-1">
+                {providerInputBk === 'supabase'
+                  ? 'Sites, tasks, schedules, org/team, and rank tracking are stored in the Supabase project above.'
+                  : 'Sites, tasks, schedules, org/team, and rank tracking route to your own REST API instead. GSC, GA4, Site Audit crawler, email invites, Bing Webmaster, and WordPress MCP publishing stay on Supabase regardless — they run as Supabase Edge Functions and need a real Supabase project either way.'}
+              </div>
+            </div>
+
+            {providerInputBk === 'custom' && (
+              <>
+                <div className="mb-3">
+                  <label className="text-[11px] tracking-widest text-muted font-mono-jarvis block mb-1.5">REST API BASE URL</label>
+                  <input
+                    type="text"
+                    value={customUrlInput}
+                    onChange={e => setCustomUrlInput(e.target.value)}
+                    placeholder="https://api.yourbackend.com"
+                    autoComplete="off"
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors"
+                  />
+                  <div className="text-[10px] text-muted mt-1">Must implement the data/auth contract — see docs/BACKEND_CONTRACT.md</div>
+                </div>
+                <KeyInput
+                  label="REST API KEY"
+                  value={customKeyInput}
+                  onChange={setCustomKeyInput}
+                  placeholder="sent as the apikey header on every request"
+                  show={showCustomKey}
+                  onToggle={() => setShowCustomKey(v => !v)}
+                />
+              </>
             )}
           </div>
 

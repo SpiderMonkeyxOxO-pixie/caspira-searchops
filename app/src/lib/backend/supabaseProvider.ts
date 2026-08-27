@@ -18,10 +18,10 @@ export const supabaseDataProvider: IDataProvider = {
     if (opts.order) q = q.order(opts.order.column, { ascending: opts.order.ascending ?? true })
     if (opts.range) q = q.range(opts.range.from, opts.range.to)
     if (opts.limit != null) q = q.limit(opts.limit)
-    if (opts.mode === 'single') q = q.single()
-    else if (opts.mode === 'maybeSingle') q = q.maybeSingle()
 
-    const res = await q
+    const res = opts.mode === 'single' ? await q.single()
+      : opts.mode === 'maybeSingle' ? await q.maybeSingle()
+      : await q
     if (res.error && opts.mode !== 'maybeSingle') throw new Error(res.error.message)
     return { data: (res.data ?? null) as T[] | T | null, count: res.count ?? undefined }
   },

@@ -78,7 +78,7 @@ async function handshake(url: string, authHeader?: string) {
     params: {
       protocolVersion: PROTOCOL_VERSION,
       capabilities: {},
-      clientInfo: { name: 'jarvis-seo', version: '1.0.0' },
+      clientInfo: { name: 'caspira-searchops', version: '1.0.0' },
     },
   })
 

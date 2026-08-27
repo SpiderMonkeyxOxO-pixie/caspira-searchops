@@ -72,6 +72,7 @@ const SECTION_TITLES: Record<string, string> = {
   apisync:      'Ahrefs / Semrush Sync',
   crawlimport:  'Crawl Import',
   wordpress:    'WordPress Publisher',
+  bingwebmaster: 'Bing Webmaster',
 
   aivisibility:   'AI Visibility',
   team:           'Team Management',

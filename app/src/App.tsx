@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar }  from '@/components/layout/TopBar'
 import { JarvisWidget } from '@/components/layout/JarvisWidget'
 import { SectionGuide } from '@/components/ui/SectionGuide'
+import { ProductTour } from '@/components/ui/ProductTour'
 import { AuthPage } from '@/components/auth/AuthPage'
 import { OrgCreateWizard } from '@/components/auth/OrgCreateWizard'
 import { useStore } from '@/store'
@@ -298,10 +299,20 @@ function useKeyboardShortcuts() {
 }
 
 function AppLayout() {
-  const { sidebarCollapsed, jarvisMode, activeSection } = useStore()
+  const { sidebarCollapsed, jarvisMode, activeSection, sites, tourActive, tourDismissed, setTourActive } = useStore()
   const glow1 = jarvisMode === 'black' ? '#ef444408' : jarvisMode === 'gray' ? '#f59e0b08' : '#00d4ff08'
   const glow2 = jarvisMode === 'black' ? '#dc262608' : jarvisMode === 'gray' ? '#d9770608' : '#7c3aed08'
   const isChat = activeSection === 'jarvis'
+
+  // Fresh account (no sites yet, never seen the tour) — auto-start after the
+  // shell has had a moment to settle, so the overlay doesn't flash in mid-layout.
+  useEffect(() => {
+    if (sites.length > 0 || tourDismissed || tourActive) return
+    const t = setTimeout(() => setTourActive(true), 1200)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sites.length, tourDismissed])
+
   return (
     <div className={cn('flex', isChat ? 'h-screen overflow-hidden' : 'min-h-screen')}>
       <div className="fixed w-125 h-125 rounded-full blur-[120px] pointer-events-none -top-24 -right-24 z-0" style={{ background: glow1 }} />
@@ -321,6 +332,7 @@ function AppLayout() {
         </div>
       </main>
       <JarvisWidget />
+      <ProductTour />
     </div>
   )
 }

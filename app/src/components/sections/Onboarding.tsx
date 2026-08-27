@@ -530,6 +530,12 @@ export function Onboarding() {
               </span>
               <span>{completedCount} of {STEPS.length} steps done</span>
             </div>
+            <button
+              onClick={() => { store.setTourStep(0); store.setTourActive(true) }}
+              className="mt-3 text-[11px] text-accent hover:underline cursor-pointer font-mono-jarvis"
+            >
+              Restart the product tour →
+            </button>
           </div>
         </div>
         {allDone && (

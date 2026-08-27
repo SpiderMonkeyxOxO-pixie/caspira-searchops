@@ -65,7 +65,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin">
+      <nav className="flex-1 overflow-y-auto px-2 py-3 scrollbar-thin" data-tour="sidebar-nav">
         {NAV.map((group, groupIdx) => {
           const isGroupCollapsed = collapsedGroups.has(group.label)
           const showItems = !isGroupCollapsed || sidebarCollapsed
@@ -123,6 +123,7 @@ export function Sidebar() {
                     key={item.id}
                     onClick={() => setSection(item.id)}
                     title={sidebarCollapsed ? item.label : undefined}
+                    data-tour={item.id === 'dashboard' ? 'nav-dashboard' : item.id === 'jarvis' ? 'nav-jarvis' : undefined}
                     className={cn(
                       'w-full flex items-center rounded-lg mb-0.5 transition-all duration-200 cursor-pointer border',
                       sidebarCollapsed

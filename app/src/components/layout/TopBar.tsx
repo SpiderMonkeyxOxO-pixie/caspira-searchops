@@ -151,6 +151,7 @@ export function TopBar() {
           <div ref={switcherRef} className="relative">
             <button
               onClick={() => setSwitcherOpen(v => !v)}
+              data-tour="site-selector"
               className="flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-1.5 text-xs font-mono-jarvis text-tx hover:border-accent transition-colors w-44 min-w-0"
             >
               <Globe size={12} className="text-muted shrink-0" />
@@ -230,6 +231,7 @@ export function TopBar() {
 
           <button
             onClick={() => setSettingsOpen(true)}
+            data-tour="settings-gear"
             className="relative p-2 rounded-lg border border-border text-muted hover:border-accent hover:text-accent transition-all"
           >
             <Settings size={15} />

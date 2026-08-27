@@ -98,6 +98,14 @@ interface JarvisState {
   settingsOpen: boolean
   setSettingsOpen: (v: boolean) => void
 
+  // Product tour
+  tourActive:    boolean
+  tourStep:      number
+  tourDismissed: boolean
+  setTourActive:    (v: boolean) => void
+  setTourStep:      (n: number) => void
+  setTourDismissed: (v: boolean) => void
+
   // Data
   sites: Site[]
   tasks: Task[]
@@ -187,6 +195,13 @@ export const useStore = create<JarvisState>()(
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       settingsOpen: false,
       setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+
+      tourActive:    false,
+      tourStep:      0,
+      tourDismissed: false,
+      setTourActive:    (tourActive)    => set({ tourActive }),
+      setTourStep:      (tourStep)      => set({ tourStep }),
+      setTourDismissed: (tourDismissed) => set({ tourDismissed }),
 
       sites: [],
       tasks: [],
@@ -350,6 +365,7 @@ export const useStore = create<JarvisState>()(
         theme:             state.theme,
         density:         state.density,
         sidebarCollapsed:state.sidebarCollapsed,
+        tourDismissed:   state.tourDismissed,
         roiTimeframe:    state.roiTimeframe,
         scenario:        state.scenario,
         voiceHistory:    state.voiceHistory,

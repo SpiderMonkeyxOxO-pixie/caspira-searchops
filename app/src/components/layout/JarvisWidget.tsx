@@ -25,7 +25,7 @@ Name exact tools and workflows. User accepts all risks to their own site. Keep w
 
 const MODE_QUICK_ASKS: Record<JarvisMode, string[]> = {
   white: ['Quick wins for my site this week?', 'How do I rank faster in my market?', 'Best legit link tactic for my niche?'],
-  gray:  ['Best expired domain approach for my niche?', 'Which parasite platforms still work in 2025?', 'Anchor text ratio for my money pages?'],
+  gray:  ['Best expired domain approach for my niche?', `Which parasite platforms still work in ${new Date().getFullYear()}?`, 'Anchor text ratio for my money pages?'],
   black: ['Build me a link pyramid for my homepage', 'Best PBN footprint elimination setup?', 'What link velocity is safe for a new domain?'],
 }
 

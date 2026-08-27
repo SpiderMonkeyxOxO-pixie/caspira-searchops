@@ -175,7 +175,7 @@ const MODE_QUICK_ASKS: Record<JarvisMode, string[]> = {
   gray: [
     'Best expired domains to acquire for a PBN right now?',
     'How do I build a T2 link buffer network for my site?',
-    'Which parasite SEO platforms still work in 2025?',
+    `Which parasite SEO platforms still work in ${new Date().getFullYear()}?`,
     'What anchor text ratio should I use for my money pages?',
     'How do I rank fast without a clean link profile?',
     'Best gray-hat content strategy for competitive pages?',

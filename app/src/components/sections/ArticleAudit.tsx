@@ -975,7 +975,6 @@ Return only: {"terms": ["term 1", "term 2", "term 3", "term 4", "term 5", "term 
               <div>
                 <div className="text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">AUDIENCE</div>
                 <input value={audience} onChange={e => setAudience(e.target.value)}
-                  placeholder="e.g. India"
                   className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs text-tx font-mono-jarvis outline-none focus:border-accent transition-colors" />
               </div>
 

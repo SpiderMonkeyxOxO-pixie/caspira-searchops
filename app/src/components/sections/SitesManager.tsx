@@ -68,7 +68,6 @@ function EditRow({ site, onSave, onCancel }: {
       </td>
       <td className="px-4 py-2">
         <input value={country} onChange={e => setCountry(e.target.value)}
-          placeholder="e.g. India"
           className="w-24 bg-surface border border-border rounded px-2 py-1 text-xs text-tx outline-none" />
       </td>
       <td className="px-4 py-2">
@@ -413,10 +412,9 @@ export function SitesManager() {
           <div>
             <div className="flex items-center gap-1 text-[10px] text-muted font-mono-jarvis tracking-widest mb-1.5">
               MARKET / COUNTRY
-              <InfoTooltip text="The primary geographic market this site targets (e.g. India, Indonesia). Used to group sites in the Traffic by Market chart in the Agency Dashboard." side="right" />
+              <InfoTooltip text="The primary geographic market this site targets. Used to group sites in the Traffic by Market chart in the Agency Dashboard." side="right" />
             </div>
             <input value={newCountry} onChange={e => setNewCountry(e.target.value)}
-              placeholder="India, Indonesia…"
               className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-tx outline-none focus:border-accent transition-colors" />
           </div>
           <div>

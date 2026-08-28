@@ -137,9 +137,9 @@ function downloadFullReport(r: BlueprintRecord) {
 export function OutrankBlueprint() {
   const { domain } = useStore()
 
-  const [market,     setMarket]     = useState('India')
+  const [market,     setMarket]     = useState('')
   const [competitor, setCompetitor] = useState('')
-  const [keyword,    setKeyword]    = useState('best project management software india')
+  const [keyword,    setKeyword]    = useState('')
   const [tab,        setTab]        = useState<Tab>('blueprint')
 
   // Results

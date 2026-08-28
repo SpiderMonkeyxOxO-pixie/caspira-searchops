@@ -33,9 +33,33 @@ const TOUR_STEPS: TourStep[] = [
     body: "This is the one thing everything else depends on. Click here to add your first site — it feeds every tool in the platform.",
   },
   {
+    target: 'nav-analyzer',
+    navigateTo: 'analyzer',
+    title: 'Site Audit finds what to fix',
+    body: 'A full technical and on-page crawl of your site — broken links, missing meta, slow pages — with fixes ranked by impact.',
+  },
+  {
+    target: 'nav-tracker',
+    navigateTo: 'tracker',
+    title: 'Rank Tracker watches your keywords',
+    body: 'Track daily position changes for the keywords that matter, and see movement over time before your competitors do.',
+  },
+  {
+    target: 'nav-articlewriter',
+    navigateTo: 'articlewriter',
+    title: 'Article Writer drafts content for you',
+    body: 'Generate SEO-optimized articles from a topic or target keyword, ready to review and publish.',
+  },
+  {
     target: 'nav-jarvis',
     title: 'Meet Caspira AI',
     body: 'Your AI strategist already has full context on your connected site — no copying reports into a separate chatbot. Just ask.',
+  },
+  {
+    target: 'nav-team',
+    navigateTo: 'team',
+    title: 'Bring your team in',
+    body: 'Invite teammates, assign roles, and manage access — everyone works from the same live data.',
   },
   {
     target: 'settings-gear',
@@ -142,7 +166,7 @@ export function ProductTour() {
           className="fixed rounded-xl transition-all duration-300 pointer-events-none"
           style={{
             top: spot.top, left: spot.left, width: spot.width, height: spot.height,
-            boxShadow: '0 0 0 9999px rgba(5,8,14,.8), 0 0 0 2px var(--color-accent, #22d3ee), 0 0 28px var(--color-accent, #22d3ee)',
+            boxShadow: '0 0 0 9999px rgba(5,8,14,.8), 0 0 0 2px var(--color-accent, #22d3ee)',
           }}
         />
       ) : (

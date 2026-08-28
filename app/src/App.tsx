@@ -299,9 +299,7 @@ function useKeyboardShortcuts() {
 }
 
 function AppLayout() {
-  const { sidebarCollapsed, jarvisMode, activeSection, sites, tourActive, tourDismissed, setTourActive } = useStore()
-  const glow1 = jarvisMode === 'black' ? '#ef444408' : jarvisMode === 'gray' ? '#f59e0b08' : '#00d4ff08'
-  const glow2 = jarvisMode === 'black' ? '#dc262608' : jarvisMode === 'gray' ? '#d9770608' : '#7c3aed08'
+  const { sidebarCollapsed, activeSection, sites, tourActive, tourDismissed, setTourActive } = useStore()
   const isChat = activeSection === 'jarvis'
 
   // Fresh account (no sites yet, never seen the tour) — auto-start after the
@@ -315,8 +313,6 @@ function AppLayout() {
 
   return (
     <div className={cn('flex', isChat ? 'h-screen overflow-hidden' : 'min-h-screen')}>
-      <div className="fixed w-125 h-125 rounded-full blur-[120px] pointer-events-none -top-24 -right-24 z-0" style={{ background: glow1 }} />
-      <div className="fixed w-100 h-100 rounded-full blur-[120px] pointer-events-none bottom-48 -left-24 z-0" style={{ background: glow2 }} />
       <Sidebar />
       <main className={cn(
         'flex-1 min-w-0 flex flex-col relative z-10 transition-all duration-300',

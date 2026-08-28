@@ -47,14 +47,10 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-      {/* Background glows */}
-      <div className="fixed w-125 h-125 rounded-full bg-[#00d4ff06] blur-[120px] pointer-events-none -top-24 -right-24" />
-      <div className="fixed w-100 h-100 rounded-full bg-[#7c3aed06] blur-[120px] pointer-events-none bottom-48 -left-24" />
-
       <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden mb-4 shadow-[0_0_40px_#00d4ff30]">
+          <div className="w-14 h-14 rounded-2xl overflow-hidden mb-4 border border-border">
             <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
           </div>
           <div className="font-display font-black text-2xl tracking-wide text-tx">CASPIRA SEARCHOPS</div>
@@ -128,9 +124,9 @@ export function AuthPage() {
 
             <button
               type="submit" disabled={loading}
-              className="w-full py-2.5 rounded-lg bg-linear-to-r from-accent to-[#0099cc] text-black font-bold text-sm
-                         cursor-pointer transition-all hover:-translate-y-px hover:shadow-[0_6px_25px_#00d4ff40]
-                         disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-2">
+              className="w-full py-2.5 rounded-lg bg-accent text-black font-bold text-sm
+                         cursor-pointer transition-colors hover:bg-[#00bfe6]
+                         disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               {loading && <Loader2 size={14} className="animate-spin" />}
               {mode === 'login'  ? 'Sign in'          :
                mode === 'signup' ? 'Create account'   :

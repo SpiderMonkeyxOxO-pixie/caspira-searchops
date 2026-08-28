@@ -3,9 +3,9 @@ import { cn } from '@/lib/utils'
 type Variant = 'primary' | 'ghost' | 'ai' | 'danger'
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-linear-to-r from-[#00d4ff] to-[#0099cc] text-black font-bold shadow-[0_4px_15px_#00d4ff30] hover:-translate-y-px hover:shadow-[0_6px_25px_#00d4ff40]',
+  primary: 'bg-[#00d4ff] text-black font-bold hover:bg-[#00bfe6]',
   ghost:   'bg-transparent text-muted border border-border hover:border-accent hover:text-accent',
-  ai:      'bg-linear-to-r from-[#7c3aed] to-[#9333ea] text-white hover:-translate-y-px hover:shadow-[0_6px_25px_#7c3aed40]',
+  ai:      'bg-[#7c3aed] text-white hover:bg-[#6d28d9]',
   danger:  'bg-[#ef444420] text-[#ef4444] border border-[#ef444430] hover:bg-[#ef444430]',
 }
 

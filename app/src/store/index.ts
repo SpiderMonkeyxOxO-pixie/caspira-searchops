@@ -170,7 +170,7 @@ export const useStore = create<JarvisState>()(
       newsUnreadCount:   0,
       setNewsLastSeen:   (newsLastSeen)    => set({ newsLastSeen }),
       setNewsUnreadCount:(newsUnreadCount) => set({ newsUnreadCount }),
-      theme: 'dark',
+      theme: 'light',
       density: 'default',
       sidebarCollapsed: false,
       setAnthropicKey:    (anthropicKey)    => set({ anthropicKey }),

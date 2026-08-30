@@ -82,7 +82,6 @@ export function SEONews() {
         fresh.forEach(item => {
           new Notification(`📰 ${item.source}`, {
             body: item.title,
-            icon: '/jarvis-icon.png',
           })
         })
       }

@@ -48,9 +48,6 @@ export function OrgCreateWizard({ user, onCreated }: Props) {
     <div className="min-h-screen bg-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md relative">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden mb-4 border border-border">
-            <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
-          </div>
           <div className="font-display font-black text-2xl tracking-wide text-tx">CASPIRA SEARCHOPS</div>
           <div className="text-[10px] text-muted tracking-[3px] font-mono-jarvis uppercase mt-1">AI Search Intelligence Platform</div>
         </div>

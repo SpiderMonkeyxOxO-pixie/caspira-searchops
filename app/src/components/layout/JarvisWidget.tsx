@@ -197,7 +197,6 @@ export function JarvisWidget() {
         >
           {/* Header */}
           <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border bg-linear-to-r from-[#7c3aed18] to-[#00d4ff10] shrink-0">
-            <img src="/jarvis-icon.png" alt="Caspira" className="w-6 h-6 rounded-lg shrink-0 object-cover" />
             <div className="flex-1 min-w-0">
               <div className="text-xs font-display font-bold text-tx">CASPIRA AI</div>
               {!minimised && (
@@ -258,9 +257,7 @@ export function JarvisWidget() {
                       'w-6 h-6 rounded-lg shrink-0 overflow-hidden flex items-center justify-center',
                       m.role === 'assistant' ? '' : 'bg-surface border border-border'
                     )}>
-                      {m.role === 'assistant'
-                        ? <img src="/jarvis-icon.png" alt="J" className="w-full h-full object-cover" />
-                        : <User size={11} className="text-muted" />}
+                      {m.role === 'user' && <User size={11} className="text-muted" />}
                     </div>
                     <div className={cn(
                       'max-w-[80%] rounded-xl px-3 py-2 text-[12px] leading-relaxed',
@@ -276,9 +273,7 @@ export function JarvisWidget() {
 
                 {send.isPending && (
                   <div className="flex gap-2">
-                    <div className="w-6 h-6 rounded-lg shrink-0 overflow-hidden">
-                      <img src="/jarvis-icon.png" alt="J" className="w-full h-full object-cover" />
-                    </div>
+                    <div className="w-6 h-6 rounded-lg shrink-0" />
                     <div className="bg-surface border border-border rounded-xl px-3 py-2">
                       <div className="flex gap-0.5 items-center">
                         {[0, 1, 2].map(i => (
@@ -366,7 +361,9 @@ export function JarvisWidget() {
               <X size={20} className="text-white" />
             </div>
           ) : (
-            <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
+            <div className="w-full h-full bg-accent2 flex items-center justify-center">
+              <Brain size={20} className="text-white" />
+            </div>
           )
         }
 

@@ -1242,9 +1242,6 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
   if (!ready) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4 text-center">
-        <div className="w-16 h-16 rounded-2xl overflow-hidden">
-          <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
-        </div>
         <div className="font-display font-bold text-xl">Caspira AI Co-Pilot</div>
         <div className="text-sm text-muted max-w-xs">
           Add an <strong>OpenRouter</strong> (free models available) or <strong>Anthropic</strong> API key in Settings to unlock AI-powered SEO strategy.
@@ -1489,9 +1486,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
                 'w-8 h-8 rounded-xl shrink-0 overflow-hidden flex items-center justify-center text-sm',
                 m.role === 'assistant' ? '' : 'bg-surface border border-border'
               )}>
-                {m.role === 'assistant'
-                  ? <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
-                  : <User size={14} className="text-muted" />}
+                {m.role === 'user' && <User size={14} className="text-muted" />}
               </div>
 
               <div className="relative max-w-[75%]">
@@ -1546,9 +1541,7 @@ Use exact data. No generics. Every recommendation must trace back to a specific 
 
           {(isStreaming || isAnalyzing) && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
-                <img src="/jarvis-icon.png" alt="Caspira" className="w-full h-full object-cover" />
-              </div>
+              <div className="w-8 h-8 rounded-xl shrink-0" />
               <div className="bg-card border border-border rounded-2xl px-4 py-3">
                 <div className="flex gap-1 items-center">
                   <span className="text-xs text-muted font-mono-jarvis">

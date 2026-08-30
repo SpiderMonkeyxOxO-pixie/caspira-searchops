@@ -7,18 +7,6 @@ import { getAuthProvider } from '@/lib/backend'
 import { NAV } from '@/lib/nav'
 import type { NavSection } from '@/types'
 
-function LogoMark() {
-  return (
-    <img
-      src="/jarvis-icon.png"
-      alt="Caspira"
-      width={36}
-      height={36}
-      className="shrink-0 rounded-lg"
-    />
-  )
-}
-
 export function Sidebar() {
   const { activeSection, setSection, domain, sidebarCollapsed, setSidebarCollapsed } = useStore()
   const { org, myRole, rolePermissions } = useAuthStore()
@@ -55,7 +43,6 @@ export function Sidebar() {
         'py-4 border-b border-border flex items-center shrink-0',
         sidebarCollapsed ? 'justify-center' : 'gap-3 px-5'
       )}>
-        <LogoMark />
         {!sidebarCollapsed && (
           <div className="min-w-0">
             <div className="font-display font-bold text-base tracking-wide text-tx leading-tight">CASPIRA</div>

@@ -60,9 +60,16 @@ export function useSeo({ title, description, path, noindex, jsonLd }: SeoOptions
     upsertMeta('meta[property="og:type"]',        { property: 'og:type', content: 'website' })
     upsertMeta('meta[property="og:url"]',         { property: 'og:url', content: url })
     upsertMeta('meta[property="og:site_name"]',   { property: 'og:site_name', content: SITE.name })
+    // Absolute URL required — scrapers do not resolve relative paths.
+    const image = `${SITE.origin}/og-image.jpg`
+    upsertMeta('meta[property="og:image"]',        { property: 'og:image', content: image })
+    upsertMeta('meta[property="og:image:width"]',  { property: 'og:image:width', content: '1200' })
+    upsertMeta('meta[property="og:image:height"]', { property: 'og:image:height', content: '630' })
+    upsertMeta('meta[property="og:image:alt"]',    { property: 'og:image:alt', content: `${SITE.name} — the whole SEO stack in one platform` })
     upsertMeta('meta[name="twitter:card"]',        { name: 'twitter:card', content: 'summary_large_image' })
     upsertMeta('meta[name="twitter:title"]',       { name: 'twitter:title', content: fullTitle })
     upsertMeta('meta[name="twitter:description"]', { name: 'twitter:description', content: description })
+    upsertMeta('meta[name="twitter:image"]',       { name: 'twitter:image', content: image })
 
     const scripts: HTMLScriptElement[] = (jsonLd ?? []).map(obj => {
       const s = document.createElement('script')

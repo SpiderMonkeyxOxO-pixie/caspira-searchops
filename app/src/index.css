@@ -1,10 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: 'Roboto', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
   --font-display: 'Roboto', sans-serif;
+  /* Marketing-site display face — used only by the public landing pages */
+  --font-hero: 'Archivo', 'Roboto', sans-serif;
 
   --color-bg:      #040812;
   --color-surface: #080f1e;

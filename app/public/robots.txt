@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# The application itself is behind auth — no value in indexing it.
+Disallow: /app
+Disallow: /app/
+
+Sitemap: https://searchops.caspirasolutions.com/sitemap.xml

@@ -3,7 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Caspira SearchOps — AI Search Intelligence Platform</title>
+
+    <!--
+      These are the STATIC fallbacks. Per-route titles/descriptions/canonicals are
+      set at runtime by src/marketing/hooks/useSeo.ts.
+
+      Googlebot renders JS and will see the per-route tags. Link-preview scrapers
+      (Slack, LinkedIn, Facebook, X) do NOT run JS and will only ever see what is
+      below — so every shared link previews as the home page until these routes are
+      pre-rendered at build time. That is the single highest-value SEO upgrade left.
+    -->
+    <title>Caspira SearchOps — The whole SEO stack in one platform</title>
+    <meta name="description" content="Keyword research, rank tracking, technical audits and AI content — 60+ SEO tools in one platform, running on your own API keys and your own database." />
+    <link rel="canonical" href="https://searchops.caspirasolutions.com/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#0d1b2e" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Caspira SearchOps" />
+    <meta property="og:title" content="Caspira SearchOps — The whole SEO stack in one platform" />
+    <meta property="og:description" content="60+ SEO tools in one platform, running on your own API keys and your own database. 14-day free trial." />
+    <meta property="og:url" content="https://searchops.caspirasolutions.com/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   </head>
   <body>
     <div id="root"></div>
